@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Charleston Atelier - Peptide Medicine & Biolongevity</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --ivory: #F7F4EF;
+            --ivory-alt: #FAF8F4;
+            --espresso: #4B342B;
+            --espresso-dark: #1F1B16;
+            --coffee: #7A5E4A;
+            --aged-brass: #A58F7A;
+            --aged-brass-alt: #A8894F;
+            --sage: #8A9A8B;
+            --champagne: #E8DCC8;
+        }
+
+        body {
+            font-family: 'Cormorant Garamond', serif;
+            background: linear-gradient(135deg, rgba(247, 244, 239, 0.92) 0%, rgba(250, 248, 244, 0.92) 100%),
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1600"><rect fill="%23F7F4EF" width="1200" height="1600"/></svg>') center/cover no-repeat fixed;
+            color: var(--espresso);
+            min-height: 100vh;
+            line-height: 1.6;
+            background-attachment: fixed;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(31, 27, 22, 0.05) 100%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--aged-brass);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 600;
+            font-family: 'Cinzel', serif;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--espresso-dark);
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            font-size: 14px;
+            font-style: italic;
+            color: var(--coffee);
+            font-family: 'Jost', sans-serif;
+        }
+
+        .nfc-indicator {
+            display: inline-block;
+            margin-top: 12px;
+            font-size: 12px;
+            padding: 4px 12px;
+            border: 1px solid var(--aged-brass);
+            border-radius: 20px;
+            color: var(--coffee);
+            font-family: 'Jost', sans-serif;
+        }
+
+        .hero-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .hero-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .hero-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--espresso-dark);
+        }
+
+        .hero-subtitle {
+            font-size: 14px;
+            color: var(--coffee);
+            font-family: 'Jost', sans-serif;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--aged-brass);
+            gap: 0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-family: 'Jost', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--coffee);
+            position: relative;
+            transition: color 0.3s ease;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .tab-btn.active {
+            color: var(--espresso-dark);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--aged-brass-alt);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Link Hub Section */
+        .link-hub {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .link-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--aged-brass);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--espresso);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .link-card:hover {
+            background: rgba(245, 241, 235, 1);
+            border-color: var(--aged-brass-alt);
+            transform: translateX(4px);
+        }
+
+        .link-icon {
+            font-size: 24px;
+            min-width: 24px;
+        }
+
+        .link-text {
+            flex: 1;
+        }
+
+        .link-label {
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Jost', sans-serif;
+            letter-spacing: 0.5px;
+        }
+
+        .link-description {
+            font-size: 12px;
+            color: var(--coffee);
+            font-family: 'Jost', sans-serif;
+        }
+
+        .arrow {
+            color: var(--aged-brass);
+            font-size: 14px;
+        }
+
+        /* Peptide Protocol Section */
+        .protocol-section {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--aged-brass);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .protocol-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--espresso-dark);
+            border-bottom: 2px solid var(--aged-brass);
+            padding-bottom: 8px;
+        }
+
+        .protocol-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .protocol-input {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .protocol-label {
+            font-size: 12px;
+            font-family: 'Jost', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--coffee);
+            margin-bottom: 4px;
+        }
+
+        input[type="number"], input[type="text"], select {
+            padding: 10px;
+            border: 1px solid var(--aged-brass);
+            border-radius: 4px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 14px;
+            background: var(--ivory-alt);
+            color: var(--espresso);
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--aged-brass-alt);
+            background: white;
+        }
+
+        .peptide-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .peptide-option {
+            padding: 12px;
+            border: 1px solid var(--aged-brass);
+            border-radius: 4px;
+            background: var(--ivory-alt);
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'Jost', sans-serif;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .peptide-option:hover {
+            border-color: var(--aged-brass-alt);
+            background: white;
+        }
+
+        .peptide-option.selected {
+            background: var(--aged-brass);
+            color: white;
+            border-color: var(--aged-brass-alt);
+        }
+
+        .protocol-result {
+            background: linear-gradient(135deg, rgba(245, 241, 235, 0.8), rgba(255, 255, 255, 0.8));
+            padding: 16px;
+            border-radius: 4px;
+            border-left: 4px solid var(--aged-brass-alt);
+            margin-bottom: 12px;
+        }
+
+        .result-label {
+            font-size: 12px;
+            font-family: 'Jost', sans-serif;
+            color: var(--coffee);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .result-value {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--espresso-dark);
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .protocol-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            font-family: 'Jost', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--aged-brass);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--aged-brass-alt);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--aged-brass);
+            color: var(--espresso);
+        }
+
+        .btn-secondary:hover {
+            background: var(--ivory-alt);
+        }
+
+        .patient-guide-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: var(--espresso);
+            color: white;
+            text-align: center;
+            border-radius: 4px;
+            text-decoration: none;
+            font-family: 'Jost', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-top: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .patient-guide-btn:hover {
+            background: var(--espresso-dark);
+        }
+
+        /* Wallet Card Section */
+        .wallet-section {
+            background: linear-gradient(135deg, var(--espresso-dark), var(--coffee));
+            color: var(--ivory);
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .wallet-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .wallet-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .wallet-description {
+            font-size: 13px;
+            margin-bottom: 16px;
+            font-family: 'Jost', sans-serif;
+        }
+
+        .add-to-wallet-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--aged-brass);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-family: 'Jost', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        .add-to-wallet-btn:hover {
+            background: var(--aged-brass-alt);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px 0;
+            border-top: 1px solid var(--aged-brass);
+            margin-top: 30px;
+            color: var(--coffee);
+            font-family: 'Jost', sans-serif;
+            font-size: 12px;
+        }
+
+        .footer-link {
+            color: var(--aged-brass);
+            text-decoration: none;
+        }
+
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--ivory);
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--coffee);
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--espresso-dark);
+        }
+
+        .protocol-pdf-viewer {
+            width: 100%;
+            height: 500px;
+            border: 1px solid var(--aged-brass);
+            border-radius: 4px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 12px;
+            }
+
+            .logo {
+                font-size: 22px;
+            }
+
+            .tab-btn {
+                font-size: 11px;
+                padding: 10px 6px;
+            }
+
+            .link-card {
+                padding: 12px;
+            }
+
+            .link-label {
+                font-size: 13px;
+            }
+
+            .link-description {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">CHARLESTON ATELIER</div>
+            <div class="tagline">Couture Medicine • Biolongevity</div>
+            <div class="nfc-indicator">📱 NFC Tap Card</div>
+        </header>
+
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="hub">Hub</button>
+            <button class="tab-btn" data-tab="peptide">Protocol</button>
+            <button class="tab-btn" data-tab="wallet">Wallet</button>
+        </div>
+
+        <!-- Hub Tab -->
+        <div id="hub" class="tab-content active">
+            <div class="hero-section">
+                <div class="hero-icon">✨</div>
+                <div class="hero-title">Welcome</div>
+                <div class="hero-subtitle">Explore our clinical protocols and wellness resources</div>
+            </div>
+
+            <div class="link-hub">
+                <!-- Scheduler -->
+                <a href="https://calendly.com/drkendallmd" class="link-card" target="_blank" rel="noopener noreferrer">
+                    <div class="link-icon">📅</div>
+                    <div class="link-text">
+                        <div class="link-label">Private Concierge Slot</div>
+                        <div class="link-description">Schedule your consultation</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </a>
+
+                <!-- Direct Messaging -->
+                <a href="sms:843-697-2875&body=Hi%20Dr.%20Kendall%20-%20" class="link-card">
+                    <div class="link-icon">💬</div>
+                    <div class="link-text">
+                        <div class="link-label">Direct Message</div>
+                        <div class="link-description">Text the atelier directly</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </a>
+
+                <!-- Clinical Guide -->
+                <button class="link-card" onclick="openProtocolPDF()">
+                    <div class="link-icon">📋</div>
+                    <div class="link-text">
+                        <div class="link-label">Patient Guide</div>
+                        <div class="link-description">Clinical protocols & education</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </button>
+
+                <!-- Instagram -->
+                <a href="https://instagram.com/thecharlestonatelier" class="link-card" target="_blank" rel="noopener noreferrer">
+                    <div class="link-icon">📸</div>
+                    <div class="link-text">
+                        <div class="link-label">Instagram</div>
+                        <div class="link-description">@thecharlestonatelier</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </a>
+
+                <!-- LTK (Like to Know It) -->
+                <a href="https://liketoknow.it/thecharlestonatelier" class="link-card" target="_blank" rel="noopener noreferrer">
+                    <div class="link-icon">🛍️</div>
+                    <div class="link-text">
+                        <div class="link-label">Curated Collections</div>
+                        <div class="link-description">Shop our affiliated brands</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </a>
+
+                <!-- Substack -->
+                <a href="https://clinicallychic.substack.com" class="link-card" target="_blank" rel="noopener noreferrer">
+                    <div class="link-icon">📰</div>
+                    <div class="link-text">
+                        <div class="link-label">Clinically Chic</div>
+                        <div class="link-description">Subscribe to our newsletter</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </a>
+
+                <!-- Apple Maps -->
+                <a href="https://maps.apple.com/?address=83%20Cannon%20Street,%20Charleston,%20SC%2029403" class="link-card" target="_blank" rel="noopener noreferrer">
+                    <div class="link-icon">📍</div>
+                    <div class="link-text">
+                        <div class="link-label">Directions</div>
+                        <div class="link-description">83 Cannon Street, Charleston</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </a>
+
+                <!-- Main Website -->
+                <a href="https://thecharlestonatelier.com" class="link-card" target="_blank" rel="noopener noreferrer">
+                    <div class="link-icon">🌐</div>
+                    <div class="link-text">
+                        <div class="link-label">Website</div>
+                        <div class="link-description">thecharlestonatelier.com</div>
+                    </div>
+                    <div class="arrow">›</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Peptide Protocol Tab -->
+        <div id="peptide" class="tab-content">
+            <div class="protocol-section">
+                <div class="protocol-title">💊 Peptide Protocol Calculator</div>
+                
+                <div class="peptide-selector" id="peptideSelector">
+                    <button class="peptide-option" data-peptide="bpc157" data-density="1.0" data-concentration="10">BPC-157</button>
+                    <button class="peptide-option" data-peptide="tb500" data-density="1.0" data-concentration="5">TB-500</button>
+                    <button class="peptide-option" data-peptide="cjc1295" data-density="1.0" data-concentration="2">CJC-1295</button>
+                    <button class="peptide-option" data-peptide="mots-c" data-density="1.0" data-concentration="1">MOTS-C</button>
+                    <button class="peptide-option" data-peptide="5amino1mq" data-density="1.0" data-concentration="50">5-Amino-1MQ</button>
+                    <button class="peptide-option" data-peptide="glp1" data-density="1.0" data-concentration="2.4">GLP-1</button>
+                    <button class="peptide-option" data-peptide="tirzepatide" data-density="1.0" data-concentration="17">Tirzepatide</button>
+                    <button class="peptide-option" data-peptide="custom" data-density="1.0" data-concentration="0">Custom</button>
+                </div>
+
+                <div class="protocol-grid">
+                    <div class="protocol-input">
+                        <label class="protocol-label">Body Weight (lbs)</label>
+                        <input type="number" id="bodyWeight" placeholder="Enter weight" value="150" min="50" max="500">
+                    </div>
+                    <div class="protocol-input">
+                        <label class="protocol-label">Protocol Duration (days)</label>
+                        <input type="number" id="duration" placeholder="Duration" value="30" min="1" max="180">
+                    </div>
+                </div>
+
+                <div class="protocol-grid">
+                    <div class="protocol-input">
+                        <label class="protocol-label">Dose per Injection (mcg)</label>
+                        <input type="number" id="dosePerInjection" placeholder="Dose" value="100" min="1" max="1000" step="5">
+                    </div>
+                    <div class="protocol-input">
+                        <label class="protocol-label">Frequency (days between)</label>
+                        <input type="number" id="frequency" placeholder="Frequency" value="3" min="1" max="30">
+                    </div>
+                </div>
+
+                <div class="protocol-grid">
+                    <div class="protocol-input">
+                        <label class="protocol-label">Reconstitution Volume (mL)</label>
+                        <input type="number" id="reconstitutionVolume" placeholder="mL" value="1" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="protocol-input">
+                        <label class="protocol-label">Peptide Amount (mg)</label>
+                        <input type="number" id="peptideAmount" placeholder="mg" value="5" min="0.1" max="100" step="0.1">
+                    </div>
+                </div>
+
+                <div class="protocol-result">
+                    <div class="result-label">Total Injections Required</div>
+                    <div class="result-value" id="totalInjections">10</div>
+                </div>
+
+                <div class="protocol-result">
+                    <div class="result-label">Total Peptide Needed (mg)</div>
+                    <div class="result-value" id="totalPeptide">50 mg</div>
+                </div>
+
+                <div class="protocol-result">
+                    <div class="result-label">Concentration per mL</div>
+                    <div class="result-value" id="concentration">5 mg/mL</div>
+                </div>
+
+                <div class="protocol-result">
+                    <div class="result-label">Dose per mL</div>
+                    <div class="result-value" id="doseMlValue">50 mcg/0.1mL</div>
+                </div>
+
+                <div class="protocol-actions">
+                    <button class="btn btn-secondary" onclick="resetProtocol()">Reset</button>
+                    <button class="btn btn-primary" onclick="downloadProtocol()">Download</button>
+                </div>
+
+                <a href="https://thecharlestonatelier.com/patient-guide" class="patient-guide-btn">Full Clinical Guide</a>
+            </div>
+        </div>
+
+        <!-- Wallet Tab -->
+        <div id="wallet" class="tab-content">
+            <div class="wallet-section">
+                <div class="wallet-icon">💳</div>
+                <div class="wallet-title">Add to Apple Wallet</div>
+                <div class="wallet-description">Keep your Atelier card handy for easy access to your protocols and contact information</div>
+                <a href="#" class="add-to-wallet-btn" onclick="addToWallet(); return false;">+ Add to Wallet</a>
+            </div>
+
+            <div class="protocol-section">
+                <div class="protocol-title">About Your Card</div>
+                <p style="font-size: 14px; line-height: 1.8; margin-bottom: 12px;">
+                    Your Charleston Atelier NFC card provides instant access to your personalized peptide protocols, clinical resources, and direct connection to Dr. Kendall's team.
+                </p>
+                <p style="font-size: 12px; color: var(--coffee); font-family: 'Jost', sans-serif;">
+                    Simply tap your card on any NFC-enabled phone to access this portal anytime.
+                </p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>The Charleston Atelier</p>
+            <p style="margin-top: 8px;">83 Cannon Street, Charleston, SC 29403</p>
+            <p style="margin-top: 8px;"><a href="tel:843-377-3713" class="footer-link">(843) 377-3713</a> • <a href="mailto:hello@thecharlestonatelier.com" class="footer-link">hello@thecharlestonatelier.com</a></p>
+        </div>
+    </div>
+
+    <!-- PDF Modal -->
+    <div id="pdfModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeProtocolPDF()">✕</button>
+            <div class="modal-title">Patient Guide</div>
+            <iframe id="pdfFrame" class="protocol-pdf-viewer" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Tab Navigation
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                document.getElementById(tabName).classList.add('active');
+            });
+        });
+
+        // Peptide Selector
+        const peptideButtons = document.querySelectorAll('.peptide-option');
+        const selectedPeptides = new Set();
+
+        peptideButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const peptide = this.getAttribute('data-peptide');
+                const concentration = this.getAttribute('data-concentration');
+                
+                // Toggle selection
+                if (this.classList.contains('selected')) {
+                    this.classList.remove('selected');
+                    selectedPeptides.delete(peptide);
+                } else {
+                    // Deselect others if not custom
+                    if (peptide !== 'custom') {
+                        peptideButtons.forEach(b => b.classList.remove('selected'));
+                        selectedPeptides.clear();
+                    }
+                    this.classList.add('selected');
+                    selectedPeptides.add(peptide);
+                }
+                
+                updateConcentration(concentration);
+                calculateProtocol();
+            });
+        });
+
+        // Protocol Calculator
+        function calculateProtocol() {
+            const bodyWeight = parseFloat(document.getElementById('bodyWeight').value) || 150;
+            const duration = parseInt(document.getElementById('duration').value) || 30;
+            const dosePerInjection = parseFloat(document.getElementById('dosePerInjection').value) || 100;
+            const frequency = parseInt(document.getElementById('frequency').value) || 3;
+            const reconstitutionVolume = parseFloat(document.getElementById('reconstitutionVolume').value) || 1;
+            const peptideAmount = parseFloat(document.getElementById('peptideAmount').value) || 5;
+
+            // Calculate total injections
+            const totalInjections = Math.ceil(duration / frequency);
+            document.getElementById('totalInjections').textContent = totalInjections;
+
+            // Calculate total peptide needed
+            const totalPeptideNeeded = (dosePerInjection * totalInjections) / 1000; // Convert mcg to mg
+            document.getElementById('totalPeptide').textContent = totalPeptideNeeded.toFixed(2) + ' mg';
+
+            // Concentration
+            const concValue = (peptideAmount / reconstitutionVolume).toFixed(2);
+            document.getElementById('concentration').textContent = concValue + ' mg/mL';
+
+            // Dose per mL
+            const dosePerMl = (dosePerInjection / 10).toFixed(1);
+            document.getElementById('doseMlValue').textContent = dosePerInjection + ' mcg / ' + dosePerMl + ' mL';
+        }
+
+        function updateConcentration(concentration) {
+            // This would be updated based on peptide selection
+        }
+
+        function resetProtocol() {
+            document.getElementById('bodyWeight').value = '150';
+            document.getElementById('duration').value = '30';
+            document.getElementById('dosePerInjection').value = '100';
+            document.getElementById('frequency').value = '3';
+            document.getElementById('reconstitutionVolume').value = '1';
+            document.getElementById('peptideAmount').value = '5';
+            peptideButtons.forEach(b => b.classList.remove('selected'));
+            selectedPeptides.clear();
+            calculateProtocol();
+        }
+
+        function downloadProtocol() {
+            const totalInjections = document.getElementById('totalInjections').textContent;
+            const totalPeptide = document.getElementById('totalPeptide').textContent;
+            const concentration = document.getElementById('concentration').textContent;
+            const bodyWeight = document.getElementById('bodyWeight').value;
+            const duration = document.getElementById('duration').value;
+
+            const protocolText = `
+CHARLESTON ATELIER - PEPTIDE PROTOCOL
+Generated: ${new Date().toLocaleDateString()}
+
+PATIENT PARAMETERS
+─────────────────
+Body Weight: ${bodyWeight} lbs
+Protocol Duration: ${duration} days
+
+PROTOCOL SUMMARY
+────────────────
+Total Injections Required: ${totalInjections}
+Total Peptide Needed: ${totalPeptide}
+Concentration: ${concentration}
+
+STORAGE INSTRUCTIONS
+─────────────────────
+Keep frozen at -20°C or refrigerated at 2-8°C
+Do not allow to freeze-thaw cycle
+Use sterile reconstitution protocol
+
+For questions, contact: hello@thecharlestonatelier.com
+Emergency: (843) 377-3713
+            `;
+
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(protocolText));
+            element.setAttribute('download', 'Atelier-Protocol-' + new Date().getTime() + '.txt');
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        // PDF Modal
+        function openProtocolPDF() {
+            document.getElementById('pdfModal').classList.add('active');
+            // Link to your hosted patient guide PDF
+            document.getElementById('pdfFrame').src = 'https://thecharlestonatelier.com/patient-guide.pdf';
+        }
+
+        function closeProtocolPDF() {
+            document.getElementById('pdfModal').classList.remove('active');
+        }
+
+        // Apple Wallet
+        function addToWallet() {
+            // This would typically link to a .pkpass file
+            // For now, we'll create a simple pass file
+            alert('Apple Wallet integration coming soon. Contact hello@thecharlestonatelier.com to request your digital card.');
+            // In production, you'd generate a .pkpass file server-side
+            // Learn more: https://developer.apple.com/wallet/
+        }
+
+        // Initialize
+        calculateProtocol();
+
+        // Update calculations on input change
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('change', calculateProtocol);
+            input.addEventListener('input', calculateProtocol);
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('pdfModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeProtocolPDF();
+            }
+        });
+    </script>
+</body>
+</html>

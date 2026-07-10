@@ -1,0 +1,44 @@
+{
+  "name": "charleston-atelier-nfc-tap",
+  "version": "1.0.0",
+  "description": "NFC Tap Experience for The Charleston Atelier - Couture Medicine & Biolongevity",
+  "author": "Dr. Kendall Phelps-Polirer, MD",
+  "license": "Proprietary",
+  "main": "index.html",
+  "type": "module",
+  "scripts": {
+    "dev": "http-server . -p 8080 -c-1",
+    "build": "echo 'Static site - no build needed'",
+    "serve": "http-server .",
+    "test": "echo 'No tests configured'",
+    "lint": "echo 'Linting disabled for static site'"
+  },
+  "keywords": [
+    "peptide",
+    "wellness",
+    "biolongevity",
+    "nfc",
+    "healthcare",
+    "charleston"
+  ],
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "optionalDependencies": {
+    "node-passkit": "^1.5.0",
+    "@noble/hashes": "^1.3.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thecharlestonatelier/tap-experience"
+  },
+  "bugs": {
+    "url": "https://github.com/thecharlestonatelier/tap-experience/issues",
+    "email": "hello@thecharlestonatelier.com"
+  },
+  "homepage": "https://tap.thecharlestonatelier.com",
+  "private": true
+}

@@ -1,0 +1,46 @@
+[build]
+  command = "npm install"
+  functions = "functions"
+  publish = "."
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Redirect for patient guide PDF (update path as needed)
+[[redirects]]
+  from = "/patient-guide"
+  to = "https://thecharlestonatelier.com/patient-guide.pdf"
+  status = 301
+
+# Redirect for NFC protocol
+[[redirects]]
+  from = "/nfc-protocol"
+  to = "/"
+  status = 200
+
+# Mobile app deeplinks
+[[redirects]]
+  from = "/sms/*"
+  to = "sms:843-697-2875"
+  status = 200
+
+[[redirects]]
+  from = "/call/*"
+  to = "tel:843-377-3713"
+  status = 200
