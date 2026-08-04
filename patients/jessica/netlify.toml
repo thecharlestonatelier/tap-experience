@@ -1,0 +1,29 @@
+# Standalone Netlify site for Jessica's patient portal.
+# This directory is the deploy root — index.html is served at "/".
+# Not connected to the main Charleston Atelier sites.
+
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Unlisted portal — keep it out of search results.
+    X-Robots-Tag = "noindex, nofollow"
+
+# Always serve the freshest page so edits to the buttons appear on the next tap.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Patient files (dosing instructions, protocol PDFs) — short cache so a
+# replaced PDF is picked up quickly.
+[[headers]]
+  for = "/files/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300"
