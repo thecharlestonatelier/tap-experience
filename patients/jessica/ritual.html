@@ -14,7 +14,6 @@
   :root {
     --bg:            #F3EBE1;
     --card:          #F8F2EA;
-    --card-hover:    #FBF6F0;
     --espresso:      #3B2E20;
     --espresso-soft: #4A3B2C;
     --muted:         #8A7C6A;
@@ -23,19 +22,14 @@
     --hairline:      rgba(138, 115, 80, 0.18);
     --shadow:        0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045);
 
-    /* Peptide accents — muted to sit inside the Atelier palette */
     --clay:  #A8705A;
     --sage:  #7E9080;
     --gold:  #A38C69;
     --plum:  #8A6B75;
-    --slate: #77706A;
+    --alert: #A4553F;
   }
-
-  .c-clay  { --pc: var(--clay);  }
-  .c-sage  { --pc: var(--sage);  }
-  .c-brass { --pc: var(--gold);  }
-  .c-plum  { --pc: var(--plum);  }
-  .c-slate { --pc: var(--slate); }
+  .c-clay { --pc: var(--clay); } .c-sage { --pc: var(--sage); }
+  .c-brass{ --pc: var(--gold); } .c-plum { --pc: var(--plum); }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -49,544 +43,261 @@
     justify-content: center;
     -webkit-font-smoothing: antialiased;
     /* Cormorant defaults to old-style figures, which render 10 as "IO".
-       Dosing numbers must never be ambiguous — force lining figures. */
+       Dose numbers must never be ambiguous — force lining figures. */
     font-feature-settings: 'lnum' 1;
   }
 
-  .wrap {
-    width: 100%;
-    max-width: 460px;
-    padding: 14px 20px calc(40px + env(safe-area-inset-bottom));
-  }
+  .wrap { width: 100%; max-width: 460px; padding: 14px 20px calc(40px + env(safe-area-inset-bottom)); }
 
-  /* ---------- Top bar ---------- */
-  .topbar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 0 22px;
-  }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 8px 0 22px; }
   .back {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px; height: 38px;
-    border-radius: 50%;
-    background: var(--card);
-    box-shadow: var(--shadow);
-    color: var(--brass);
-    text-decoration: none;
-    flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--card); box-shadow: var(--shadow);
+    color: var(--brass); text-decoration: none; flex: none;
   }
   .back svg { width: 15px; height: 15px; }
-  .topbar-label {
-    font-size: 11px;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
+  .topbar-label { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 
-  /* ---------- Hero ---------- */
-  .eyebrow {
-    font-size: 11.5px;
-    letter-spacing: .18em;
-    text-transform: uppercase;
-    color: var(--brass);
-    margin-bottom: 8px;
-  }
+  .eyebrow { font-size: 11.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--brass); margin-bottom: 8px; }
   h1 {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-weight: 500;
-    font-size: 44px;
-    line-height: 1.05;
-    color: var(--espresso);
-    letter-spacing: .01em;
-    margin-bottom: 6px;
+    font-weight: 500; font-size: 44px; line-height: 1.05;
+    color: var(--espresso); margin-bottom: 6px;
   }
-  .subhead {
-    font-size: 14px;
-    color: var(--muted);
-    margin-bottom: 24px;
-  }
+  .subhead { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
 
-  /* ---------- Dose cards ---------- */
   .stack { display: flex; flex-direction: column; gap: 14px; }
 
+  /* ---------- Dose card ---------- */
   .dose-card {
-    background: var(--card);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-    padding: 20px;
-    border-left: 4px solid var(--pc, var(--brass));
+    background: var(--card); border-radius: 20px; box-shadow: var(--shadow);
+    padding: 20px; border-left: 4px solid var(--pc, var(--brass));
   }
-  .dose-top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-  }
+  .dose-top { display: flex; align-items: flex-start; gap: 13px; }
   .chip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 42px; height: 42px;
-    border-radius: 12px;
-    background: var(--pc, var(--brass));
-    color: #FBF6F0;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: .04em;
-    flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 12px;
+    background: var(--pc, var(--brass)); color: #FBF6F0;
+    font-size: 12px; letter-spacing: .04em; flex: none;
   }
   .dose-name {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 25px;
-    font-weight: 500;
-    color: var(--espresso);
-    line-height: 1.15;
+    font-size: 25px; font-weight: 500; color: var(--espresso); line-height: 1.15;
   }
-  .dose-meta {
-    font-size: 12.5px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-  .dose-amount {
-    text-align: right;
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 26px;
-    color: var(--espresso);
-    white-space: nowrap;
+  .dose-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  .phase-pill {
+    display: inline-block; margin-top: 8px;
+    padding: 4px 11px; border-radius: 999px;
+    background: rgba(138,115,80,.12);
+    font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass);
   }
 
-  .draw {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 14px;
+  /* The number that matters: how many clicks to dial. */
+  .dial {
+    display: flex; align-items: baseline; gap: 9px;
+    margin-top: 16px; padding-top: 15px;
     border-top: 1px solid var(--hairline);
   }
-  .draw-units {
+  .dial-num {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 40px;
-    line-height: 1;
-    color: var(--pc, var(--brass));
+    font-size: 52px; line-height: 1; color: var(--pc, var(--brass));
   }
-  .draw-label {
-    font-size: 12px;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .draw-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .dial-label { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .dial-sub { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
 
-  /* Syringe barrel */
-  .syringe { margin-top: 14px; }
-  .barrel {
-    position: relative;
-    height: 26px;
-    border-radius: 13px;
-    background: #EFE7DB;
-    border: 1px solid var(--hairline);
-    overflow: hidden;
+  .delivers { margin-top: 13px; }
+  .delivers-head {
+    font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 7px;
   }
-  .barrel-fill {
-    position: absolute; inset: 0 auto 0 0;
-    background: var(--pc, var(--brass));
-    opacity: .82;
+  .comp {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 5px 0; font-size: 13.5px;
   }
-  .ticks { display: flex; justify-content: space-between; margin-top: 5px; }
-  .ticks span { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .comp .cn { color: var(--espresso-soft); }
+  .comp .cv { margin-left: auto; color: var(--espresso); font-variant-numeric: tabular-nums; }
+  .comp.primary .cn { color: var(--espresso); }
+  .comp.primary .cv { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 17px; }
 
-  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  /* Pen supply gauge */
+  .gauge { margin-top: 16px; }
+  .gauge-top { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .gauge-track { height: 8px; border-radius: 999px; background: #EAE0D2; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 999px; background: var(--pc, var(--brass)); }
+  .gauge-fill.low { background: var(--alert); }
+
+  .advisory {
+    margin-top: 15px; padding: 13px 14px; border-radius: 13px;
+    background: rgba(164,85,63,.09);
+    border-left: 3px solid var(--alert);
+    font-size: 12.5px; line-height: 1.55; color: var(--espresso-soft);
+  }
+  .advisory strong { color: var(--espresso); }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 17px; }
   .btn {
-    flex: 1;
-    padding: 13px 14px;
-    border: none;
-    border-radius: 13px;
-    font-family: 'Jost', sans-serif;
-    font-size: 12.5px;
-    font-weight: 600;
-    letter-spacing: .1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: opacity .2s ease, transform .15s ease;
+    flex: 1; padding: 13px 14px; border: none; border-radius: 13px;
+    font-family: 'Jost', sans-serif; font-size: 12.5px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
   .btn:active { transform: scale(.985); }
   .btn-primary { background: var(--espresso); color: #F6F0E7; }
-  .btn-ghost {
-    background: transparent;
-    color: var(--espresso-soft);
-    border: 1px solid var(--hairline);
-  }
-  .btn[disabled] { opacity: .55; cursor: default; }
+  .btn-ghost { background: transparent; color: var(--espresso-soft); border: 1px solid var(--hairline); }
 
-  .logged {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 16px;
-    font-size: 13px;
-    color: var(--sage);
-  }
+  .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
   .logged svg { width: 16px; height: 16px; flex: none; }
 
-  .rest {
-    background: var(--card);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-    padding: 28px 22px;
-    text-align: center;
-  }
-  .rest-title {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 26px;
-    color: var(--espresso);
-    margin-bottom: 6px;
-  }
+  .rest { background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 28px 22px; text-align: center; }
+  .rest-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; color: var(--espresso); margin-bottom: 6px; }
   .rest-sub { font-size: 13.5px; color: var(--muted); }
 
   /* ---------- Adherence ---------- */
   .adherence {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    background: var(--card);
-    border-radius: 18px;
-    box-shadow: var(--shadow);
-    padding: 16px 18px;
-    margin-top: 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
+    padding: 16px 18px; margin-top: 14px;
   }
   .stat-num {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 28px;
-    color: var(--espresso);
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px;
+    color: var(--espresso); line-height: 1; font-variant-numeric: tabular-nums;
   }
-  .stat-label {
-    font-size: 10.5px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-top: 4px;
-  }
+  .stat-label { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
   .week-dots { display: flex; gap: 6px; }
-  .wd {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: rgba(138,115,80,.2);
-  }
+  .wd { width: 9px; height: 9px; border-radius: 50%; background: rgba(138,115,80,.2); }
   .wd.done { background: var(--sage); }
   .wd.miss { background: var(--clay); opacity: .5; }
 
-  /* ---------- Actions ---------- */
   .actions { display: flex; gap: 10px; margin-top: 14px; }
   .action {
-    flex: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px;
-    background: var(--card);
-    border: none;
-    border-radius: 15px;
-    box-shadow: var(--shadow);
-    color: var(--espresso-soft);
-    font-family: 'Jost', sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .09em;
-    text-transform: uppercase;
-    cursor: pointer;
-    text-decoration: none;
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px; background: var(--card); border: none; border-radius: 15px;
+    box-shadow: var(--shadow); color: var(--espresso-soft);
+    font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; cursor: pointer;
   }
   .action svg { width: 15px; height: 15px; color: var(--brass); flex: none; }
 
   /* ---------- Tabs ---------- */
-  .tabs {
-    display: flex;
-    gap: 6px;
-    margin: 30px 0 18px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
+  .tabs { display: flex; gap: 6px; margin: 30px 0 18px; overflow-x: auto; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab {
-    flex: none;
-    padding: 9px 15px;
-    border: none;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--muted);
-    font-family: 'Jost', sans-serif;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: .09em;
-    text-transform: uppercase;
-    cursor: pointer;
-    white-space: nowrap;
+    flex: none; padding: 9px 15px; border: none; border-radius: 999px;
+    background: transparent; color: var(--muted);
+    font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 500;
+    letter-spacing: .09em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
   }
   .tab[aria-selected="true"] { background: var(--espresso); color: #F6F0E7; }
-
   .panel { display: none; }
   .panel.active { display: block; }
 
-  .section-title {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 27px;
-    color: var(--espresso);
-    margin-bottom: 4px;
-  }
+  .section-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 27px; color: var(--espresso); margin-bottom: 4px; }
   .section-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
 
-  .sheet {
-    background: var(--card);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-    padding: 18px;
-  }
+  .sheet { background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 18px; }
   .sheet + .sheet { margin-top: 14px; }
 
-  /* ---------- Calendar ---------- */
-  .cal-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 14px;
+  /* ---------- Phase table (mirrors the printed card) ---------- */
+  .ptable { width: 100%; border-collapse: collapse; }
+  .ptable th {
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500; text-align: right; padding-bottom: 10px;
   }
-  .cal-month {
+  .ptable th:first-child { text-align: left; }
+  .ptable td {
+    padding: 13px 0; border-top: 1px solid var(--hairline);
+    font-size: 14px; text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .ptable td:first-child {
+    text-align: left;
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 21px;
-    color: var(--espresso);
+    font-size: 18px; font-style: italic; color: var(--espresso);
   }
-  .cal-nav {
-    background: none; border: none; cursor: pointer;
-    color: var(--brass); padding: 6px 10px; font-size: 17px;
+  .ptable tr.now td { color: var(--espresso); }
+  .ptable tr.now td:first-child::after {
+    content: ' — now'; font-style: normal; font-family: 'Jost', sans-serif;
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass);
   }
+
+  /* ---------- Calendar ---------- */
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-month { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 21px; color: var(--espresso); }
+  .cal-nav { background: none; border: none; cursor: pointer; color: var(--brass); padding: 6px 10px; font-size: 17px; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
-  .cal-dow {
-    text-align: center;
-    font-size: 10px;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    padding-bottom: 6px;
-  }
+  .cal-dow { text-align: center; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-bottom: 6px; }
   .cal-day {
-    aspect-ratio: 1 / 1.15;
-    border: none;
-    background: transparent;
-    border-radius: 11px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 6px;
-    gap: 4px;
-    cursor: pointer;
-    font-family: 'Jost', sans-serif;
-    font-size: 12.5px;
-    color: var(--espresso-soft);
-    font-variant-numeric: tabular-nums;
+    aspect-ratio: 1 / 1.15; border: none; background: transparent; border-radius: 11px;
+    display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 4px;
+    cursor: pointer; font-family: 'Jost', sans-serif; font-size: 12.5px;
+    color: var(--espresso-soft); font-variant-numeric: tabular-nums;
     -webkit-tap-highlight-color: transparent;
   }
   .cal-day.out { color: rgba(138,124,106,.4); }
   .cal-day.today { background: var(--espresso); color: #F6F0E7; }
   .cal-day.sel { box-shadow: inset 0 0 0 1.5px var(--brass-soft); }
-  .cal-dots { display: flex; gap: 2.5px; flex-wrap: wrap; justify-content: center; }
+  .cal-dots { display: flex; gap: 2.5px; justify-content: center; }
   .cal-dot { width: 5.5px; height: 5.5px; border-radius: 50%; background: var(--dc); }
 
-  .day-detail {
-    margin-top: 14px;
-    padding-top: 14px;
-    border-top: 1px solid var(--hairline);
-  }
-  .day-detail-date {
-    font-size: 11px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
+  .day-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+  .day-detail-date { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
 
-  .line {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 7px 0;
-    font-size: 13.5px;
-  }
+  .line { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
   .line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc); flex: none; }
   .line .nm { color: var(--espresso); }
   .line .amt { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 
-  /* ---------- Weekly ---------- */
-  .peptide-switch { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-  .psw {
-    padding: 7px 13px;
-    border: 1px solid var(--hairline);
-    background: transparent;
-    border-radius: 999px;
-    font-family: 'Jost', sans-serif;
-    font-size: 11.5px;
-    letter-spacing: .06em;
-    color: var(--muted);
-    cursor: pointer;
-  }
-  .psw[aria-pressed="true"] {
-    background: var(--pc);
-    border-color: var(--pc);
-    color: #FBF6F0;
-  }
-  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-  .week-col { text-align: center; }
-  .week-dow {
-    font-size: 10px;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-  .week-pill {
-    height: 58px;
-    border-radius: 999px;
-    background: #EFE7DB;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .week-pill .fill {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    background: var(--pc);
-  }
-  .week-pill.off .fill { background: transparent; }
+  /* ---------- Weekly rhythm ---------- */
+  .rhythm { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .r-col { text-align: center; }
+  .r-day { font-size: 10px; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+  .r-pill { height: 54px; border-radius: 999px; background: #EFE7DB; display: flex; align-items: center; justify-content: center; }
+  .r-pill .fill { width: 24px; height: 24px; border-radius: 50%; background: var(--pc); }
+  .r-pill.off .fill { background: transparent; }
 
-  .kv {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 11px 0;
-    font-size: 13.5px;
-    border-top: 1px solid var(--hairline);
-  }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; font-size: 13.5px; border-top: 1px solid var(--hairline); }
   .kv:first-of-type { border-top: none; }
   .kv .k { color: var(--muted); }
   .kv .v { color: var(--espresso); text-align: right; }
 
-  /* ---------- Supply ---------- */
-  .supply-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+  .supply-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .flag {
+    margin-top: 13px; padding: 12px 14px; border-radius: 12px;
+    background: rgba(138,115,80,.1); font-size: 12.5px; line-height: 1.5;
   }
-  .supply-total {
-    margin-left: auto;
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 23px;
-    color: var(--espresso);
-    white-space: nowrap;
-  }
-  .refill-flag {
-    margin-top: 12px;
-    padding: 11px 13px;
-    border-radius: 12px;
-    background: rgba(168,112,90,.09);
-    font-size: 12.5px;
-    color: var(--espresso-soft);
-  }
-  .refill-flag.soon { background: rgba(168,112,90,.18); }
-
-  /* ---------- Duration bars ---------- */
-  .bar-row { padding: 12px 0; border-top: 1px solid var(--hairline); }
-  .bar-row:first-child { border-top: none; }
-  .bar-top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
-  .bar-name { font-size: 13.5px; color: var(--espresso); }
-  .bar-days { margin-left: auto; font-size: 12.5px; color: var(--muted); }
-  .bar-track { height: 10px; border-radius: 999px; background: #EFE7DB; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 999px; background: var(--pc); }
+  .flag.soon { background: rgba(164,85,63,.14); color: var(--espresso); }
 
   /* ---------- Log sheet ---------- */
-  .scrim {
-    position: fixed; inset: 0;
-    background: rgba(59,46,32,.45);
-    display: none;
-    align-items: flex-end;
-    justify-content: center;
-    z-index: 100;
-  }
+  .scrim { position: fixed; inset: 0; background: rgba(59,46,32,.45); display: none; align-items: flex-end; justify-content: center; z-index: 100; }
   .scrim.open { display: flex; }
   .modal {
-    width: 100%;
-    max-width: 460px;
-    background: var(--bg);
-    border-radius: 26px 26px 0 0;
-    padding: 26px 22px calc(26px + env(safe-area-inset-bottom));
-    box-shadow: 0 -10px 40px rgba(59,46,32,.25);
+    width: 100%; max-width: 460px; background: var(--bg);
+    border-radius: 26px 26px 0 0; padding: 26px 22px calc(26px + env(safe-area-inset-bottom));
   }
-  .modal-eyebrow {
-    font-size: 11px;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--brass);
-    margin-bottom: 8px;
-  }
-  .modal-title {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 29px;
-    color: var(--espresso);
-    line-height: 1.15;
-    margin-bottom: 8px;
-  }
+  .modal-eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--brass); margin-bottom: 8px; }
+  .modal-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 29px; color: var(--espresso); line-height: 1.15; margin-bottom: 8px; }
   .modal-body { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
   .site-pick { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 20px; }
   .site {
-    padding: 8px 13px;
-    border-radius: 999px;
-    border: 1px solid var(--hairline);
-    background: transparent;
-    font-family: 'Jost', sans-serif;
-    font-size: 12px;
-    color: var(--muted);
-    cursor: pointer;
+    padding: 8px 13px; border-radius: 999px; border: 1px solid var(--hairline);
+    background: transparent; font-family: 'Jost', sans-serif; font-size: 12px;
+    color: var(--muted); cursor: pointer;
   }
-  .site[aria-pressed="true"] {
-    background: var(--espresso);
-    border-color: var(--espresso);
-    color: #F6F0E7;
-  }
+  .site[aria-pressed="true"] { background: var(--espresso); border-color: var(--espresso); color: #F6F0E7; }
 
   .toast {
-    position: fixed;
-    left: 50%; bottom: calc(26px + env(safe-area-inset-bottom));
-    transform: translate(-50%, 12px);
-    padding: 13px 20px;
-    background: var(--espresso);
-    color: #F6F0E7;
-    border-radius: 14px;
-    font-size: 13.5px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s ease, transform .25s ease;
-    z-index: 150;
+    position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 12px); padding: 13px 20px;
+    background: var(--espresso); color: #F6F0E7; border-radius: 14px;
+    font-size: 13.5px; opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease; z-index: 150;
   }
   .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 
-  .footnote {
-    margin-top: 26px;
-    font-size: 11.5px;
-    line-height: 1.6;
-    color: var(--muted);
-    text-align: center;
-  }
+  .footnote { margin-top: 26px; font-size: 11.5px; line-height: 1.6; color: var(--muted); text-align: center; }
 
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-
   @media print {
     .topbar, .tabs, .actions, .btn-row, .scrim, .toast { display: none !important; }
     .panel { display: block !important; page-break-inside: avoid; }
@@ -613,18 +324,9 @@
   <div class="stack" id="todayStack"></div>
 
   <div class="adherence" id="adherence" hidden>
-    <div>
-      <div class="stat-num" id="statStreak">0</div>
-      <div class="stat-label">Day streak</div>
-    </div>
-    <div>
-      <div class="stat-num" id="statPct">—</div>
-      <div class="stat-label">Adherence</div>
-    </div>
-    <div>
-      <div class="week-dots" id="weekDots"></div>
-      <div class="stat-label">Last 7 days</div>
-    </div>
+    <div><div class="stat-num" id="statStreak">0</div><div class="stat-label">Day streak</div></div>
+    <div><div class="stat-num" id="statPct">—</div><div class="stat-label">Adherence</div></div>
+    <div><div class="week-dots" id="weekDots"></div><div class="stat-label">Last 7 days</div></div>
   </div>
 
   <div class="actions">
@@ -639,16 +341,21 @@
   </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" data-panel="schedule" aria-selected="true">Schedule</button>
-    <button class="tab" role="tab" data-panel="weekly"   aria-selected="false">Weekly</button>
-    <button class="tab" role="tab" data-panel="dosing"   aria-selected="false">Dosing</button>
+    <button class="tab" role="tab" data-panel="phases"   aria-selected="true">Phases</button>
+    <button class="tab" role="tab" data-panel="schedule" aria-selected="false">Schedule</button>
+    <button class="tab" role="tab" data-panel="rhythm"   aria-selected="false">Rhythm</button>
     <button class="tab" role="tab" data-panel="supply"   aria-selected="false">Supply</button>
-    <button class="tab" role="tab" data-panel="duration" aria-selected="false">Duration</button>
   </div>
 
-  <section class="panel active" id="panel-schedule">
+  <section class="panel active" id="panel-phases">
+    <h2 class="section-title">Dosing Phases</h2>
+    <p class="section-sub">Click counts for each phase, exactly as on your reference card.</p>
+    <div id="phaseList"></div>
+  </section>
+
+  <section class="panel" id="panel-schedule">
     <h2 class="section-title">Protocol Schedule</h2>
-    <p class="section-sub">A day-by-day view. Tap any day to see what's scheduled.</p>
+    <p class="section-sub">Tap any day to see what's scheduled.</p>
     <div class="sheet">
       <div class="cal-head">
         <button class="cal-nav" id="calPrev" aria-label="Previous month">‹</button>
@@ -660,32 +367,16 @@
     </div>
   </section>
 
-  <section class="panel" id="panel-weekly">
-    <h2 class="section-title">Weekly Schedule</h2>
-    <p class="section-sub">Day-of-week breakdown for each peptide.</p>
-    <div class="sheet">
-      <div class="peptide-switch" id="weekSwitch"></div>
-      <div class="week-grid" id="weekGrid"></div>
-      <div id="weekMeta" style="margin-top:16px"></div>
-    </div>
-  </section>
-
-  <section class="panel" id="panel-dosing">
-    <h2 class="section-title">Daily Dosing Breakdown</h2>
-    <p class="section-sub">Consecutive days with the same schedule are combined. Days with no doses are omitted.</p>
-    <div class="sheet" id="dosingList"></div>
+  <section class="panel" id="panel-rhythm">
+    <h2 class="section-title">Weekly Rhythm</h2>
+    <p class="section-sub">Your on-and-off pattern for the coming week.</p>
+    <div id="rhythmList"></div>
   </section>
 
   <section class="panel" id="panel-supply">
-    <h2 class="section-title">Total Requirements</h2>
-    <p class="section-sub">Quantity needed to complete the protocol, calculated from dose and duration.</p>
+    <h2 class="section-title">Pen Supply</h2>
+    <p class="section-sub">How long the pen in your fridge lasts at the current click count.</p>
     <div id="supplyList"></div>
-  </section>
-
-  <section class="panel" id="panel-duration">
-    <h2 class="section-title">Duration &amp; Timeline</h2>
-    <p class="section-sub">Each peptide's active window within the protocol.</p>
-    <div class="sheet" id="durationList"></div>
   </section>
 
   <p class="footnote" id="footnote"></p>
@@ -708,169 +399,223 @@
 
 <script>
 /* ==================================================================
-   TODAY'S RITUAL
+   TODAY'S RITUAL — pen-based protocols
    ------------------------------------------------------------------
-   All clinical content comes from protocol.json — this file is the
-   engine and never needs editing to change a patient's regimen.
+   Peptides are delivered by prefilled multi-dose pens dialled in
+   CLICKS. One click = 0.01 mL, so the dose a click delivers depends
+   on the pen's blend concentration. All clinical content comes from
+   protocol.json; this file is the engine.
 
-   Injection logs are stored ON THE DEVICE only (localStorage). No
-   patient data is sent anywhere. Clearing the browser clears history.
+   Injection logs are stored ON THIS DEVICE only (localStorage).
    ================================================================== */
 
 const DAY_MS = 86400000;
 const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const TIME_AT = { Morning: '08:00', Midday: '12:30', Afternoon: '15:00', Evening: '20:00' };
+const TIME_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
+const ML_PER_CLICK = 0.01;
+const OPEN_HORIZON = 120;   // days to project an open-ended final phase
 
-let CFG, PEPTIDES, START, LOGS, calCursor, selectedDay, activeWeekPeptide, pendingLog, chosenSite;
+let CFG, PENS, START, LOGS, calCursor, selectedDay, pendingLog, chosenSite;
 
-/* ---------- date helpers (local, no timezone drift) ---------- */
 const iso    = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const parse  = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
 const addDays= (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
-const isoDow = d => (d.getDay() + 6) % 7 + 1;          // 1 = Mon … 7 = Sun
+const isoDow = d => (d.getDay() + 6) % 7 + 1;
 const today  = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+const dayIndex = d => Math.round((d - START) / DAY_MS);
 
 const fmtLong  = d => d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
 const fmtShort = d => d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+const round    = (n, p = 2) => Number(n.toFixed(p));
 
-/* ---------- dose maths ---------- */
-const doseMg = p => p.doseUnit === 'mcg' ? p.dose / 1000 : p.dose;
-
-// Units on a U-100 syringe: 100 units = 1 mL.
-function unitsFor(p) {
-  if (!p.vial || !p.vial.diluentMl || p.doseUnit === 'ml') return null;
-  const concMgPerMl = p.vial.amount / p.vial.diluentMl;
-  const ml = doseMg(p) / concMgPerMl;
-  return { units: ml * 100, ml, concMgPerMl };
+/* ---------- phases ---------- */
+function totalDays(pen) {
+  let n = 0;
+  for (const ph of pen.phases) n += (ph.days == null ? OPEN_HORIZON : ph.days);
+  return n;
 }
 
-const doseLabel = p => `${p.dose} ${p.doseUnit}`;
-
-/* ---------- schedule ---------- */
-function windowFor(p) {
-  const from = addDays(START, p.startOffset || 0);
-  return { from, to: addDays(from, (p.durationDays || 0) - 1) };
-}
-
-function isDue(p, date) {
-  const { from, to } = windowFor(p);
-  if (date < from || date > to) return false;
-  return (p.days || []).includes(isoDow(date));
-}
-
-const dueOn = date => PEPTIDES.filter(p => isDue(p, date));
-
-function occurrences(p) {
-  const { from, to } = windowFor(p);
-  const out = [];
-  for (let d = from; d <= to; d = addDays(d, 1)) if ((p.days||[]).includes(isoDow(d))) out.push(new Date(d));
-  return out;
-}
-
-const protocolEnd = () => PEPTIDES.reduce((max, p) => {
-  const to = windowFor(p).to;
-  return to > max ? to : max;
-}, START);
-
-/* Total needed = duration × (doses per week ÷ 7) × dose — the same
-   arithmetic clinicians do by hand when ordering vials. */
-function totalNeeded(p) {
-  const perWeek = (p.days || []).length;
-  const amount = (p.durationDays || 0) * (perWeek / 7) * p.dose;
-  return { amount, unit: p.doseUnit };
-}
-
-function vialsNeeded(p) {
-  if (!p.vial || p.doseUnit === 'ml') return null;
-  const totalMg = totalNeeded(p).amount * (p.doseUnit === 'mcg' ? 0.001 : 1);
-  return Math.ceil(totalMg / p.vial.amount);
-}
-
-/* Next vial boundary: when the current vial runs dry. */
-function nextRefill(p) {
-  if (!p.vial || p.doseUnit === 'ml') return null;
-  const perVial = Math.floor(p.vial.amount / doseMg(p));
-  if (!perVial) return null;
-  const occ = occurrences(p);
-  const t = today();
-  for (let i = perVial; i < occ.length; i += perVial) {
-    if (occ[i] >= t) return { date: occ[i], daysAway: Math.round((occ[i] - t) / DAY_MS) };
+// Which phase is active on a given date, by days elapsed since start.
+function phaseOn(pen, date) {
+  const i = dayIndex(date);
+  if (i < 0) return null;
+  let acc = 0;
+  for (const ph of pen.phases) {
+    const len = ph.days == null ? Infinity : ph.days;
+    if (i < acc + len) return ph;
+    acc += len;
   }
   return null;
 }
 
-function cycleText(days) {
-  const w = Math.floor(days / 7), d = days % 7;
-  if (!w) return `${d} day${d === 1 ? '' : 's'}`;
-  if (!d) return `${w} week${w === 1 ? '' : 's'}`;
-  return `${w} week${w === 1 ? '' : 's'} ${d} day${d === 1 ? '' : 's'}`;
+/* ---------- schedule: N days on, N days off, rolling from start ---------- */
+function isDue(pen, date) {
+  const i = dayIndex(date);
+  if (i < 0 || i >= totalDays(pen)) return false;
+  const { on, off } = pen.schedule;
+  return (i % (on + off)) < on;
+}
+
+const dueOn = date => PENS.filter(p => isDue(p, date));
+
+function occurrences(pen) {
+  const out = [];
+  for (let i = 0; i < totalDays(pen); i++) {
+    const d = addDays(START, i);
+    if (isDue(pen, d)) out.push(d);
+  }
+  return out;
+}
+
+/* ---------- what a dose delivers ---------- */
+function doseOn(pen, date) {
+  const ph = phaseOn(pen, date);
+  if (!ph) return null;
+  const ml = ph.clicks * ML_PER_CLICK;
+  const components = pen.components.map(c => ({
+    name: c.name,
+    mg: (c.mg / pen.volumeMl) * ml,
+    primary: !!c.dosedTo
+  }));
+  return { phase: ph, clicks: ph.clicks, ml, components };
+}
+
+const primaryOf = dose =>
+  dose.components.find(c => c.primary) ||
+  { name: 'total peptide', mg: dose.components.reduce((s, c) => s + c.mg, 0) };
+
+/* ---------- pen supply ----------
+   Walk every scheduled dose from the start, draining a pen and opening
+   a fresh one when the next dose won't fit. That gives an honest
+   run-out date even as the click count steps up between phases. */
+function penTimeline(pen) {
+  let remaining = pen.volumeMl;
+  let penNo = 1, opened = new Date(START);
+  const t = today();
+  let current = null;
+
+  for (const d of occurrences(pen)) {
+    const dose = doseOn(pen, d);
+    if (!dose) continue;
+    if (dose.ml > remaining + 1e-9) { penNo++; opened = new Date(d); remaining = pen.volumeMl; }
+    if (d >= t && !current) {
+      current = { penNo, opened: new Date(opened), remainingBefore: remaining };
+    }
+    remaining -= dose.ml;
+    if (current && !current.runsOut && remaining < (doseOn(pen, d) || {}).ml) {
+      current.runsOut = new Date(d);
+      current.dosesLeft = 0;
+    }
+  }
+
+  if (!current) return null;
+
+  // Count doses still available from the pen in use.
+  let left = current.remainingBefore, doses = 0, runsOut = null;
+  for (const d of occurrences(pen)) {
+    if (d < t) continue;
+    const dose = doseOn(pen, d);
+    if (!dose || dose.ml > left + 1e-9) { runsOut = runsOut || d; break; }
+    left -= dose.ml;
+    doses++;
+    runsOut = d;
+  }
+
+  return {
+    penNo: current.penNo,
+    pctLeft: Math.max(0, Math.min(100, (current.remainingBefore / pen.volumeMl) * 100)),
+    mlLeft: current.remainingBefore,
+    dosesLeft: doses,
+    lastDose: runsOut,
+    daysLeft: runsOut ? Math.round((runsOut - t) / DAY_MS) : null
+  };
 }
 
 /* ---------- log storage (device-only) ---------- */
-const logKey = () => `tca.ritual.${CFG.patient.id}.v1`;
-function loadLogs() { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch { return []; } }
-function saveLogs() { try { localStorage.setItem(logKey(), JSON.stringify(LOGS)); } catch {} }
-const isLogged = (pid, date) => LOGS.some(l => l.peptide === pid && l.date === iso(date));
+const logKey = () => `tca.ritual.${CFG.patient.id}.v2`;
+const loadLogs = () => { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch { return []; } };
+const saveLogs = () => { try { localStorage.setItem(logKey(), JSON.stringify(LOGS)); } catch {} };
+const isLogged = (id, date) => LOGS.some(l => l.pen === id && l.date === iso(date));
 
-function addLog(pid, date, site) {
-  if (isLogged(pid, date)) return;
-  LOGS.push({ peptide: pid, date: iso(date), site: site || null, at: new Date().toISOString() });
+function addLog(id, date, site) {
+  if (isLogged(id, date)) return;
+  LOGS.push({ pen: id, date: iso(date), site: site || null, at: new Date().toISOString() });
   saveLogs();
 }
 
-/* ---------- rendering ---------- */
+/* ---------- render: today ---------- */
 function renderToday() {
   const t = today();
   document.getElementById('todayDate').textContent = fmtLong(t);
-
   const due = dueOn(t);
   const stack = document.getElementById('todayStack');
   stack.innerHTML = '';
 
   if (!due.length) {
-    document.getElementById('todaySummary').textContent = 'Nothing scheduled today.';
+    document.getElementById('todaySummary').textContent = 'A scheduled day off.';
     stack.innerHTML = `<div class="rest">
-      <div class="rest-title">A rest day</div>
-      <div class="rest-sub">Your next dose is ${nextDueText()}.</div>
-    </div>`;
+      <div class="rest-title">Rest day</div>
+      <div class="rest-sub">Your next dose is ${nextDueText()}.</div></div>`;
     return;
   }
 
   const remaining = due.filter(p => !isLogged(p.id, t)).length;
   document.getElementById('todaySummary').textContent = remaining
-    ? `${remaining} of ${due.length} ${due.length === 1 ? 'dose' : 'doses'} still to do.`
+    ? `${remaining} of ${due.length} pen${due.length === 1 ? '' : 's'} still to do.`
     : 'Everything logged for today.';
 
-  due.forEach(p => {
-    const u = unitsFor(p);
-    const done = isLogged(p.id, t);
+  due.forEach(pen => {
+    const dose = doseOn(pen, t);
+    if (!dose) return;
+    const supply = penTimeline(pen);
+    const done = isLogged(pen.id, t);
+    const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
+
     const card = document.createElement('div');
-    card.className = `dose-card c-${p.color || 'brass'}`;
+    card.className = `dose-card c-${pen.color || 'brass'}`;
     card.innerHTML = `
       <div class="dose-top">
-        <div class="chip">${p.short || p.name.slice(0,3)}</div>
+        <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
         <div style="flex:1">
-          <div class="dose-name">${p.name}</div>
-          <div class="dose-meta">${p.time} · ${p.route}</div>
+          <div class="dose-name">${pen.name}</div>
+          <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
+          <div class="dose-meta">${pen.time} · ${pen.route}</div>
+          <span class="phase-pill">${dose.phase.name}</span>
         </div>
-        <div class="dose-amount">${doseLabel(p)}</div>
       </div>
-      ${u ? `
-      <div class="draw">
-        <span class="draw-units">${fmtUnits(u.units)}</span>
-        <span class="draw-label">units on the syringe</span>
+
+      <div class="dial">
+        <span class="dial-num">${dose.clicks}</span>
+        <span class="dial-label">clicks on the pen</span>
       </div>
-      <div class="draw-sub">${u.ml.toFixed(2)} mL from a ${p.vial.amount} ${p.vial.unit} vial reconstituted with ${p.vial.diluentMl} mL — ${u.concMgPerMl} mg/mL</div>
-      <div class="syringe">
-        <div class="barrel"><div class="barrel-fill" style="width:${Math.min(100, u.units)}%"></div></div>
-        <div class="ticks"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+      <div class="dial-sub">${round(dose.ml, 2)} mL per dose</div>
+
+      <div class="delivers">
+        <div class="delivers-head">Delivers</div>
+        ${dose.components.map(c => `
+          <div class="comp${c.primary ? ' primary' : ''}">
+            <span class="cn">${c.name}</span>
+            <span class="cv">${round(c.mg, 2)} mg</span>
+          </div>`).join('')}
+      </div>
+
+      ${supply ? `
+      <div class="gauge">
+        <div class="gauge-top">
+          <span>Pen ${supply.penNo} · ${supply.dosesLeft} dose${supply.dosesLeft === 1 ? '' : 's'} left</span>
+          <span>${Math.round(supply.pctLeft)}%</span>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-fill${supply.dosesLeft <= 3 ? ' low' : ''}" style="width:${supply.pctLeft}%"></div>
+        </div>
       </div>` : ''}
-      ${done ? `
-      <div class="logged">
+
+      ${pen.advisory ? `<div class="advisory">${pen.advisory}</div>` : ''}
+
+      ${done ? `<div class="logged">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        Logged today
-      </div>` : `
-      <div class="btn-row"><button class="btn btn-primary" data-log="${p.id}">Log this dose</button></div>`}
+        Logged today</div>`
+      : `<div class="btn-row"><button class="btn btn-primary" data-log="${pen.id}">Log this dose</button></div>`}
     `;
     stack.appendChild(card);
   });
@@ -878,8 +623,6 @@ function renderToday() {
   stack.querySelectorAll('[data-log]').forEach(b =>
     b.addEventListener('click', () => openLog(b.dataset.log)));
 }
-
-const fmtUnits = u => Number.isInteger(u) ? String(u) : u.toFixed(1);
 
 function nextDueText() {
   const t = today();
@@ -893,32 +636,22 @@ function nextDueText() {
 function renderAdherence() {
   const t = today();
   const el = document.getElementById('adherence');
-
-  // Adherence is measured from the first dose she actually logged, not from
-  // the protocol start — otherwise a phone that starts tracking mid-cycle
-  // reports a discouraging number for doses it was never there to see.
   const since = LOGS.length ? parse(LOGS.map(l => l.date).sort()[0]) : null;
 
   let expected = 0, taken = 0;
-  if (since) {
-    PEPTIDES.forEach(p => occurrences(p).forEach(d => {
-      if (d >= since && d <= t) { expected++; if (isLogged(p.id, d)) taken++; }
-    }));
-  }
+  if (since) PENS.forEach(p => occurrences(p).forEach(d => {
+    if (d >= since && d <= t) { expected++; if (isLogged(p.id, d)) taken++; }
+  }));
 
   el.hidden = false;
-  document.getElementById('statPct').textContent =
-    expected ? Math.round((taken / expected) * 100) + '%' : '—';
+  document.getElementById('statPct').textContent = expected ? Math.round((taken/expected)*100) + '%' : '—';
 
-  // Streak: consecutive dosing days, most recent first, all doses logged.
-  // Today still being open doesn't break it — the day isn't over yet.
   let streak = 0;
   for (let i = 0; i < 180; i++) {
     const d = addDays(t, -i);
     const due = dueOn(d);
-    if (!due.length) continue;                       // rest days don't break it
-    const all = due.every(p => isLogged(p.id, d));
-    if (all) streak++;
+    if (!due.length) continue;                       // off days don't break it
+    if (due.every(p => isLogged(p.id, d))) streak++;
     else if (i === 0) continue;                      // today is still in play
     else break;
   }
@@ -929,31 +662,69 @@ function renderAdherence() {
   for (let i = 6; i >= 0; i--) {
     const d = addDays(t, -i);
     const due = dueOn(d);
-    const s = document.createElement('span');
-    // Days before tracking started aren't misses — she simply wasn't logging yet.
     const tracked = since && d >= since;
+    const s = document.createElement('span');
     s.className = 'wd' + (!due.length || !tracked ? ''
       : due.every(p => isLogged(p.id, d)) ? ' done' : ' miss');
     dots.appendChild(s);
   }
 }
 
+/* ---------- render: phases ---------- */
+function renderPhases() {
+  const t = today();
+  document.getElementById('phaseList').innerHTML = PENS.map(pen => {
+    const active = phaseOn(pen, t);
+    const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
+    return `
+      <div class="sheet c-${pen.color || 'brass'}">
+        <div class="supply-head">
+          <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
+          <div>
+            <div style="color:var(--espresso);font-size:16px">${pen.name}</div>
+            <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
+          </div>
+        </div>
+        <div class="kv"><span class="k">Frequency</span><span class="v">${pen.schedule.on} days on / ${pen.schedule.off} off</span></div>
+        <div class="kv"><span class="k">Route</span><span class="v">${pen.route}</span></div>
+        <table class="ptable" style="margin-top:14px">
+          <thead><tr><th>Phase</th><th>Clicks</th><th>${primaryHeader(pen)}</th></tr></thead>
+          <tbody>
+            ${pen.phases.map(ph => {
+              const ml = ph.clicks * ML_PER_CLICK;
+              const c = pen.components.find(x => x.dosedTo);
+              const mg = c ? (c.mg / pen.volumeMl) * ml
+                           : pen.components.reduce((s,x) => s + (x.mg/pen.volumeMl)*ml, 0);
+              return `<tr class="${active && active.name === ph.name ? 'now' : ''}">
+                <td>${ph.name}</td><td>${ph.clicks}</td><td>≈${round(mg, 2)} mg</td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        ${pen.advisory ? `<div class="advisory">${pen.advisory}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+const primaryHeader = pen => {
+  const c = pen.components.find(x => x.dosedTo);
+  return c ? c.name : 'Total';
+};
+
+/* ---------- render: calendar ---------- */
 function renderCalendar() {
   const grid = document.getElementById('calGrid');
   grid.innerHTML = '';
   document.getElementById('calMonth').textContent =
-    calCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    calCursor.toLocaleDateString(undefined, { month:'long', year:'numeric' });
 
   DOW.forEach(d => {
     const h = document.createElement('div');
-    h.className = 'cal-dow';
-    h.textContent = d[0];
+    h.className = 'cal-dow'; h.textContent = d[0];
     grid.appendChild(h);
   });
 
   const first = new Date(calCursor.getFullYear(), calCursor.getMonth(), 1);
-  const lead = isoDow(first) - 1;
-  const start = addDays(first, -lead);
+  const start = addDays(first, -(isoDow(first) - 1));
   const t = today();
 
   for (let i = 0; i < 42; i++) {
@@ -964,9 +735,9 @@ function renderCalendar() {
       + (d.getMonth() !== calCursor.getMonth() ? ' out' : '')
       + (iso(d) === iso(t) ? ' today' : '')
       + (selectedDay && iso(d) === iso(selectedDay) ? ' sel' : '');
-    b.innerHTML = `<span>${d.getDate()}</span>
-      <span class="cal-dots">${due.map(p =>
-        `<span class="cal-dot" style="--dc:var(--${p.color === 'brass' ? 'gold' : p.color})"></span>`).join('')}</span>`;
+    b.innerHTML = `<span>${d.getDate()}</span><span class="cal-dots">${
+      due.map(p => `<span class="cal-dot" style="--dc:var(--${p.color === 'brass' ? 'gold' : p.color})"></span>`).join('')
+    }</span>`;
     b.addEventListener('click', () => { selectedDay = d; renderCalendar(); renderDayDetail(); });
     grid.appendChild(b);
   }
@@ -977,143 +748,107 @@ function renderDayDetail() {
   const due = dueOn(d);
   document.getElementById('dayDetail').innerHTML = `
     <div class="day-detail-date">${fmtLong(d)}</div>
-    ${due.length ? due.map(p => lineFor(p)).join('') : '<div class="line"><span class="nm" style="color:var(--muted)">No doses scheduled</span></div>'}`;
+    ${due.length ? due.map(pen => {
+      const dose = doseOn(pen, d);
+      return `<div class="line c-${pen.color || 'brass'}">
+        <span class="dot"></span><span class="nm">${pen.name}</span>
+        <span class="amt">${dose.clicks} clicks · ${pen.time}</span></div>`;
+    }).join('') : '<div class="line"><span class="nm" style="color:var(--muted)">Day off</span></div>'}`;
 }
 
-const lineFor = p => `
-  <div class="line c-${p.color || 'brass'}">
-    <span class="dot"></span>
-    <span class="nm">${p.name}</span>
-    <span class="amt">${doseLabel(p)} · ${p.time}</span>
-  </div>`;
-
-function renderWeekly() {
-  const sw = document.getElementById('weekSwitch');
-  sw.innerHTML = '';
-  PEPTIDES.forEach(p => {
-    const b = document.createElement('button');
-    b.className = `psw c-${p.color || 'brass'}`;
-    b.textContent = p.short || p.name;
-    b.setAttribute('aria-pressed', p.id === activeWeekPeptide);
-    b.addEventListener('click', () => { activeWeekPeptide = p.id; renderWeekly(); });
-    sw.appendChild(b);
-  });
-
-  const p = PEPTIDES.find(x => x.id === activeWeekPeptide) || PEPTIDES[0];
-  const grid = document.getElementById('weekGrid');
-  grid.innerHTML = '';
-  DOW.forEach((name, i) => {
-    const on = (p.days || []).includes(i + 1);
-    const col = document.createElement('div');
-    col.className = `week-col c-${p.color || 'brass'}`;
-    col.innerHTML = `<div class="week-dow">${name}</div>
-      <div class="week-pill${on ? '' : ' off'}"><span class="fill"></span></div>`;
-    grid.appendChild(col);
-  });
-
-  const u = unitsFor(p);
-  document.getElementById('weekMeta').innerHTML = `
-    <div class="kv"><span class="k">${p.name}</span><span class="v">${doseLabel(p)}${u ? ` · ${fmtUnits(u.units)} units` : ''}</span></div>
-    <div class="kv"><span class="k">Timing</span><span class="v">${p.time} · ${p.route}</span></div>
-    <div class="kv"><span class="k">Frequency</span><span class="v">${(p.days||[]).length}× weekly</span></div>
-    <div class="kv"><span class="k">Cycle duration</span><span class="v">${cycleText(p.durationDays || 0)}</span></div>`;
-}
-
-function renderDosing() {
-  const end = protocolEnd();
-  const groups = [];
-  for (let d = new Date(START); d <= end; d = addDays(d, 1)) {
-    const due = dueOn(d);
-    if (!due.length) continue;
-    const sig = due.map(p => `${p.id}:${p.dose}${p.doseUnit}:${p.time}`).join('|');
-    const last = groups[groups.length - 1];
-    if (last && last.sig === sig && (d - last.to) === DAY_MS) { last.to = new Date(d); }
-    else groups.push({ sig, from: new Date(d), to: new Date(d), due });
-  }
-
-  document.getElementById('dosingList').innerHTML = groups.map(g => `
-    <div style="padding:14px 0;border-top:1px solid var(--hairline)">
-      <div class="day-detail-date">${iso(g.from) === iso(g.to) ? fmtShort(g.from) : `${fmtShort(g.from)} – ${fmtShort(g.to)}`}</div>
-      ${g.due.map(p => lineFor(p)).join('')}
-    </div>`).join('') || '<div class="line">No doses scheduled.</div>';
-}
-
-function renderSupply() {
-  document.getElementById('supplyList').innerHTML = PEPTIDES.map(p => {
-    const total = totalNeeded(p);
-    const vials = vialsNeeded(p);
-    const refill = nextRefill(p);
-    const amount = total.unit === 'mcg' && total.amount >= 1000
-      ? `${(total.amount / 1000).toFixed(1)} mg`
-      : `${total.amount.toFixed(total.amount % 1 ? 1 : 0)} ${total.unit}`;
+/* ---------- render: rhythm ---------- */
+function renderRhythm() {
+  const t = today();
+  document.getElementById('rhythmList').innerHTML = PENS.map(pen => {
+    const cells = [];
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(t, i);
+      cells.push(`<div class="r-col">
+        <div class="r-day">${DOW[isoDow(d)-1][0]}</div>
+        <div class="r-pill${isDue(pen, d) ? '' : ' off'}"><span class="fill"></span></div>
+      </div>`);
+    }
+    const dose = doseOn(pen, t) || doseOn(pen, addDays(t, 1));
+    const supply = penTimeline(pen);
     return `
-      <div class="sheet c-${p.color || 'brass'}">
+      <div class="sheet c-${pen.color || 'brass'}">
         <div class="supply-head">
-          <div class="chip">${p.short || p.name.slice(0,3)}</div>
-          <div>
-            <div style="color:var(--espresso);font-size:15px">${p.name}</div>
-            <div class="dose-meta">${doseLabel(p)} · ${(p.days||[]).length}× weekly · ${p.time}</div>
-          </div>
-          <div class="supply-total">${amount}</div>
+          <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
+          <div><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
+          <div class="dose-meta">${pen.schedule.on} on / ${pen.schedule.off} off · ${pen.time}</div></div>
         </div>
-        ${vials ? `<div class="kv"><span class="k">Vials to dispense</span><span class="v">${vials} × ${p.vial.amount} ${p.vial.unit}</span></div>` : ''}
-        ${refill ? `<div class="refill-flag${refill.daysAway <= 7 ? ' soon' : ''}">
-          Next vial due <strong>${fmtShort(refill.date)}</strong> — ${refill.daysAway} day${refill.daysAway === 1 ? '' : 's'} away.
-        </div>` : ''}
+        <div class="rhythm">${cells.join('')}</div>
+        <div style="margin-top:16px">
+          <div class="kv"><span class="k">Current phase</span><span class="v">${dose ? dose.phase.name : '—'}</span></div>
+          <div class="kv"><span class="k">Dial to</span><span class="v">${dose ? dose.clicks + ' clicks' : '—'}</span></div>
+          ${supply ? `<div class="kv"><span class="k">Doses left in pen</span><span class="v">${supply.dosesLeft}</span></div>` : ''}
+        </div>
       </div>`;
   }).join('');
 }
 
-function renderDuration() {
-  const max = Math.max(...PEPTIDES.map(p => p.durationDays || 0), 1);
-  document.getElementById('durationList').innerHTML = PEPTIDES.map(p => `
-    <div class="bar-row c-${p.color || 'brass'}">
-      <div class="bar-top">
-        <span class="bar-name">${p.name}</span>
-        <span class="bar-days">${p.durationDays} days</span>
-      </div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(p.durationDays / max) * 100}%"></div></div>
-      <div class="dose-meta" style="margin-top:6px">${doseLabel(p)} · ${(p.days||[]).length}× per week</div>
-    </div>`).join('');
+/* ---------- render: supply ---------- */
+function renderSupply() {
+  document.getElementById('supplyList').innerHTML = PENS.map(pen => {
+    const s = penTimeline(pen);
+    const dose = doseOn(pen, today());
+    if (!s) return '';
+    const soon = s.daysLeft != null && s.daysLeft <= 7;
+    return `
+      <div class="sheet c-${pen.color || 'brass'}">
+        <div class="supply-head">
+          <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
+          <div><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
+          <div class="dose-meta">Pen ${s.penNo} · ${pen.volumeMl} mL</div></div>
+        </div>
+        <div class="gauge">
+          <div class="gauge-top"><span>${round(s.mlLeft, 2)} mL remaining</span><span>${Math.round(s.pctLeft)}%</span></div>
+          <div class="gauge-track"><div class="gauge-fill${soon ? ' low' : ''}" style="width:${s.pctLeft}%"></div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="kv"><span class="k">Current dose</span><span class="v">${dose ? `${dose.clicks} clicks · ${round(dose.ml,2)} mL` : '—'}</span></div>
+          <div class="kv"><span class="k">Doses remaining</span><span class="v">${s.dosesLeft}</span></div>
+          <div class="kv"><span class="k">Last dose from this pen</span><span class="v">${s.lastDose ? fmtShort(s.lastDose) : '—'}</span></div>
+        </div>
+        <div class="flag${soon ? ' soon' : ''}">
+          ${s.daysLeft != null
+            ? `This pen runs out in about <strong>${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'}</strong>${soon ? ' — time to arrange a refill.' : '.'}`
+            : 'Supply projection unavailable.'}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 /* ---------- log sheet ---------- */
-function openLog(pid) {
-  const p = PEPTIDES.find(x => x.id === pid);
-  if (!p) return;
+function openLog(id) {
+  const pen = PENS.find(p => p.id === id);
   const t = today();
+  if (!pen) return;
+  if (isLogged(pen.id, t)) { showToast(`${pen.name} is already logged today.`); return; }
+  if (!isDue(pen, t)) { showToast(`${pen.name} isn't scheduled today.`); return; }
 
-  if (isLogged(p.id, t)) { showToast(`${p.name} is already logged today.`); return; }
-  if (!isDue(p, t)) { showToast(`${p.name} isn't scheduled today.`); return; }
+  const dose = doseOn(pen, t);
+  pendingLog = pen;
 
-  pendingLog = p;
-  chosenSite = null;
-
-  const u = unitsFor(p);
-  document.getElementById('modalTitle').textContent = `Log today's ${p.name}?`;
+  document.getElementById('modalTitle').textContent = `Log today's ${pen.name}?`;
   document.getElementById('modalBody').textContent =
-    `${doseLabel(p)}${u ? ` — ${fmtUnits(u.units)} units` : ''} · ${p.time} · ${p.route}`;
+    `${dose.clicks} clicks · ${round(dose.ml,2)} mL — ${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
 
   const sites = CFG.protocol.sites || [];
   const suggested = sites.length ? sites[LOGS.length % sites.length] : null;
+  chosenSite = suggested;
   document.getElementById('sitePick').innerHTML = sites.map(s =>
     `<button class="site" data-site="${s}" aria-pressed="${s === suggested}">${s}</button>`).join('');
-  chosenSite = suggested;
-
   document.querySelectorAll('#sitePick .site').forEach(b =>
     b.addEventListener('click', () => {
       chosenSite = b.dataset.site;
-      document.querySelectorAll('#sitePick .site').forEach(x =>
-        x.setAttribute('aria-pressed', x === b));
+      document.querySelectorAll('#sitePick .site').forEach(x => x.setAttribute('aria-pressed', x === b));
     }));
 
   document.getElementById('scrim').classList.add('open');
 }
 
-function closeLog() {
-  document.getElementById('scrim').classList.remove('open');
-  pendingLog = null;
-}
+const closeLog = () => { document.getElementById('scrim').classList.remove('open'); pendingLog = null; };
 
 function confirmLog() {
   if (pendingLog) {
@@ -1121,9 +856,7 @@ function confirmLog() {
     showToast(`${pendingLog.name} logged${chosenSite ? ` — ${chosenSite}` : ''}.`);
   }
   closeLog();
-  renderToday();
-  renderAdherence();
-  renderCalendar();
+  renderToday(); renderAdherence(); renderCalendar(); renderSupply(); renderRhythm();
 }
 
 let toastTimer;
@@ -1132,40 +865,40 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('visible');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('visible'), 2600);
+  toastTimer = setTimeout(() => t.classList.remove('visible'), 2800);
 }
 
 /* ---------- calendar export ---------- */
 function buildICS() {
-  const pad = n => String(n).padStart(2, '0');
+  const pad = n => String(n).padStart(2,'0');
   const stamp = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//The Charleston Atelier//Ritual//EN','CALSCALE:GREGORIAN'];
 
-  PEPTIDES.forEach(p => {
-    const u = unitsFor(p);
-    const [hh, mm] = (TIME_AT[p.time] || '09:00').split(':');
-    const title = `${p.name} — ${u ? `${fmtUnits(u.units)} units` : doseLabel(p)}`;
-    occurrences(p).forEach((d, i) => {
-      lines.push(
-        'BEGIN:VEVENT',
-        `UID:${p.id}-${stamp(d)}-${i}@atelier`,
+  PENS.forEach(pen => {
+    const [hh, mm] = (TIME_AT[pen.time] || '09:00').split(':');
+    occurrences(pen).forEach((d, i) => {
+      const dose = doseOn(pen, d);
+      if (!dose) return;
+      const title = `${pen.name} — ${dose.clicks} clicks`;
+      lines.push('BEGIN:VEVENT',
+        `UID:${pen.id}-${stamp(d)}-${i}@atelier`,
         `DTSTAMP:${stamp(new Date())}T000000`,
         `DTSTART:${stamp(d)}T${hh}${mm}00`,
         `DTEND:${stamp(d)}T${hh}${pad(Number(mm)+15)}00`,
         `SUMMARY:${title}`,
-        `DESCRIPTION:${doseLabel(p)} · ${p.route}${u ? ` · draw to ${fmtUnits(u.units)} units` : ''}`,
+        `DESCRIPTION:${dose.phase.name} · ${round(dose.ml,2)} mL · ${pen.route}`,
         'BEGIN:VALARM','TRIGGER:-PT15M','ACTION:DISPLAY',`DESCRIPTION:${title}`,'END:VALARM',
         'END:VEVENT');
     });
 
-    const refill = nextRefill(p);
-    if (refill) {
+    const s = penTimeline(pen);
+    if (s && s.lastDose) {
       lines.push('BEGIN:VEVENT',
-        `UID:${p.id}-refill-${stamp(refill.date)}@atelier`,
+        `UID:${pen.id}-refill-${stamp(s.lastDose)}@atelier`,
         `DTSTAMP:${stamp(new Date())}T000000`,
-        `DTSTART;VALUE=DATE:${stamp(addDays(refill.date, -5))}`,
-        `SUMMARY:Refill due — ${p.name}`,
-        'DESCRIPTION:Your current vial runs out in about 5 days.',
+        `DTSTART;VALUE=DATE:${stamp(addDays(s.lastDose, -3))}`,
+        `SUMMARY:Refill due — ${pen.name}`,
+        'DESCRIPTION:This pen is nearly empty.',
         'END:VEVENT');
     }
   });
@@ -1175,13 +908,11 @@ function buildICS() {
 }
 
 function downloadICS() {
-  const blob = new Blob([buildICS()], { type: 'text/calendar;charset=utf-8' });
+  const blob = new Blob([buildICS()], { type:'text/calendar;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${CFG.patient.name}-protocol.ics`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  document.body.appendChild(a); a.click(); a.remove();
   showToast('Calendar file created — open it to add your reminders.');
 }
 
@@ -1198,56 +929,46 @@ function wireTabs() {
 
 async function boot() {
   try {
-    const res = await fetch('protocol.json', { cache: 'no-store' });
-    CFG = await res.json();
-  } catch (e) {
+    CFG = await (await fetch('protocol.json', { cache:'no-store' })).json();
+  } catch {
     document.getElementById('todaySummary').textContent =
-      'Could not load the protocol. Please contact the atelier.';
+      'Could not load your protocol. Please contact the atelier.';
     return;
   }
 
-  PEPTIDES = CFG.protocol.peptides || [];
+  PENS = CFG.protocol.pens || [];
   START = parse(CFG.protocol.startDate);
   LOGS = loadLogs();
   calCursor = today();
   selectedDay = today();
-  activeWeekPeptide = PEPTIDES[0] && PEPTIDES[0].id;
 
   document.getElementById('protocolName').textContent = CFG.protocol.name;
   document.title = `Today's Ritual — ${CFG.patient.name}`;
   document.getElementById('footnote').innerHTML =
-    `Injection history is stored on this device only.<br>Questions about your protocol? Message the atelier.`;
+    'Injection history is stored on this device only.<br>Questions about your protocol? Message the atelier.';
 
-  renderToday();
-  renderAdherence();
-  renderCalendar();
-  renderDayDetail();
-  renderWeekly();
-  renderDosing();
-  renderSupply();
-  renderDuration();
+  renderToday(); renderAdherence(); renderPhases();
+  renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
 
-  // NFC tag on the pen or vial opens the portal with ?log=<peptide id>
+  // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
   const tagged = new URLSearchParams(location.search).get('log');
   if (tagged) {
-    const match = PEPTIDES.find(p => p.id === tagged || p.short === tagged);
-    if (match) openLog(match.id);
+    const pen = PENS.find(p => p.id === tagged || p.short === tagged);
+    if (pen) openLog(pen.id);
     history.replaceState(null, '', location.pathname);
   }
 }
 
 document.getElementById('calPrev').addEventListener('click', () => {
-  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() - 1, 1); renderCalendar();
+  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1); renderCalendar();
 });
 document.getElementById('calNext').addEventListener('click', () => {
-  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() + 1, 1); renderCalendar();
+  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); renderCalendar();
 });
 document.getElementById('btnCalendar').addEventListener('click', downloadICS);
 document.getElementById('modalCancel').addEventListener('click', closeLog);
 document.getElementById('modalConfirm').addEventListener('click', confirmLog);
-document.getElementById('scrim').addEventListener('click', e => {
-  if (e.target.id === 'scrim') closeLog();
-});
+document.getElementById('scrim').addEventListener('click', e => { if (e.target.id === 'scrim') closeLog(); });
 
 wireTabs();
 boot();
