@@ -1,0 +1,63 @@
+{
+  "_note": "EXAMPLE PROTOCOL — placeholder values so the page is fully functional. Replace with Jessica's actual regimen before she uses it. Every number below drives the whole page: schedule, units to draw, totals, refill dates and calendar events.",
+
+  "patient": {
+    "name": "Jessica",
+    "id": "jessica"
+  },
+
+  "protocol": {
+    "name": "Metabolic Reset",
+    "startDate": "2026-07-13",
+    "syringe": "U-100",
+    "sites": ["Left abdomen", "Right abdomen", "Left thigh", "Right thigh"],
+
+    "peptides": [
+      {
+        "id": "tirzepatide",
+        "name": "Tirzepatide",
+        "short": "tir",
+        "category": "Metabolic",
+        "color": "clay",
+        "dose": 2.5,
+        "doseUnit": "mg",
+        "route": "Subcutaneous",
+        "time": "Evening",
+        "days": [1],
+        "startOffset": 0,
+        "durationDays": 56,
+        "vial": { "amount": 10, "unit": "mg", "diluentMl": 2 }
+      },
+      {
+        "id": "bpc157",
+        "name": "BPC-157",
+        "short": "bpc",
+        "category": "Healing",
+        "color": "sage",
+        "dose": 250,
+        "doseUnit": "mcg",
+        "route": "Subcutaneous",
+        "time": "Evening",
+        "days": [1, 2, 3, 4, 5, 6, 7],
+        "startOffset": 0,
+        "durationDays": 42,
+        "vial": { "amount": 5, "unit": "mg", "diluentMl": 2 }
+      },
+      {
+        "id": "motsc",
+        "name": "MOTS-c",
+        "short": "mot",
+        "category": "Metabolic",
+        "color": "brass",
+        "dose": 250,
+        "doseUnit": "mcg",
+        "route": "Subcutaneous",
+        "time": "Morning",
+        "days": [1, 3, 5],
+        "startOffset": 0,
+        "durationDays": 28,
+        "vial": { "amount": 10, "unit": "mg", "diluentMl": 2 }
+      }
+    ]
+  }
+}

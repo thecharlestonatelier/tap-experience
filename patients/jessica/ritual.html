@@ -1,0 +1,1257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<title>Today's Ritual</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/fonts.css">
+
+<style>
+  :root {
+    --bg:            #F3EBE1;
+    --card:          #F8F2EA;
+    --card-hover:    #FBF6F0;
+    --espresso:      #3B2E20;
+    --espresso-soft: #4A3B2C;
+    --muted:         #8A7C6A;
+    --brass:         #8A7350;
+    --brass-soft:    #A38C69;
+    --hairline:      rgba(138, 115, 80, 0.18);
+    --shadow:        0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045);
+
+    /* Peptide accents — muted to sit inside the Atelier palette */
+    --clay:  #A8705A;
+    --sage:  #7E9080;
+    --gold:  #A38C69;
+    --plum:  #8A6B75;
+    --slate: #77706A;
+  }
+
+  .c-clay  { --pc: var(--clay);  }
+  .c-sage  { --pc: var(--sage);  }
+  .c-brass { --pc: var(--gold);  }
+  .c-plum  { --pc: var(--plum);  }
+  .c-slate { --pc: var(--slate); }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--espresso-soft);
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+    /* Cormorant defaults to old-style figures, which render 10 as "IO".
+       Dosing numbers must never be ambiguous — force lining figures. */
+    font-feature-settings: 'lnum' 1;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 460px;
+    padding: 14px 20px calc(40px + env(safe-area-inset-bottom));
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0 22px;
+  }
+  .back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--card);
+    box-shadow: var(--shadow);
+    color: var(--brass);
+    text-decoration: none;
+    flex: none;
+  }
+  .back svg { width: 15px; height: 15px; }
+  .topbar-label {
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ---------- Hero ---------- */
+  .eyebrow {
+    font-size: 11.5px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 8px;
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 500;
+    font-size: 44px;
+    line-height: 1.05;
+    color: var(--espresso);
+    letter-spacing: .01em;
+    margin-bottom: 6px;
+  }
+  .subhead {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+
+  /* ---------- Dose cards ---------- */
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+
+  .dose-card {
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 20px;
+    border-left: 4px solid var(--pc, var(--brass));
+  }
+  .dose-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: var(--pc, var(--brass));
+    color: #FBF6F0;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    flex: none;
+  }
+  .dose-name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 25px;
+    font-weight: 500;
+    color: var(--espresso);
+    line-height: 1.15;
+  }
+  .dose-meta {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .dose-amount {
+    text-align: right;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 26px;
+    color: var(--espresso);
+    white-space: nowrap;
+  }
+
+  .draw {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+  }
+  .draw-units {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 40px;
+    line-height: 1;
+    color: var(--pc, var(--brass));
+  }
+  .draw-label {
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .draw-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* Syringe barrel */
+  .syringe { margin-top: 14px; }
+  .barrel {
+    position: relative;
+    height: 26px;
+    border-radius: 13px;
+    background: #EFE7DB;
+    border: 1px solid var(--hairline);
+    overflow: hidden;
+  }
+  .barrel-fill {
+    position: absolute; inset: 0 auto 0 0;
+    background: var(--pc, var(--brass));
+    opacity: .82;
+  }
+  .ticks { display: flex; justify-content: space-between; margin-top: 5px; }
+  .ticks span { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn {
+    flex: 1;
+    padding: 13px 14px;
+    border: none;
+    border-radius: 13px;
+    font-family: 'Jost', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity .2s ease, transform .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(.985); }
+  .btn-primary { background: var(--espresso); color: #F6F0E7; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--espresso-soft);
+    border: 1px solid var(--hairline);
+  }
+  .btn[disabled] { opacity: .55; cursor: default; }
+
+  .logged {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--sage);
+  }
+  .logged svg { width: 16px; height: 16px; flex: none; }
+
+  .rest {
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 28px 22px;
+    text-align: center;
+  }
+  .rest-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 26px;
+    color: var(--espresso);
+    margin-bottom: 6px;
+  }
+  .rest-sub { font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- Adherence ---------- */
+  .adherence {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    background: var(--card);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 16px 18px;
+    margin-top: 14px;
+  }
+  .stat-num {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 28px;
+    color: var(--espresso);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-label {
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .week-dots { display: flex; gap: 6px; }
+  .wd {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: rgba(138,115,80,.2);
+  }
+  .wd.done { background: var(--sage); }
+  .wd.miss { background: var(--clay); opacity: .5; }
+
+  /* ---------- Actions ---------- */
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .action {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    background: var(--card);
+    border: none;
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    color: var(--espresso-soft);
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .action svg { width: 15px; height: 15px; color: var(--brass); flex: none; }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin: 30px 0 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: none;
+    padding: 9px 15px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab[aria-selected="true"] { background: var(--espresso); color: #F6F0E7; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 27px;
+    color: var(--espresso);
+    margin-bottom: 4px;
+  }
+  .section-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+  .sheet {
+    background: var(--card);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 18px;
+  }
+  .sheet + .sheet { margin-top: 14px; }
+
+  /* ---------- Calendar ---------- */
+  .cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .cal-month {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 21px;
+    color: var(--espresso);
+  }
+  .cal-nav {
+    background: none; border: none; cursor: pointer;
+    color: var(--brass); padding: 6px 10px; font-size: 17px;
+  }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-dow {
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 6px;
+  }
+  .cal-day {
+    aspect-ratio: 1 / 1.15;
+    border: none;
+    background: transparent;
+    border-radius: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 6px;
+    gap: 4px;
+    cursor: pointer;
+    font-family: 'Jost', sans-serif;
+    font-size: 12.5px;
+    color: var(--espresso-soft);
+    font-variant-numeric: tabular-nums;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-day.out { color: rgba(138,124,106,.4); }
+  .cal-day.today { background: var(--espresso); color: #F6F0E7; }
+  .cal-day.sel { box-shadow: inset 0 0 0 1.5px var(--brass-soft); }
+  .cal-dots { display: flex; gap: 2.5px; flex-wrap: wrap; justify-content: center; }
+  .cal-dot { width: 5.5px; height: 5.5px; border-radius: 50%; background: var(--dc); }
+
+  .day-detail {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline);
+  }
+  .day-detail-date {
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    font-size: 13.5px;
+  }
+  .line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc); flex: none; }
+  .line .nm { color: var(--espresso); }
+  .line .amt { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+
+  /* ---------- Weekly ---------- */
+  .peptide-switch { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .psw {
+    padding: 7px 13px;
+    border: 1px solid var(--hairline);
+    background: transparent;
+    border-radius: 999px;
+    font-family: 'Jost', sans-serif;
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .psw[aria-pressed="true"] {
+    background: var(--pc);
+    border-color: var(--pc);
+    color: #FBF6F0;
+  }
+  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .week-col { text-align: center; }
+  .week-dow {
+    font-size: 10px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .week-pill {
+    height: 58px;
+    border-radius: 999px;
+    background: #EFE7DB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .week-pill .fill {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--pc);
+  }
+  .week-pill.off .fill { background: transparent; }
+
+  .kv {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 0;
+    font-size: 13.5px;
+    border-top: 1px solid var(--hairline);
+  }
+  .kv:first-of-type { border-top: none; }
+  .kv .k { color: var(--muted); }
+  .kv .v { color: var(--espresso); text-align: right; }
+
+  /* ---------- Supply ---------- */
+  .supply-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .supply-total {
+    margin-left: auto;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 23px;
+    color: var(--espresso);
+    white-space: nowrap;
+  }
+  .refill-flag {
+    margin-top: 12px;
+    padding: 11px 13px;
+    border-radius: 12px;
+    background: rgba(168,112,90,.09);
+    font-size: 12.5px;
+    color: var(--espresso-soft);
+  }
+  .refill-flag.soon { background: rgba(168,112,90,.18); }
+
+  /* ---------- Duration bars ---------- */
+  .bar-row { padding: 12px 0; border-top: 1px solid var(--hairline); }
+  .bar-row:first-child { border-top: none; }
+  .bar-top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .bar-name { font-size: 13.5px; color: var(--espresso); }
+  .bar-days { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+  .bar-track { height: 10px; border-radius: 999px; background: #EFE7DB; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; background: var(--pc); }
+
+  /* ---------- Log sheet ---------- */
+  .scrim {
+    position: fixed; inset: 0;
+    background: rgba(59,46,32,.45);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+  }
+  .scrim.open { display: flex; }
+  .modal {
+    width: 100%;
+    max-width: 460px;
+    background: var(--bg);
+    border-radius: 26px 26px 0 0;
+    padding: 26px 22px calc(26px + env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 40px rgba(59,46,32,.25);
+  }
+  .modal-eyebrow {
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin-bottom: 8px;
+  }
+  .modal-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 29px;
+    color: var(--espresso);
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  .modal-body { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+  .site-pick { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 20px; }
+  .site {
+    padding: 8px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--hairline);
+    background: transparent;
+    font-family: 'Jost', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .site[aria-pressed="true"] {
+    background: var(--espresso);
+    border-color: var(--espresso);
+    color: #F6F0E7;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%; bottom: calc(26px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 12px);
+    padding: 13px 20px;
+    background: var(--espresso);
+    color: #F6F0E7;
+    border-radius: 14px;
+    font-size: 13.5px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    z-index: 150;
+  }
+  .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+  .footnote {
+    margin-top: 26px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media print {
+    .topbar, .tabs, .actions, .btn-row, .scrim, .toast { display: none !important; }
+    .panel { display: block !important; page-break-inside: avoid; }
+    body { background: #fff; }
+    .sheet, .dose-card, .adherence { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="back" href="./" aria-label="Back to portal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4-8 8 8 8"/></svg>
+    </a>
+    <span class="topbar-label" id="protocolName">Protocol</span>
+  </div>
+
+  <p class="eyebrow" id="todayDate">—</p>
+  <h1>Today's Ritual</h1>
+  <p class="subhead" id="todaySummary">Loading your protocol…</p>
+
+  <div class="stack" id="todayStack"></div>
+
+  <div class="adherence" id="adherence" hidden>
+    <div>
+      <div class="stat-num" id="statStreak">0</div>
+      <div class="stat-label">Day streak</div>
+    </div>
+    <div>
+      <div class="stat-num" id="statPct">—</div>
+      <div class="stat-label">Adherence</div>
+    </div>
+    <div>
+      <div class="week-dots" id="weekDots"></div>
+      <div class="stat-label">Last 7 days</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="action" id="btnCalendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      Add to calendar
+    </button>
+    <button class="action" onclick="window.print()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2"/><rect x="8" y="14" width="8" height="7"/></svg>
+      Print
+    </button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-panel="schedule" aria-selected="true">Schedule</button>
+    <button class="tab" role="tab" data-panel="weekly"   aria-selected="false">Weekly</button>
+    <button class="tab" role="tab" data-panel="dosing"   aria-selected="false">Dosing</button>
+    <button class="tab" role="tab" data-panel="supply"   aria-selected="false">Supply</button>
+    <button class="tab" role="tab" data-panel="duration" aria-selected="false">Duration</button>
+  </div>
+
+  <section class="panel active" id="panel-schedule">
+    <h2 class="section-title">Protocol Schedule</h2>
+    <p class="section-sub">A day-by-day view. Tap any day to see what's scheduled.</p>
+    <div class="sheet">
+      <div class="cal-head">
+        <button class="cal-nav" id="calPrev" aria-label="Previous month">‹</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-nav" id="calNext" aria-label="Next month">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="day-detail" id="dayDetail"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-weekly">
+    <h2 class="section-title">Weekly Schedule</h2>
+    <p class="section-sub">Day-of-week breakdown for each peptide.</p>
+    <div class="sheet">
+      <div class="peptide-switch" id="weekSwitch"></div>
+      <div class="week-grid" id="weekGrid"></div>
+      <div id="weekMeta" style="margin-top:16px"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-dosing">
+    <h2 class="section-title">Daily Dosing Breakdown</h2>
+    <p class="section-sub">Consecutive days with the same schedule are combined. Days with no doses are omitted.</p>
+    <div class="sheet" id="dosingList"></div>
+  </section>
+
+  <section class="panel" id="panel-supply">
+    <h2 class="section-title">Total Requirements</h2>
+    <p class="section-sub">Quantity needed to complete the protocol, calculated from dose and duration.</p>
+    <div id="supplyList"></div>
+  </section>
+
+  <section class="panel" id="panel-duration">
+    <h2 class="section-title">Duration &amp; Timeline</h2>
+    <p class="section-sub">Each peptide's active window within the protocol.</p>
+    <div class="sheet" id="durationList"></div>
+  </section>
+
+  <p class="footnote" id="footnote"></p>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <p class="modal-eyebrow">Confirm injection</p>
+    <h2 class="modal-title" id="modalTitle">Log today's dose?</h2>
+    <p class="modal-body" id="modalBody"></p>
+    <div class="site-pick" id="sitePick"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="modalCancel">Not now</button>
+      <button class="btn btn-primary" id="modalConfirm">Log it</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ==================================================================
+   TODAY'S RITUAL
+   ------------------------------------------------------------------
+   All clinical content comes from protocol.json — this file is the
+   engine and never needs editing to change a patient's regimen.
+
+   Injection logs are stored ON THE DEVICE only (localStorage). No
+   patient data is sent anywhere. Clearing the browser clears history.
+   ================================================================== */
+
+const DAY_MS = 86400000;
+const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const TIME_AT = { Morning: '08:00', Midday: '12:30', Afternoon: '15:00', Evening: '20:00' };
+
+let CFG, PEPTIDES, START, LOGS, calCursor, selectedDay, activeWeekPeptide, pendingLog, chosenSite;
+
+/* ---------- date helpers (local, no timezone drift) ---------- */
+const iso    = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parse  = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays= (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
+const isoDow = d => (d.getDay() + 6) % 7 + 1;          // 1 = Mon … 7 = Sun
+const today  = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+
+const fmtLong  = d => d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+const fmtShort = d => d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+
+/* ---------- dose maths ---------- */
+const doseMg = p => p.doseUnit === 'mcg' ? p.dose / 1000 : p.dose;
+
+// Units on a U-100 syringe: 100 units = 1 mL.
+function unitsFor(p) {
+  if (!p.vial || !p.vial.diluentMl || p.doseUnit === 'ml') return null;
+  const concMgPerMl = p.vial.amount / p.vial.diluentMl;
+  const ml = doseMg(p) / concMgPerMl;
+  return { units: ml * 100, ml, concMgPerMl };
+}
+
+const doseLabel = p => `${p.dose} ${p.doseUnit}`;
+
+/* ---------- schedule ---------- */
+function windowFor(p) {
+  const from = addDays(START, p.startOffset || 0);
+  return { from, to: addDays(from, (p.durationDays || 0) - 1) };
+}
+
+function isDue(p, date) {
+  const { from, to } = windowFor(p);
+  if (date < from || date > to) return false;
+  return (p.days || []).includes(isoDow(date));
+}
+
+const dueOn = date => PEPTIDES.filter(p => isDue(p, date));
+
+function occurrences(p) {
+  const { from, to } = windowFor(p);
+  const out = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) if ((p.days||[]).includes(isoDow(d))) out.push(new Date(d));
+  return out;
+}
+
+const protocolEnd = () => PEPTIDES.reduce((max, p) => {
+  const to = windowFor(p).to;
+  return to > max ? to : max;
+}, START);
+
+/* Total needed = duration × (doses per week ÷ 7) × dose — the same
+   arithmetic clinicians do by hand when ordering vials. */
+function totalNeeded(p) {
+  const perWeek = (p.days || []).length;
+  const amount = (p.durationDays || 0) * (perWeek / 7) * p.dose;
+  return { amount, unit: p.doseUnit };
+}
+
+function vialsNeeded(p) {
+  if (!p.vial || p.doseUnit === 'ml') return null;
+  const totalMg = totalNeeded(p).amount * (p.doseUnit === 'mcg' ? 0.001 : 1);
+  return Math.ceil(totalMg / p.vial.amount);
+}
+
+/* Next vial boundary: when the current vial runs dry. */
+function nextRefill(p) {
+  if (!p.vial || p.doseUnit === 'ml') return null;
+  const perVial = Math.floor(p.vial.amount / doseMg(p));
+  if (!perVial) return null;
+  const occ = occurrences(p);
+  const t = today();
+  for (let i = perVial; i < occ.length; i += perVial) {
+    if (occ[i] >= t) return { date: occ[i], daysAway: Math.round((occ[i] - t) / DAY_MS) };
+  }
+  return null;
+}
+
+function cycleText(days) {
+  const w = Math.floor(days / 7), d = days % 7;
+  if (!w) return `${d} day${d === 1 ? '' : 's'}`;
+  if (!d) return `${w} week${w === 1 ? '' : 's'}`;
+  return `${w} week${w === 1 ? '' : 's'} ${d} day${d === 1 ? '' : 's'}`;
+}
+
+/* ---------- log storage (device-only) ---------- */
+const logKey = () => `tca.ritual.${CFG.patient.id}.v1`;
+function loadLogs() { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch { return []; } }
+function saveLogs() { try { localStorage.setItem(logKey(), JSON.stringify(LOGS)); } catch {} }
+const isLogged = (pid, date) => LOGS.some(l => l.peptide === pid && l.date === iso(date));
+
+function addLog(pid, date, site) {
+  if (isLogged(pid, date)) return;
+  LOGS.push({ peptide: pid, date: iso(date), site: site || null, at: new Date().toISOString() });
+  saveLogs();
+}
+
+/* ---------- rendering ---------- */
+function renderToday() {
+  const t = today();
+  document.getElementById('todayDate').textContent = fmtLong(t);
+
+  const due = dueOn(t);
+  const stack = document.getElementById('todayStack');
+  stack.innerHTML = '';
+
+  if (!due.length) {
+    document.getElementById('todaySummary').textContent = 'Nothing scheduled today.';
+    stack.innerHTML = `<div class="rest">
+      <div class="rest-title">A rest day</div>
+      <div class="rest-sub">Your next dose is ${nextDueText()}.</div>
+    </div>`;
+    return;
+  }
+
+  const remaining = due.filter(p => !isLogged(p.id, t)).length;
+  document.getElementById('todaySummary').textContent = remaining
+    ? `${remaining} of ${due.length} ${due.length === 1 ? 'dose' : 'doses'} still to do.`
+    : 'Everything logged for today.';
+
+  due.forEach(p => {
+    const u = unitsFor(p);
+    const done = isLogged(p.id, t);
+    const card = document.createElement('div');
+    card.className = `dose-card c-${p.color || 'brass'}`;
+    card.innerHTML = `
+      <div class="dose-top">
+        <div class="chip">${p.short || p.name.slice(0,3)}</div>
+        <div style="flex:1">
+          <div class="dose-name">${p.name}</div>
+          <div class="dose-meta">${p.time} · ${p.route}</div>
+        </div>
+        <div class="dose-amount">${doseLabel(p)}</div>
+      </div>
+      ${u ? `
+      <div class="draw">
+        <span class="draw-units">${fmtUnits(u.units)}</span>
+        <span class="draw-label">units on the syringe</span>
+      </div>
+      <div class="draw-sub">${u.ml.toFixed(2)} mL from a ${p.vial.amount} ${p.vial.unit} vial reconstituted with ${p.vial.diluentMl} mL — ${u.concMgPerMl} mg/mL</div>
+      <div class="syringe">
+        <div class="barrel"><div class="barrel-fill" style="width:${Math.min(100, u.units)}%"></div></div>
+        <div class="ticks"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+      </div>` : ''}
+      ${done ? `
+      <div class="logged">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        Logged today
+      </div>` : `
+      <div class="btn-row"><button class="btn btn-primary" data-log="${p.id}">Log this dose</button></div>`}
+    `;
+    stack.appendChild(card);
+  });
+
+  stack.querySelectorAll('[data-log]').forEach(b =>
+    b.addEventListener('click', () => openLog(b.dataset.log)));
+}
+
+const fmtUnits = u => Number.isInteger(u) ? String(u) : u.toFixed(1);
+
+function nextDueText() {
+  const t = today();
+  for (let i = 1; i <= 60; i++) {
+    const d = addDays(t, i);
+    if (dueOn(d).length) return i === 1 ? 'tomorrow' : fmtLong(d);
+  }
+  return 'not scheduled';
+}
+
+function renderAdherence() {
+  const t = today();
+  const el = document.getElementById('adherence');
+
+  // Adherence is measured from the first dose she actually logged, not from
+  // the protocol start — otherwise a phone that starts tracking mid-cycle
+  // reports a discouraging number for doses it was never there to see.
+  const since = LOGS.length ? parse(LOGS.map(l => l.date).sort()[0]) : null;
+
+  let expected = 0, taken = 0;
+  if (since) {
+    PEPTIDES.forEach(p => occurrences(p).forEach(d => {
+      if (d >= since && d <= t) { expected++; if (isLogged(p.id, d)) taken++; }
+    }));
+  }
+
+  el.hidden = false;
+  document.getElementById('statPct').textContent =
+    expected ? Math.round((taken / expected) * 100) + '%' : '—';
+
+  // Streak: consecutive dosing days, most recent first, all doses logged.
+  // Today still being open doesn't break it — the day isn't over yet.
+  let streak = 0;
+  for (let i = 0; i < 180; i++) {
+    const d = addDays(t, -i);
+    const due = dueOn(d);
+    if (!due.length) continue;                       // rest days don't break it
+    const all = due.every(p => isLogged(p.id, d));
+    if (all) streak++;
+    else if (i === 0) continue;                      // today is still in play
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  const dots = document.getElementById('weekDots');
+  dots.innerHTML = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(t, -i);
+    const due = dueOn(d);
+    const s = document.createElement('span');
+    // Days before tracking started aren't misses — she simply wasn't logging yet.
+    const tracked = since && d >= since;
+    s.className = 'wd' + (!due.length || !tracked ? ''
+      : due.every(p => isLogged(p.id, d)) ? ' done' : ' miss');
+    dots.appendChild(s);
+  }
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  document.getElementById('calMonth').textContent =
+    calCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  DOW.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-dow';
+    h.textContent = d[0];
+    grid.appendChild(h);
+  });
+
+  const first = new Date(calCursor.getFullYear(), calCursor.getMonth(), 1);
+  const lead = isoDow(first) - 1;
+  const start = addDays(first, -lead);
+  const t = today();
+
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i);
+    const due = dueOn(d);
+    const b = document.createElement('button');
+    b.className = 'cal-day'
+      + (d.getMonth() !== calCursor.getMonth() ? ' out' : '')
+      + (iso(d) === iso(t) ? ' today' : '')
+      + (selectedDay && iso(d) === iso(selectedDay) ? ' sel' : '');
+    b.innerHTML = `<span>${d.getDate()}</span>
+      <span class="cal-dots">${due.map(p =>
+        `<span class="cal-dot" style="--dc:var(--${p.color === 'brass' ? 'gold' : p.color})"></span>`).join('')}</span>`;
+    b.addEventListener('click', () => { selectedDay = d; renderCalendar(); renderDayDetail(); });
+    grid.appendChild(b);
+  }
+}
+
+function renderDayDetail() {
+  const d = selectedDay || today();
+  const due = dueOn(d);
+  document.getElementById('dayDetail').innerHTML = `
+    <div class="day-detail-date">${fmtLong(d)}</div>
+    ${due.length ? due.map(p => lineFor(p)).join('') : '<div class="line"><span class="nm" style="color:var(--muted)">No doses scheduled</span></div>'}`;
+}
+
+const lineFor = p => `
+  <div class="line c-${p.color || 'brass'}">
+    <span class="dot"></span>
+    <span class="nm">${p.name}</span>
+    <span class="amt">${doseLabel(p)} · ${p.time}</span>
+  </div>`;
+
+function renderWeekly() {
+  const sw = document.getElementById('weekSwitch');
+  sw.innerHTML = '';
+  PEPTIDES.forEach(p => {
+    const b = document.createElement('button');
+    b.className = `psw c-${p.color || 'brass'}`;
+    b.textContent = p.short || p.name;
+    b.setAttribute('aria-pressed', p.id === activeWeekPeptide);
+    b.addEventListener('click', () => { activeWeekPeptide = p.id; renderWeekly(); });
+    sw.appendChild(b);
+  });
+
+  const p = PEPTIDES.find(x => x.id === activeWeekPeptide) || PEPTIDES[0];
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+  DOW.forEach((name, i) => {
+    const on = (p.days || []).includes(i + 1);
+    const col = document.createElement('div');
+    col.className = `week-col c-${p.color || 'brass'}`;
+    col.innerHTML = `<div class="week-dow">${name}</div>
+      <div class="week-pill${on ? '' : ' off'}"><span class="fill"></span></div>`;
+    grid.appendChild(col);
+  });
+
+  const u = unitsFor(p);
+  document.getElementById('weekMeta').innerHTML = `
+    <div class="kv"><span class="k">${p.name}</span><span class="v">${doseLabel(p)}${u ? ` · ${fmtUnits(u.units)} units` : ''}</span></div>
+    <div class="kv"><span class="k">Timing</span><span class="v">${p.time} · ${p.route}</span></div>
+    <div class="kv"><span class="k">Frequency</span><span class="v">${(p.days||[]).length}× weekly</span></div>
+    <div class="kv"><span class="k">Cycle duration</span><span class="v">${cycleText(p.durationDays || 0)}</span></div>`;
+}
+
+function renderDosing() {
+  const end = protocolEnd();
+  const groups = [];
+  for (let d = new Date(START); d <= end; d = addDays(d, 1)) {
+    const due = dueOn(d);
+    if (!due.length) continue;
+    const sig = due.map(p => `${p.id}:${p.dose}${p.doseUnit}:${p.time}`).join('|');
+    const last = groups[groups.length - 1];
+    if (last && last.sig === sig && (d - last.to) === DAY_MS) { last.to = new Date(d); }
+    else groups.push({ sig, from: new Date(d), to: new Date(d), due });
+  }
+
+  document.getElementById('dosingList').innerHTML = groups.map(g => `
+    <div style="padding:14px 0;border-top:1px solid var(--hairline)">
+      <div class="day-detail-date">${iso(g.from) === iso(g.to) ? fmtShort(g.from) : `${fmtShort(g.from)} – ${fmtShort(g.to)}`}</div>
+      ${g.due.map(p => lineFor(p)).join('')}
+    </div>`).join('') || '<div class="line">No doses scheduled.</div>';
+}
+
+function renderSupply() {
+  document.getElementById('supplyList').innerHTML = PEPTIDES.map(p => {
+    const total = totalNeeded(p);
+    const vials = vialsNeeded(p);
+    const refill = nextRefill(p);
+    const amount = total.unit === 'mcg' && total.amount >= 1000
+      ? `${(total.amount / 1000).toFixed(1)} mg`
+      : `${total.amount.toFixed(total.amount % 1 ? 1 : 0)} ${total.unit}`;
+    return `
+      <div class="sheet c-${p.color || 'brass'}">
+        <div class="supply-head">
+          <div class="chip">${p.short || p.name.slice(0,3)}</div>
+          <div>
+            <div style="color:var(--espresso);font-size:15px">${p.name}</div>
+            <div class="dose-meta">${doseLabel(p)} · ${(p.days||[]).length}× weekly · ${p.time}</div>
+          </div>
+          <div class="supply-total">${amount}</div>
+        </div>
+        ${vials ? `<div class="kv"><span class="k">Vials to dispense</span><span class="v">${vials} × ${p.vial.amount} ${p.vial.unit}</span></div>` : ''}
+        ${refill ? `<div class="refill-flag${refill.daysAway <= 7 ? ' soon' : ''}">
+          Next vial due <strong>${fmtShort(refill.date)}</strong> — ${refill.daysAway} day${refill.daysAway === 1 ? '' : 's'} away.
+        </div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function renderDuration() {
+  const max = Math.max(...PEPTIDES.map(p => p.durationDays || 0), 1);
+  document.getElementById('durationList').innerHTML = PEPTIDES.map(p => `
+    <div class="bar-row c-${p.color || 'brass'}">
+      <div class="bar-top">
+        <span class="bar-name">${p.name}</span>
+        <span class="bar-days">${p.durationDays} days</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(p.durationDays / max) * 100}%"></div></div>
+      <div class="dose-meta" style="margin-top:6px">${doseLabel(p)} · ${(p.days||[]).length}× per week</div>
+    </div>`).join('');
+}
+
+/* ---------- log sheet ---------- */
+function openLog(pid) {
+  const p = PEPTIDES.find(x => x.id === pid);
+  if (!p) return;
+  const t = today();
+
+  if (isLogged(p.id, t)) { showToast(`${p.name} is already logged today.`); return; }
+  if (!isDue(p, t)) { showToast(`${p.name} isn't scheduled today.`); return; }
+
+  pendingLog = p;
+  chosenSite = null;
+
+  const u = unitsFor(p);
+  document.getElementById('modalTitle').textContent = `Log today's ${p.name}?`;
+  document.getElementById('modalBody').textContent =
+    `${doseLabel(p)}${u ? ` — ${fmtUnits(u.units)} units` : ''} · ${p.time} · ${p.route}`;
+
+  const sites = CFG.protocol.sites || [];
+  const suggested = sites.length ? sites[LOGS.length % sites.length] : null;
+  document.getElementById('sitePick').innerHTML = sites.map(s =>
+    `<button class="site" data-site="${s}" aria-pressed="${s === suggested}">${s}</button>`).join('');
+  chosenSite = suggested;
+
+  document.querySelectorAll('#sitePick .site').forEach(b =>
+    b.addEventListener('click', () => {
+      chosenSite = b.dataset.site;
+      document.querySelectorAll('#sitePick .site').forEach(x =>
+        x.setAttribute('aria-pressed', x === b));
+    }));
+
+  document.getElementById('scrim').classList.add('open');
+}
+
+function closeLog() {
+  document.getElementById('scrim').classList.remove('open');
+  pendingLog = null;
+}
+
+function confirmLog() {
+  if (pendingLog) {
+    addLog(pendingLog.id, today(), chosenSite);
+    showToast(`${pendingLog.name} logged${chosenSite ? ` — ${chosenSite}` : ''}.`);
+  }
+  closeLog();
+  renderToday();
+  renderAdherence();
+  renderCalendar();
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('visible'), 2600);
+}
+
+/* ---------- calendar export ---------- */
+function buildICS() {
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//The Charleston Atelier//Ritual//EN','CALSCALE:GREGORIAN'];
+
+  PEPTIDES.forEach(p => {
+    const u = unitsFor(p);
+    const [hh, mm] = (TIME_AT[p.time] || '09:00').split(':');
+    const title = `${p.name} — ${u ? `${fmtUnits(u.units)} units` : doseLabel(p)}`;
+    occurrences(p).forEach((d, i) => {
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${p.id}-${stamp(d)}-${i}@atelier`,
+        `DTSTAMP:${stamp(new Date())}T000000`,
+        `DTSTART:${stamp(d)}T${hh}${mm}00`,
+        `DTEND:${stamp(d)}T${hh}${pad(Number(mm)+15)}00`,
+        `SUMMARY:${title}`,
+        `DESCRIPTION:${doseLabel(p)} · ${p.route}${u ? ` · draw to ${fmtUnits(u.units)} units` : ''}`,
+        'BEGIN:VALARM','TRIGGER:-PT15M','ACTION:DISPLAY',`DESCRIPTION:${title}`,'END:VALARM',
+        'END:VEVENT');
+    });
+
+    const refill = nextRefill(p);
+    if (refill) {
+      lines.push('BEGIN:VEVENT',
+        `UID:${p.id}-refill-${stamp(refill.date)}@atelier`,
+        `DTSTAMP:${stamp(new Date())}T000000`,
+        `DTSTART;VALUE=DATE:${stamp(addDays(refill.date, -5))}`,
+        `SUMMARY:Refill due — ${p.name}`,
+        'DESCRIPTION:Your current vial runs out in about 5 days.',
+        'END:VEVENT');
+    }
+  });
+
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+
+function downloadICS() {
+  const blob = new Blob([buildICS()], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${CFG.patient.name}-protocol.ics`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast('Calendar file created — open it to add your reminders.');
+}
+
+/* ---------- boot ---------- */
+function wireTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === tab));
+      document.querySelectorAll('.panel').forEach(p =>
+        p.classList.toggle('active', p.id === `panel-${tab.dataset.panel}`));
+    });
+  });
+}
+
+async function boot() {
+  try {
+    const res = await fetch('protocol.json', { cache: 'no-store' });
+    CFG = await res.json();
+  } catch (e) {
+    document.getElementById('todaySummary').textContent =
+      'Could not load the protocol. Please contact the atelier.';
+    return;
+  }
+
+  PEPTIDES = CFG.protocol.peptides || [];
+  START = parse(CFG.protocol.startDate);
+  LOGS = loadLogs();
+  calCursor = today();
+  selectedDay = today();
+  activeWeekPeptide = PEPTIDES[0] && PEPTIDES[0].id;
+
+  document.getElementById('protocolName').textContent = CFG.protocol.name;
+  document.title = `Today's Ritual — ${CFG.patient.name}`;
+  document.getElementById('footnote').innerHTML =
+    `Injection history is stored on this device only.<br>Questions about your protocol? Message the atelier.`;
+
+  renderToday();
+  renderAdherence();
+  renderCalendar();
+  renderDayDetail();
+  renderWeekly();
+  renderDosing();
+  renderSupply();
+  renderDuration();
+
+  // NFC tag on the pen or vial opens the portal with ?log=<peptide id>
+  const tagged = new URLSearchParams(location.search).get('log');
+  if (tagged) {
+    const match = PEPTIDES.find(p => p.id === tagged || p.short === tagged);
+    if (match) openLog(match.id);
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
+document.getElementById('calPrev').addEventListener('click', () => {
+  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() - 1, 1); renderCalendar();
+});
+document.getElementById('calNext').addEventListener('click', () => {
+  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth() + 1, 1); renderCalendar();
+});
+document.getElementById('btnCalendar').addEventListener('click', downloadICS);
+document.getElementById('modalCancel').addEventListener('click', closeLog);
+document.getElementById('modalConfirm').addEventListener('click', confirmLog);
+document.getElementById('scrim').addEventListener('click', e => {
+  if (e.target.id === 'scrim') closeLog();
+});
+
+wireTabs();
+boot();
+</script>
+
+</body>
+</html>
