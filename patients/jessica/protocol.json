@@ -10,6 +10,12 @@
     "name": "Jessica's Protocol",
     "startDate": "2026-07-13",
     "delivery": "pen",
+    "injectionSteps": [
+      "Turn the pen dial to {units}",
+      "Inject at your chosen site",
+      "Press the plunger all the way down"
+    ],
+
     "sites": ["Left abdomen", "Right abdomen", "Left thigh", "Right thigh"],
 
     "pens": [
@@ -28,9 +34,9 @@
         ],
         "schedule": { "on": 5, "off": 2 },
         "phases": [
-          { "name": "Starting",    "clicks": 4,  "days": 14 },
-          { "name": "Ramp-Up",     "clicks": 9,  "days": 14 },
-          { "name": "Maintenance", "clicks": 13, "days": null }
+          { "name": "Starting",    "units": 4,  "days": 14 },
+          { "name": "Ramp-Up",     "units": 9,  "days": 14 },
+          { "name": "Maintenance", "units": 13, "days": null }
         ]
       },
 
@@ -49,11 +55,11 @@
         ],
         "schedule": { "on": 5, "off": 2 },
         "phases": [
-          { "name": "Week 1–2", "clicks": 62,  "days": 14 },
-          { "name": "Week 3–4", "clicks": 87,  "days": 14 },
-          { "name": "Week 5+",  "clicks": 112, "days": null }
+          { "name": "Week 1–2", "units": 62,  "days": 14 },
+          { "name": "Week 3–4", "units": 87,  "days": 14 },
+          { "name": "Week 5+",  "units": 112, "days": null }
         ],
-        "advisory": "Dosed to Tesamorelin only. At these click counts this pen's fixed 4:1 ratio delivers roughly 25% of the Ipamorelin the reference card calls for. Do not increase clicks to compensate — that would overdose Tesamorelin. If the full Ipamorelin dose is needed, it comes from a separate source."
+        "advisory": "Dosed to Tesamorelin only. At these dial settings this pen's fixed 4:1 ratio delivers roughly 25% of the Ipamorelin the reference card calls for. Do not turn the dial higher to compensate — that would overdose Tesamorelin. If the full Ipamorelin dose is needed, it comes from a separate source."
       }
     ]
   }

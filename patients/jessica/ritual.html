@@ -94,18 +94,43 @@
     font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass);
   }
 
-  /* The number that matters: how many clicks to dial. */
+  /* The number that matters: what to turn the pen dial to. */
   .dial {
-    display: flex; align-items: baseline; gap: 9px;
+    display: flex; align-items: baseline; gap: 12px;
     margin-top: 16px; padding-top: 15px;
     border-top: 1px solid var(--hairline);
   }
+  .dial-lead {
+    font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--espresso-soft);
+  }
   .dial-num {
     font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 52px; line-height: 1; color: var(--pc, var(--brass));
+    font-size: 62px; line-height: .85; color: var(--pc, var(--brass));
+    margin-left: auto;
   }
-  .dial-label { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
-  .dial-sub { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+  .dial-sub { font-size: 12.5px; color: var(--muted); margin-top: 9px; }
+
+  /* Dial → inject → press down, in the patient's own order of operations. */
+  .steps { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 6px 0 6px 30px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--espresso-soft);
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(138,115,80,.13);
+    color: var(--brass);
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps strong { color: var(--espresso); font-weight: 600; }
 
   .delivers { margin-top: 13px; }
   .delivers-head {
@@ -349,7 +374,7 @@
 
   <section class="panel active" id="panel-phases">
     <h2 class="section-title">Dosing Phases</h2>
-    <p class="section-sub">Click counts for each phase, exactly as on your reference card.</p>
+    <p class="section-sub">Dial settings for each phase, exactly as on your reference card.</p>
     <div id="phaseList"></div>
   </section>
 
@@ -375,7 +400,7 @@
 
   <section class="panel" id="panel-supply">
     <h2 class="section-title">Pen Supply</h2>
-    <p class="section-sub">How long the pen in your fridge lasts at the current click count.</p>
+    <p class="section-sub">How long the pen in your fridge lasts at the current dial setting.</p>
     <div id="supplyList"></div>
   </section>
 
@@ -401,8 +426,8 @@
 /* ==================================================================
    TODAY'S RITUAL — pen-based protocols
    ------------------------------------------------------------------
-   Peptides are delivered by prefilled multi-dose pens dialled in
-   CLICKS. One click = 0.01 mL, so the dose a click delivers depends
+   Peptides are delivered by prefilled multi-dose pens dialled to a
+   UNIT setting. One unit = 0.01 mL, so the dose a unit delivers depends
    on the pen's blend concentration. All clinical content comes from
    protocol.json; this file is the engine.
 
@@ -412,7 +437,7 @@
 const DAY_MS = 86400000;
 const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const TIME_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
-const ML_PER_CLICK = 0.01;
+const ML_PER_UNIT = 0.01;
 const OPEN_HORIZON = 120;   // days to project an open-ended final phase
 
 let CFG, PENS, START, LOGS, calCursor, selectedDay, pendingLog, chosenSite;
@@ -471,13 +496,13 @@ function occurrences(pen) {
 function doseOn(pen, date) {
   const ph = phaseOn(pen, date);
   if (!ph) return null;
-  const ml = ph.clicks * ML_PER_CLICK;
+  const ml = ph.units * ML_PER_UNIT;
   const components = pen.components.map(c => ({
     name: c.name,
     mg: (c.mg / pen.volumeMl) * ml,
     primary: !!c.dosedTo
   }));
-  return { phase: ph, clicks: ph.clicks, ml, components };
+  return { phase: ph, units: ph.units, ml, components };
 }
 
 const primaryOf = dose =>
@@ -487,7 +512,7 @@ const primaryOf = dose =>
 /* ---------- pen supply ----------
    Walk every scheduled dose from the start, draining a pen and opening
    a fresh one when the next dose won't fit. That gives an honest
-   run-out date even as the click count steps up between phases. */
+   run-out date even as the dial setting steps up between phases. */
 function penTimeline(pen) {
   let remaining = pen.volumeMl;
   let penNo = 1, opened = new Date(START);
@@ -585,10 +610,15 @@ function renderToday() {
       </div>
 
       <div class="dial">
-        <span class="dial-num">${dose.clicks}</span>
-        <span class="dial-label">clicks on the pen</span>
+        <span class="dial-lead">Turn your pen to</span>
+        <span class="dial-num">${dose.units}</span>
       </div>
       <div class="dial-sub">${round(dose.ml, 2)} mL per dose</div>
+
+      <ol class="steps">
+        ${(CFG.protocol.injectionSteps || []).map(s =>
+          `<li>${s.replace('{units}', `<strong>${dose.units}</strong>`)}</li>`).join('')}
+      </ol>
 
       <div class="delivers">
         <div class="delivers-head">Delivers</div>
@@ -688,15 +718,15 @@ function renderPhases() {
         <div class="kv"><span class="k">Frequency</span><span class="v">${pen.schedule.on} days on / ${pen.schedule.off} off</span></div>
         <div class="kv"><span class="k">Route</span><span class="v">${pen.route}</span></div>
         <table class="ptable" style="margin-top:14px">
-          <thead><tr><th>Phase</th><th>Clicks</th><th>${primaryHeader(pen)}</th></tr></thead>
+          <thead><tr><th>Phase</th><th>Units</th><th>${primaryHeader(pen)}</th></tr></thead>
           <tbody>
             ${pen.phases.map(ph => {
-              const ml = ph.clicks * ML_PER_CLICK;
+              const ml = ph.units * ML_PER_UNIT;
               const c = pen.components.find(x => x.dosedTo);
               const mg = c ? (c.mg / pen.volumeMl) * ml
                            : pen.components.reduce((s,x) => s + (x.mg/pen.volumeMl)*ml, 0);
               return `<tr class="${active && active.name === ph.name ? 'now' : ''}">
-                <td>${ph.name}</td><td>${ph.clicks}</td><td>≈${round(mg, 2)} mg</td></tr>`;
+                <td>${ph.name}</td><td>${ph.units}</td><td>≈${round(mg, 2)} mg</td></tr>`;
             }).join('')}
           </tbody>
         </table>
@@ -752,7 +782,7 @@ function renderDayDetail() {
       const dose = doseOn(pen, d);
       return `<div class="line c-${pen.color || 'brass'}">
         <span class="dot"></span><span class="nm">${pen.name}</span>
-        <span class="amt">${dose.clicks} clicks · ${pen.time}</span></div>`;
+        <span class="amt">Turn to ${dose.units} · ${pen.time}</span></div>`;
     }).join('') : '<div class="line"><span class="nm" style="color:var(--muted)">Day off</span></div>'}`;
 }
 
@@ -780,7 +810,7 @@ function renderRhythm() {
         <div class="rhythm">${cells.join('')}</div>
         <div style="margin-top:16px">
           <div class="kv"><span class="k">Current phase</span><span class="v">${dose ? dose.phase.name : '—'}</span></div>
-          <div class="kv"><span class="k">Dial to</span><span class="v">${dose ? dose.clicks + ' clicks' : '—'}</span></div>
+          <div class="kv"><span class="k">Turn pen to</span><span class="v">${dose ? dose.units : '—'}</span></div>
           ${supply ? `<div class="kv"><span class="k">Doses left in pen</span><span class="v">${supply.dosesLeft}</span></div>` : ''}
         </div>
       </div>`;
@@ -806,7 +836,7 @@ function renderSupply() {
           <div class="gauge-track"><div class="gauge-fill${soon ? ' low' : ''}" style="width:${s.pctLeft}%"></div></div>
         </div>
         <div style="margin-top:14px">
-          <div class="kv"><span class="k">Current dose</span><span class="v">${dose ? `${dose.clicks} clicks · ${round(dose.ml,2)} mL` : '—'}</span></div>
+          <div class="kv"><span class="k">Current dose</span><span class="v">${dose ? `${dose.units} units · ${round(dose.ml,2)} mL` : '—'}</span></div>
           <div class="kv"><span class="k">Doses remaining</span><span class="v">${s.dosesLeft}</span></div>
           <div class="kv"><span class="k">Last dose from this pen</span><span class="v">${s.lastDose ? fmtShort(s.lastDose) : '—'}</span></div>
         </div>
@@ -832,7 +862,7 @@ function openLog(id) {
 
   document.getElementById('modalTitle').textContent = `Log today's ${pen.name}?`;
   document.getElementById('modalBody').textContent =
-    `${dose.clicks} clicks · ${round(dose.ml,2)} mL — ${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
+    `Turn your pen to ${dose.units} · ${round(dose.ml,2)} mL — ${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
 
   const sites = CFG.protocol.sites || [];
   const suggested = sites.length ? sites[LOGS.length % sites.length] : null;
@@ -879,7 +909,7 @@ function buildICS() {
     occurrences(pen).forEach((d, i) => {
       const dose = doseOn(pen, d);
       if (!dose) return;
-      const title = `${pen.name} — ${dose.clicks} clicks`;
+      const title = `${pen.name} — turn to ${dose.units}`;
       lines.push('BEGIN:VEVENT',
         `UID:${pen.id}-${stamp(d)}-${i}@atelier`,
         `DTSTAMP:${stamp(new Date())}T000000`,
