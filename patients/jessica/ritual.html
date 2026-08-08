@@ -185,6 +185,9 @@
     background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
     padding: 16px 18px; margin-top: 14px;
   }
+  /* display:flex above beats the default [hidden] rule, so hiding it needs
+     an explicit override — otherwise el.hidden = true does nothing. */
+  .adherence[hidden] { display: none; }
   .stat-num {
     font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px;
     color: var(--espresso); line-height: 1; font-variant-numeric: tabular-nums;
@@ -473,7 +476,7 @@ const TIME_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'2
 const ML_PER_UNIT = 0.01;
 const OPEN_HORIZON = 120;   // days to project an open-ended final phase
 
-let CFG, PENS, START, LOGS, calCursor, selectedDay, pendingLog, chosenSite;
+let CFG, PENS, START, LOGS, TRACKING, calCursor, selectedDay, pendingLog, chosenSite;
 
 const iso    = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const parse  = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
@@ -673,10 +676,15 @@ function renderToday() {
     return;
   }
 
+  if (!TRACKING) {
+    document.getElementById('todaySummary').textContent =
+      `${due.length} pen${due.length === 1 ? '' : 's'} today.`;
+  } else {
   const remaining = due.filter(p => !isLogged(p.id, t)).length;
   document.getElementById('todaySummary').textContent = remaining
     ? `${remaining} of ${due.length} pen${due.length === 1 ? '' : 's'} still to do.`
     : 'Everything logged for today.';
+  }
 
   due.forEach(pen => {
     const dose = doseOn(pen, t);
@@ -731,7 +739,7 @@ function renderToday() {
 
       ${pen.advisory ? `<div class="advisory">${pen.advisory}</div>` : ''}
 
-      ${done ? `<div class="logged">
+      ${!TRACKING ? '' : done ? `<div class="logged">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
         Logged today</div>`
       : `<div class="btn-row"><button class="btn btn-primary" data-log="${pen.id}">Log this dose</button></div>`}
@@ -755,6 +763,7 @@ function nextDueText() {
 function renderAdherence() {
   const t = today();
   const el = document.getElementById('adherence');
+  if (!TRACKING) { el.hidden = true; return; }
   const since = LOGS.length ? parse(LOGS.map(l => l.date).sort()[0]) : null;
 
   let expected = 0, taken = 0;
@@ -1056,6 +1065,7 @@ async function boot() {
   }
 
   PENS = CFG.protocol.pens || [];
+  TRACKING = CFG.protocol.tracking !== false;
   const saved = loadStart();
   START = parse(saved || CFG.protocol.startDate);
   LOGS = loadLogs();
@@ -1065,7 +1075,8 @@ async function boot() {
   document.getElementById('protocolName').textContent = CFG.protocol.name;
   document.title = `Today's Ritual — ${CFG.patient.name}`;
   document.getElementById('footnote').innerHTML =
-    'Injection history is stored on this device only.<br>Questions about your protocol? Message the atelier.';
+    (TRACKING ? 'Injection history is stored on this device only.<br>' : '') +
+    'Questions about your protocol? Message the atelier.';
 
   renderAll();
 
@@ -1074,7 +1085,7 @@ async function boot() {
   if (!saved) openStartPicker();
 
   // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
-  const tagged = new URLSearchParams(location.search).get('log');
+  const tagged = TRACKING ? new URLSearchParams(location.search).get('log') : null;
   if (tagged) {
     const pen = PENS.find(p => p.id === tagged || p.short === tagged);
     if (pen) openLog(pen.id);

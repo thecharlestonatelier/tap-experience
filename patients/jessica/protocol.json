@@ -10,6 +10,9 @@
     "name": "Jessica's Protocol",
     "startDate": "2026-07-13",
     "delivery": "pen",
+
+    "_tracking": "Set true to turn injection logging back on: adds the Log button, the adherence strip and the NFC tap-to-log flow.",
+    "tracking": false,
     "injectionSteps": [
       "Turn the pen dial to {units}",
       "Inject at your chosen site",
