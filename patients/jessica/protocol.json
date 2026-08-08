@@ -13,7 +13,7 @@
     "injectionSteps": [
       "Turn the pen dial to {units}",
       "Inject at your chosen site",
-      "Press the plunger all the way down"
+      "Press the plunger all the way down and hold for 10 seconds"
     ],
 
     "sites": ["Left abdomen", "Right abdomen", "Left thigh", "Right thigh"],

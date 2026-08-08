@@ -322,6 +322,24 @@
 
   .footnote { margin-top: 26px; font-size: 11.5px; line-height: 1.6; color: var(--muted); text-align: center; }
 
+  /* Start-day control */
+  .linky {
+    background: none; border: none; padding: 0;
+    font-family: 'Jost', sans-serif; font-size: 12.5px;
+    color: var(--brass); cursor: pointer;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 22px;
+  }
+  .date-field {
+    width: 100%; padding: 14px 15px; margin-bottom: 16px;
+    border: 1px solid var(--hairline); border-radius: 13px;
+    background: var(--card); color: var(--espresso);
+    font-family: 'Jost', sans-serif; font-size: 16px;
+    font-feature-settings: 'lnum' 1;
+  }
+  .date-field:focus { outline: none; border-color: var(--brass-soft); }
+  .quick { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   @media print {
     .topbar, .tabs, .actions, .btn-row, .scrim, .toast { display: none !important; }
@@ -345,6 +363,7 @@
   <p class="eyebrow" id="todayDate">—</p>
   <h1>Today's Ritual</h1>
   <p class="subhead" id="todaySummary">Loading your protocol…</p>
+  <button class="linky" id="btnStart" hidden></button>
 
   <div class="stack" id="todayStack"></div>
 
@@ -416,6 +435,20 @@
     <div class="btn-row">
       <button class="btn btn-ghost" id="modalCancel">Not now</button>
       <button class="btn btn-primary" id="modalConfirm">Log it</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="startScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+    <p class="modal-eyebrow">Your schedule</p>
+    <h2 class="modal-title" id="startTitle">Which day did you start?</h2>
+    <p class="modal-body">Your dosing days, phases, reminders and refill dates are all counted from this day.</p>
+    <input class="date-field" type="date" id="startInput">
+    <div class="quick" id="startQuick"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="startCancel">Cancel</button>
+      <button class="btn btn-primary" id="startSave">Set my schedule</button>
     </div>
   </div>
 </div>
@@ -556,6 +589,54 @@ function penTimeline(pen) {
   };
 }
 
+/* ---------- start day (device-only) ----------
+   The patient sets the day she actually began. Everything — phases, the
+   on/off rhythm, refill dates, calendar events — counts from it, so the
+   schedule matches her life rather than the day the protocol was written. */
+const startKey = () => `tca.start.${CFG.patient.id}`;
+const loadStart = () => { try { return localStorage.getItem(startKey()); } catch { return null; } };
+const saveStart = s => { try { localStorage.setItem(startKey(), s); } catch {} };
+
+function openStartPicker() {
+  document.getElementById('startInput').value = iso(START);
+
+  const t = today();
+  const quick = [
+    ['Today', t],
+    ['Yesterday', addDays(t, -1)],
+    ['This Monday', addDays(t, -(isoDow(t) - 1))]
+  ];
+  document.getElementById('startQuick').innerHTML = quick.map(([label, d]) =>
+    `<button class="site" data-date="${iso(d)}">${label}</button>`).join('');
+  document.querySelectorAll('#startQuick .site').forEach(b =>
+    b.addEventListener('click', () => {
+      document.getElementById('startInput').value = b.dataset.date;
+      document.querySelectorAll('#startQuick .site').forEach(x => x.setAttribute('aria-pressed', x === b));
+    }));
+
+  document.getElementById('startScrim').classList.add('open');
+}
+
+const closeStartPicker = () => document.getElementById('startScrim').classList.remove('open');
+
+function commitStart() {
+  const v = document.getElementById('startInput').value;
+  if (v) { saveStart(v); START = parse(v); }
+  closeStartPicker();
+  calCursor = today();
+  selectedDay = today();
+  renderAll();
+  showToast(`Schedule set from ${fmtShort(START)}.`);
+}
+
+function renderAll() {
+  const btn = document.getElementById('btnStart');
+  btn.hidden = false;
+  btn.textContent = `Started ${fmtShort(START)} — change`;
+  renderToday(); renderAdherence(); renderPhases();
+  renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
+}
+
 /* ---------- log storage (device-only) ---------- */
 const logKey = () => `tca.ritual.${CFG.patient.id}.v2`;
 const loadLogs = () => { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch { return []; } };
@@ -575,6 +656,14 @@ function renderToday() {
   const due = dueOn(t);
   const stack = document.getElementById('todayStack');
   stack.innerHTML = '';
+
+  if (t < START) {
+    document.getElementById('todaySummary').textContent = 'Your protocol hasn\'t started yet.';
+    stack.innerHTML = `<div class="rest">
+      <div class="rest-title">Begins ${fmtLong(START)}</div>
+      <div class="rest-sub">If that isn't right, change your start day above.</div></div>`;
+    return;
+  }
 
   if (!due.length) {
     document.getElementById('todaySummary').textContent = 'A scheduled day off.';
@@ -967,7 +1056,8 @@ async function boot() {
   }
 
   PENS = CFG.protocol.pens || [];
-  START = parse(CFG.protocol.startDate);
+  const saved = loadStart();
+  START = parse(saved || CFG.protocol.startDate);
   LOGS = loadLogs();
   calCursor = today();
   selectedDay = today();
@@ -977,8 +1067,11 @@ async function boot() {
   document.getElementById('footnote').innerHTML =
     'Injection history is stored on this device only.<br>Questions about your protocol? Message the atelier.';
 
-  renderToday(); renderAdherence(); renderPhases();
-  renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
+  renderAll();
+
+  // First visit on this device: ask which day she actually started, so the
+  // whole schedule is anchored to her, not to a date typed in the chart.
+  if (!saved) openStartPicker();
 
   // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
   const tagged = new URLSearchParams(location.search).get('log');
@@ -999,6 +1092,10 @@ document.getElementById('btnCalendar').addEventListener('click', downloadICS);
 document.getElementById('modalCancel').addEventListener('click', closeLog);
 document.getElementById('modalConfirm').addEventListener('click', confirmLog);
 document.getElementById('scrim').addEventListener('click', e => { if (e.target.id === 'scrim') closeLog(); });
+document.getElementById('btnStart').addEventListener('click', openStartPicker);
+document.getElementById('startSave').addEventListener('click', commitStart);
+document.getElementById('startCancel').addEventListener('click', closeStartPicker);
+document.getElementById('startScrim').addEventListener('click', e => { if (e.target.id === 'startScrim') closeStartPicker(); });
 
 wireTabs();
 boot();
