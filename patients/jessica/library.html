@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#EFE7DC">
+<meta name="robots" content="noindex, nofollow">
+<title>Peptide Library</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/fonts.css">
+
+<style>
+  :root {
+    --bg:       #EFE7DC;
+    --paper:    #F6F1E7;
+    --paper-2:  #F1EADE;
+    --ink:      #4A4137;
+    --ink-soft: #6D6255;
+    --emboss:   #8C8377;
+    --brass:    #A88A5C;
+    --rule:     rgba(120,108,92,.32);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'Jost', -apple-system, sans-serif;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'lnum' 1;
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 4px;
+    max-width: 620px; margin: 0 auto;
+  }
+  .back {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--paper); box-shadow: 0 1px 3px rgba(74,65,55,.14);
+    color: var(--emboss); text-decoration: none; flex: none;
+  }
+  .back svg { width: 15px; height: 15px; }
+  .topbar-label { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); }
+  .count { margin-left: auto; font-size: 11px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+  .tools { max-width: 620px; margin: 0 auto; padding: 12px 20px 4px; }
+  .search {
+    width: 100%; padding: 12px 15px;
+    border: 1px solid var(--rule); border-radius: 12px;
+    background: var(--paper); color: var(--ink);
+    font-family: 'Jost', sans-serif; font-size: 15px;
+  }
+  .search:focus { outline: none; border-color: var(--brass); }
+  .search::placeholder { color: var(--ink-soft); }
+
+  .filters { display: flex; gap: 6px; overflow-x: auto; padding: 12px 20px 4px; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter {
+    flex: none; padding: 7px 13px; border-radius: 999px;
+    border: 1px solid var(--rule); background: transparent;
+    font-family: 'Jost', sans-serif; font-size: 11.5px; letter-spacing: .05em;
+    color: var(--ink-soft); cursor: pointer; white-space: nowrap;
+  }
+  .filter[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+  /* ---------- Deck ---------- */
+  .deck {
+    display: flex; gap: 18px;
+    overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth;
+    padding: 16px 0 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  }
+  .deck::-webkit-scrollbar { display: none; }
+  .deck::before, .deck::after { content: ''; flex: 0 0 calc((100vw - min(86vw, 370px)) / 2 - 9px); }
+
+  .slot { flex: 0 0 auto; width: min(86vw, 370px); scroll-snap-align: center; perspective: 1600px; }
+
+  .card {
+    position: relative; aspect-ratio: 3 / 5;
+    transform-style: preserve-3d;
+    transition: transform .62s cubic-bezier(.4,.1,.2,1);
+  }
+  .slot.flipped .card { transform: rotateY(180deg); }
+
+  .face {
+    /* Explicit sizing rather than inset:0 — the rotated face does not take
+       its size from insets here and collapses to its padding. */
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: 7px; padding: 22px 20px;
+    display: flex; flex-direction: column;
+    background: linear-gradient(155deg, rgba(255,255,255,.55), rgba(255,255,255,0) 45%), var(--paper);
+    box-shadow: 0 1px 1px rgba(74,65,55,.10), 0 10px 26px rgba(74,65,55,.16),
+                inset 0 0 0 1px rgba(255,255,255,.5);
+    overflow: hidden;
+  }
+  .face::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .45;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(120,108,92,.05) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(120,108,92,.04) 0 1px, transparent 1px 3px);
+  }
+  .face.back { transform: rotateY(180deg); background: linear-gradient(155deg, rgba(255,255,255,.4), rgba(255,255,255,0) 45%), var(--paper-2); }
+
+  .name {
+    text-align: center;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 600; font-size: 27px; line-height: 1.1; color: var(--ink);
+    text-shadow: 0 1px 0 rgba(255,255,255,.85);
+  }
+  .cat {
+    text-align: center; margin-top: 5px;
+    font-size: 8.5px; letter-spacing: .17em; text-transform: uppercase; color: var(--ink-soft);
+  }
+
+  .stage { flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 0; }
+  .stage svg.mol { width: 84px; height: 112px; opacity: .95; }
+  .stage img.vial { height: 74%; max-height: 210px; width: auto; object-fit: contain; }
+
+  .rule { height: 1px; background: var(--rule); margin: 6px auto 12px; width: 58%; }
+
+  .bens { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 10px; }
+  .ben { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ink-soft); }
+  .ben svg { width: 13px; height: 13px; flex: none; stroke: var(--brass); fill: none; stroke-width: 1.4; }
+  .ben:nth-child(5) { grid-column: 1 / -1; }
+
+  /* Back */
+  .lab {
+    font-size: 8.5px; letter-spacing: .17em; text-transform: uppercase;
+    color: var(--brass); margin: 12px 0 5px;
+  }
+  .lab:first-of-type { margin-top: 4px; }
+  .body { font-size: 11.5px; line-height: 1.5; color: var(--ink-soft); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    padding: 3px 9px; border-radius: 999px; border: 1px solid var(--rule);
+    font-size: 10px; color: var(--ink-soft);
+  }
+  .srow { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid var(--rule); font-size: 11px; }
+  .srow .k { color: var(--ink-soft); }
+  .srow .v { text-align: right; color: var(--ink); }
+  .scroller { overflow-y: auto; flex: 1; min-height: 0; -webkit-overflow-scrolling: touch; }
+  .scroller::-webkit-scrollbar { display: none; }
+
+  .disc { font-size: 8.5px; line-height: 1.45; color: var(--ink-soft); opacity: .85; margin-top: 10px; }
+
+  .flip {
+    position: absolute; right: 14px; bottom: 11px;
+    background: none; border: none; cursor: pointer;
+    font-family: 'Jost', sans-serif; font-size: 9.5px;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--emboss);
+    display: inline-flex; align-items: center; gap: 5px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .flip svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+
+  .empty { text-align: center; padding: 50px 20px; color: var(--ink-soft); font-size: 14px; }
+  .foot {
+    text-align: center; font-size: 11px; color: var(--ink-soft);
+    padding: 10px 20px calc(26px + env(safe-area-inset-bottom));
+  }
+  .foot a { color: var(--emboss); }
+
+  @media (prefers-reduced-motion: reduce) { .card { transition: none; } .deck { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="./" aria-label="Back to portal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4-8 8 8 8"/></svg>
+  </a>
+  <span class="topbar-label">Peptide Library</span>
+  <span class="count" id="count"></span>
+</div>
+
+<div class="tools">
+  <input class="search" id="search" type="search" placeholder="Search peptides or benefits" autocomplete="off">
+</div>
+<div class="filters" id="filters"></div>
+
+<div class="deck" id="deck"></div>
+<p class="foot" id="foot"></p>
+
+<script>
+/* The Atelier's printed peptide card set, on the phone. Content is parsed
+   from the print file into library/library.json — the molecule drawings and
+   benefit icons are the original inline SVGs, and the one vial photograph is
+   shared by every card rather than embedded fifteen times. */
+
+let DATA, ACTIVE = 'All', QUERY = '';
+
+const FLIP = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/></svg>';
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+function matches(card) {
+  if (ACTIVE !== 'All' && card.category !== ACTIVE) return false;
+  if (!QUERY) return true;
+  const hay = [card.name, card.category, ...card.benefits.map(b => b.label),
+               ...card.sections.map(s => s.v), ...card.combinedWith].join(' ').toLowerCase();
+  return hay.includes(QUERY);
+}
+
+function cardHTML(c) {
+  return `
+  <div class="card">
+    <div class="face front">
+      <div class="name">${esc(c.name)}</div>
+      <div class="cat">${esc(c.category)}</div>
+      <div class="stage">
+        ${c.molecule}
+        <img class="vial" src="library/vial.webp" alt="" loading="lazy">
+      </div>
+      <div class="rule"></div>
+      <div class="bens">
+        ${c.benefits.map(b => `<div class="ben">${b.icon}<span>${esc(b.label)}</span></div>`).join('')}
+      </div>
+      <button class="flip" data-flip>${FLIP} Turn card</button>
+    </div>
+
+    <div class="face back">
+      <div class="name" style="font-size:22px">${esc(c.name)}</div>
+      <div class="cat">${esc(c.category)}</div>
+      <div class="scroller">
+        ${c.sections.map(s => `<div class="lab">${esc(s.k)}</div><p class="body">${esc(s.v)}</p>`).join('')}
+        ${c.combinedWith.length ? `<div class="lab">Commonly Combined With</div>
+          <div class="chips">${c.combinedWith.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>` : ''}
+        <div class="lab">Clinical Snapshot</div>
+        ${c.snapshot.map(s => `<div class="srow"><span class="k">${esc(s.k)}</span><span class="v">${esc(s.v)}</span></div>`).join('')}
+        <p class="disc">${esc(DATA.brand.disclaimer)}</p>
+      </div>
+      <button class="flip" data-flip>${FLIP} Turn back</button>
+    </div>
+  </div>`;
+}
+
+function render() {
+  const deck = document.getElementById('deck');
+  const list = DATA.cards.filter(matches);
+
+  document.getElementById('count').textContent =
+    `${list.length} of ${DATA.cards.length}`;
+
+  deck.innerHTML = list.length
+    ? list.map(c => `<div class="slot">${cardHTML(c)}</div>`).join('')
+    : '<div class="empty">Nothing matches that search.</div>';
+
+  deck.querySelectorAll('[data-flip]').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      btn.closest('.slot').classList.toggle('flipped');
+    }));
+
+  deck.scrollLeft = 0;
+}
+
+function renderFilters() {
+  const cats = ['All', ...new Set(DATA.cards.map(c => c.category))];
+  const el = document.getElementById('filters');
+  el.innerHTML = cats.map(c =>
+    `<button class="filter" data-cat="${esc(c)}" aria-pressed="${c === ACTIVE}">${esc(c)}</button>`).join('');
+  el.querySelectorAll('.filter').forEach(b =>
+    b.addEventListener('click', () => { ACTIVE = b.dataset.cat; renderFilters(); render(); }));
+}
+
+(async function boot() {
+  try {
+    DATA = await (await fetch('library/library.json', { cache: 'no-store' })).json();
+  } catch {
+    document.getElementById('deck').innerHTML =
+      '<div class="empty">Could not load the library.</div>';
+    return;
+  }
+
+  renderFilters();
+  render();
+
+  document.getElementById('search').addEventListener('input', e => {
+    QUERY = e.target.value.trim().toLowerCase();
+    render();
+  });
+
+  document.getElementById('foot').innerHTML =
+    `${esc(DATA.brand.house)}<br>${esc(DATA.brand.contact)}<br>${esc(DATA.brand.consult)}`;
+})();
+</script>
+
+</body>
+</html>
