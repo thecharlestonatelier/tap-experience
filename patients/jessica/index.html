@@ -266,6 +266,10 @@ const PORTAL = {
   // Message shown when a button has no href yet.
   pendingNote: "Your concierge is preparing this — check back shortly.",
 
+  // The atelier's number — used by the message link in the footer.
+  conciergePhone:  "843-377-3713",
+  messagePrompt:   "Your message to Dr. Kendall Phelps-Polirer",
+
   buttons: [
     {
       id:    "ritual",
@@ -275,23 +279,22 @@ const PORTAL = {
     {
       id:    "protocol",
       label: "My Protocol",
-      href:  "ritual.html#protocol"   // same page, protocol detail below
-                                      //   the clinical content lives in protocol.json
+      href:  "cards.html"             // the 3×5 peptide cards, swipe and turn over
     },
     {
-      id:    "concierge",
-      label: "Book Concierge",
-      href:  ""     // e.g. "https://calendly.com/..." or "sms:8433773713"
-    },
-    {
-      id:    "shop",
-      label: "Shop Peptides",
-      href:  ""     // e.g. "https://your-store.com/jessica"
+      id:    "library",
+      label: "Peptide Library",
+      href:  ""     // ← PASTE THE BRANDED FLIPBOOK LINK HERE
     },
     {
       id:    "dashboard",
       label: "Dashboard",
       href:  ""     // e.g. "https://your-dashboard-link"
+    },
+    {
+      id:    "concierge",
+      label: "Book Concierge",
+      href:  ""     // ← PASTE THE GHL BOOKING LINK HERE
     }
   ],
 
@@ -300,7 +303,7 @@ const PORTAL = {
   // Or give a nav item its own `href` to override.
   bottomNav: [
     { icon: "home",      label: "Home",      href: "./" },
-    { icon: "bag",       label: "Shop",      linkTo: "shop" },
+    { icon: "bag",       label: "Library",   linkTo: "library" },
     { icon: "clipboard", label: "Protocol",  linkTo: "protocol" },
     { icon: "concierge", label: "Concierge", linkTo: "concierge" }
   ]

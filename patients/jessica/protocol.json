@@ -1,5 +1,5 @@
 {
-  "_note": "Transcribed from the printed Atelier reference cards. Click counts, concentrations, frequency and route are taken verbatim. ASSUMPTIONS FLAGGED FOR REVIEW: (1) startDate is a placeholder; (2) Glow Blend phase lengths are not stated on the card — 14/14/ongoing assumed; (3) '5 days on / 2 days off' is applied as a rolling cycle from the start date, not fixed weekdays.",
+  "_note": "Transcribed from the reference cards. Concentrations, unit maths, frequency and route are verbatim. ASSUMPTIONS FLAGGED FOR REVIEW: (1) startDate is a placeholder — the patient's own start-day picker overrides it; (2) phase lengths and the titration steps within each card's stated dose range are assumed 14/14/ongoing and need confirming; (3) 'x days on / y off' runs as a rolling cycle from the start day.",
 
   "patient": {
     "name": "Jessica",
@@ -13,6 +13,7 @@
 
     "_tracking": "Set true to turn injection logging back on: adds the Log button, the adherence strip and the NFC tap-to-log flow.",
     "tracking": false,
+
     "injectionSteps": [
       "Turn the pen dial to {units}",
       "Inject at your chosen site",
@@ -20,6 +21,12 @@
     ],
 
     "sites": ["Left abdomen", "Right abdomen", "Left thigh", "Right thigh"],
+
+    "_concierge": "messageOpener is pre-typed into the Messages compose box. iOS gives no way to show italic placeholder text that clears when you type, so this is written as an opening line she continues from — nothing to delete.",
+    "concierge": {
+      "phone": "843-377-3713",
+      "messageOpener": "Hi Dr. Phelps-Polirer — "
+    },
 
     "pens": [
       {
@@ -40,29 +47,33 @@
           { "name": "Starting",    "units": 4,  "days": 14 },
           { "name": "Ramp-Up",     "units": 9,  "days": 14 },
           { "name": "Maintenance", "units": 13, "days": null }
-        ]
+        ],
+        "notes": "Rotate injection sites as needed."
       },
 
       {
-        "id": "tesaipa",
-        "name": "Tesa / Ipa Combo",
-        "short": "tes",
+        "id": "blend2x",
+        "name": "2x Blend",
+        "short": "2x",
         "color": "plum",
-        "volumeMl": 3,
+        "_source": "Peptide Therapy Collective 2x Blend card: 12 mg vial reconstituted with 4 mL BAC water = 0.03 mg per unit. Recommended dose 1–3 mg (30–100 units). The dose is the BLEND TOTAL, not tesamorelin alone.",
+        "volumeMl": 4,
         "route": "Subcutaneous",
         "time": "Evening",
-        "ratioNote": "fixed 4:1",
+        "ratioNote": "10 / 2 mg blend",
         "components": [
-          { "name": "Tesamorelin", "mg": 12, "dosedTo": true },
-          { "name": "Ipamorelin",  "mg": 3 }
+          { "name": "Tesamorelin", "mg": 10 },
+          { "name": "Ipamorelin",  "mg": 2 }
         ],
         "schedule": { "on": 5, "off": 2 },
+        "doseRange": { "minUnits": 30, "maxUnits": 100, "label": "1–3 mg (30–100 units)" },
         "phases": [
-          { "name": "Week 1–2", "units": 62,  "days": 14 },
-          { "name": "Week 3–4", "units": 87,  "days": 14 },
-          { "name": "Week 5+",  "units": 112, "days": null }
+          { "name": "Starting",    "units": 30,  "days": 14 },
+          { "name": "Ramp-Up",     "units": 65,  "days": 14 },
+          { "name": "Maintenance", "units": 100, "days": null }
         ],
-        "advisory": "Dosed to Tesamorelin only. At these dial settings this pen's fixed 4:1 ratio delivers roughly 25% of the Ipamorelin the reference card calls for. Do not turn the dial higher to compensate — that would overdose Tesamorelin. If the full Ipamorelin dose is needed, it comes from a separate source."
+        "notes": "Administer once daily, preferably in a fasted state or prior to bedtime. Rotate injection sites as needed.",
+        "advisory": "The titration steps below sit inside the card's stated 30–100 unit range but were not specified on it — confirm Jessica's actual dial setting before use."
       }
     ]
   }

@@ -324,6 +324,7 @@
   .toast.visible { opacity: 1; transform: translate(-50%, 0); }
 
   .footnote { margin-top: 26px; font-size: 11.5px; line-height: 1.6; color: var(--muted); text-align: center; }
+  .footnote a { color: var(--brass); text-decoration: none; border-bottom: 1px solid var(--hairline); }
 
   /* Start-day control */
   .linky {
@@ -996,6 +997,20 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('visible'), 2800);
 }
 
+/* ---------- message the atelier ----------
+   Opens Messages with the number and an opening line already typed.
+   iOS wants &body= after the number, Android wants ?body= — and neither
+   platform supports placeholder text that clears when you start typing,
+   so the opener is written as a first line she carries on from. */
+function smsHref() {
+  const c = (CFG.protocol && CFG.protocol.concierge) || {};
+  if (!c.phone) return '#';
+  const digits = String(c.phone).replace(/\D/g, '');
+  const number = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+  const sep = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
+  return `sms:${number}${sep}body=${encodeURIComponent(c.messageOpener || '')}`;
+}
+
 /* ---------- calendar export ---------- */
 function buildICS() {
   const pad = n => String(n).padStart(2,'0');
@@ -1076,7 +1091,7 @@ async function boot() {
   document.title = `Today's Ritual — ${CFG.patient.name}`;
   document.getElementById('footnote').innerHTML =
     (TRACKING ? 'Injection history is stored on this device only.<br>' : '') +
-    'Questions about your protocol? Message the atelier.';
+    `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.`;
 
   renderAll();
 

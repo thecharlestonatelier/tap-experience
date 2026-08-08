@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<title>My Protocol</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/fonts.css">
+
+<style>
+  :root {
+    --bg:        #EFE7DC;
+    --paper:     #F6F1E7;
+    --paper-2:   #EFE8DA;
+    --ink:       #4A4137;
+    --ink-soft:  #6D6255;
+    --emboss:    #8C8377;
+    --rule:      rgba(120, 108, 92, .35);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Jost', -apple-system, sans-serif;
+    min-height: 100dvh;
+    display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'lnum' 1;
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: calc(14px + env(safe-area-inset-top)) 20px 6px;
+    max-width: 560px; width: 100%; margin: 0 auto;
+  }
+  .back {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--paper); box-shadow: 0 1px 3px rgba(74,65,55,.14);
+    color: var(--emboss); text-decoration: none; flex: none;
+  }
+  .back svg { width: 15px; height: 15px; }
+  .topbar-label { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); }
+
+  .lede {
+    max-width: 560px; width: 100%; margin: 0 auto;
+    padding: 10px 20px 4px;
+    font-size: 12.5px; color: var(--ink-soft);
+  }
+
+  /* ---------- Swipe deck ---------- */
+  .deck {
+    display: flex;
+    gap: 18px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    padding: 18px 0 10px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .deck::-webkit-scrollbar { display: none; }
+
+  .slot {
+    flex: 0 0 auto;
+    width: min(86vw, 360px);
+    scroll-snap-align: center;
+    perspective: 1600px;
+  }
+  /* Half-gutter either side so the first and last card centre properly. */
+  .deck::before, .deck::after { content: ''; flex: 0 0 calc((100vw - min(86vw, 360px)) / 2 - 9px); }
+
+  .card {
+    position: relative;
+    aspect-ratio: 3 / 5;
+    transform-style: preserve-3d;
+    transition: transform .62s cubic-bezier(.4, .1, .2, 1);
+  }
+  .slot.flipped .card { transform: rotateY(180deg); }
+
+  .face {
+    /* Explicit 100% sizing rather than inset:0 — the rotated back face does
+       not take its size from insets here, and collapses to its padding. */
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 6px;
+    padding: 26px 24px;
+    display: flex; flex-direction: column;
+    background:
+      linear-gradient(155deg, rgba(255,255,255,.55), rgba(255,255,255,0) 42%),
+      var(--paper);
+    box-shadow:
+      0 1px 1px rgba(74,65,55,.10),
+      0 10px 26px rgba(74,65,55,.16),
+      inset 0 0 0 1px rgba(255,255,255,.5);
+    overflow: hidden;
+  }
+  /* Laid paper tooth */
+  .face::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(120,108,92,.05) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(90deg, rgba(120,108,92,.04) 0 1px, transparent 1px 3px);
+  }
+  .face.back { transform: rotateY(180deg); background: linear-gradient(155deg, rgba(255,255,255,.4), rgba(255,255,255,0) 42%), var(--paper-2); }
+
+  .mono {
+    text-align: center;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 27px; line-height: 1; color: var(--emboss);
+    text-shadow: 0 1px 0 rgba(255,255,255,.9), 0 -1px 0 rgba(120,108,92,.18);
+    margin-bottom: 14px;
+  }
+  .mono .a { margin-left: -.32em; }
+
+  .c-title {
+    text-align: center;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 600;
+    font-size: 30px; line-height: 1.1; color: var(--ink);
+    text-shadow: 0 1px 0 rgba(255,255,255,.85), 0 -1px 0 rgba(120,108,92,.14);
+  }
+  .c-sub {
+    text-align: center;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic;
+    font-size: 14px; color: var(--ink-soft);
+    margin-top: 6px;
+  }
+  .c-rule { height: 1px; background: var(--rule); margin: 15px auto; width: 62%; }
+
+  .c-cols { display: flex; gap: 10px; text-align: center; margin-bottom: 4px; }
+  .c-col { flex: 1; }
+  .c-lab {
+    font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--ink-soft); margin-bottom: 5px;
+  }
+  .c-val { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 15px; color: var(--ink); }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  th {
+    font-size: 8.5px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 400; text-align: right; padding-bottom: 8px;
+  }
+  th:first-child { text-align: left; }
+  td {
+    padding: 9px 0; border-top: 1px solid var(--rule);
+    font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink);
+  }
+  td:first-child {
+    text-align: left;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-style: italic; font-size: 16px;
+  }
+  tr.now td { font-weight: 500; }
+  /* Marks the phase she's actually in, like a bookmark on the card. */
+  tr.now td:first-child::after {
+    content: 'now';
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: rgba(140,131,119,.16);
+    font-family: 'Jost', sans-serif;
+    font-style: normal;
+    font-size: 8px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--emboss);
+    vertical-align: middle;
+  }
+
+  .c-foot { margin-top: auto; text-align: center; }
+  .c-house {
+    font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink);
+  }
+  .c-hr { height: 1px; background: var(--rule); margin: 8px auto; width: 42%; }
+  .c-tag {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic;
+    font-size: 11.5px; color: var(--ink-soft);
+  }
+  .c-md { font-size: 11px; color: var(--ink-soft); margin-top: 3px; }
+
+  /* Back face */
+  .b-head {
+    font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--ink-soft); margin-bottom: 9px;
+  }
+  .b-steps { list-style: none; counter-reset: s; margin-bottom: 16px; }
+  .b-steps li {
+    counter-increment: s; position: relative;
+    padding: 5px 0 5px 24px; font-size: 12.5px; line-height: 1.4;
+  }
+  .b-steps li::before {
+    content: counter(s) '.'; position: absolute; left: 2px;
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 14px; color: var(--emboss);
+  }
+  .b-note { font-size: 12px; line-height: 1.55; color: var(--ink-soft); margin-bottom: 14px; }
+  .b-advisory {
+    font-size: 11.5px; line-height: 1.5; color: var(--ink);
+    border-left: 2px solid var(--emboss); padding-left: 10px; margin-bottom: 14px;
+  }
+  .b-kv {
+    display: flex; justify-content: space-between; gap: 14px;
+    width: 100%; align-self: stretch;
+    font-size: 12px; padding: 6px 0; border-top: 1px solid var(--rule);
+  }
+  .b-kv .k { color: var(--ink-soft); }
+  .b-head { align-self: stretch; }
+
+  .flip {
+    position: absolute; right: 14px; bottom: 12px;
+    background: none; border: none; cursor: pointer;
+    font-family: 'Jost', sans-serif;
+    font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--emboss);
+    display: inline-flex; align-items: center; gap: 5px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .flip svg { width: 11px; height: 11px; }
+
+  /* ---------- Dots ---------- */
+  .dots { display: flex; justify-content: center; gap: 7px; padding: 6px 0 calc(26px + env(safe-area-inset-bottom)); }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(120,108,92,.26); border: none; padding: 0; cursor: pointer;
+  }
+  .dot[aria-current="true"] { background: var(--emboss); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card { transition: none; }
+    .deck { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="back" href="./" aria-label="Back to portal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4-8 8 8 8"/></svg>
+  </a>
+  <span class="topbar-label">My Protocol</span>
+</div>
+
+<p class="lede" id="lede">Swipe between your cards · tap Turn card for instructions</p>
+
+<div class="deck" id="deck"></div>
+<div class="dots" id="dots"></div>
+<p class="lede" id="cardsFoot" style="text-align:center;padding-bottom:calc(20px + env(safe-area-inset-bottom))"></p>
+
+<script>
+/* Digital twin of the printed Atelier reference cards: one 3×5 card per
+   peptide, swipeable, front for the dosing table and back for how to give
+   it. Everything comes from protocol.json, so a card can never drift from
+   the schedule the rest of the portal shows. */
+
+const ML_PER_UNIT = 0.01;
+let CFG;
+
+const round = (n, p = 2) => Number(n.toFixed(p));
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const today = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+const DAY_MS = 86400000;
+
+function startDate() {
+  try {
+    const saved = localStorage.getItem(`tca.start.${CFG.patient.id}`);
+    if (saved) return parse(saved);
+  } catch {}
+  return parse(CFG.protocol.startDate);
+}
+
+// Which phase is running today — the card marks it, like a bookmark.
+function activePhase(pen) {
+  const i = Math.round((today() - startDate()) / DAY_MS);
+  if (i < 0) return null;
+  let acc = 0;
+  for (const ph of pen.phases) {
+    const len = ph.days == null ? Infinity : ph.days;
+    if (i < acc + len) return ph;
+    acc += len;
+  }
+  return null;
+}
+
+const totalMg = (pen, units) =>
+  pen.components.reduce((s, c) => s + (c.mg / pen.volumeMl) * (units * ML_PER_UNIT), 0);
+
+const componentMg = (pen, c, units) => (c.mg / pen.volumeMl) * (units * ML_PER_UNIT);
+
+const FLIP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/></svg>';
+
+function cardHTML(pen) {
+  const active = activePhase(pen);
+  const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
+  const steps = (CFG.protocol.injectionSteps || []);
+
+  const rows = pen.phases.map(ph => `
+    <tr class="${active && active.name === ph.name ? 'now' : ''}">
+      <td>${ph.name}</td>
+      <td>${ph.units}</td>
+      <td>≈${round(totalMg(pen, ph.units), 2)} mg</td>
+    </tr>`).join('');
+
+  const breakdown = active ? pen.components.map(c => `
+    <div class="b-kv"><span class="k">${c.name}</span>
+    <span>${round(componentMg(pen, c, active.units), 2)} mg</span></div>`).join('') : '';
+
+  return `
+  <div class="card">
+    <div class="face front">
+      <div class="mono"><span class="c">C</span><span class="a">A</span></div>
+      <div class="c-title">${pen.name}</div>
+      <div class="c-sub">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
+      <div class="c-rule"></div>
+      <div class="c-cols">
+        <div class="c-col"><div class="c-lab">Frequency</div>
+          <div class="c-val">${pen.schedule.on} on / ${pen.schedule.off} off</div></div>
+        <div class="c-col"><div class="c-lab">Route</div>
+          <div class="c-val">${pen.route}</div></div>
+      </div>
+      <table>
+        <thead><tr><th>Phase</th><th>Units</th><th>Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="c-foot">
+        <div class="c-house">The Charleston Atelier</div>
+        <div class="c-hr"></div>
+        <div class="c-tag">Clinical Luxury · Medical Wellness</div>
+        <div class="c-md">Kendall Phelps-Polirer, MD</div>
+      </div>
+      <button class="flip" data-flip>${FLIP_ICON} Turn card</button>
+    </div>
+
+    <div class="face back">
+      <div class="mono"><span class="c">C</span><span class="a">A</span></div>
+      <div class="b-head">How to give it</div>
+      <ol class="b-steps">
+        ${steps.map(s => `<li>${s.replace('{units}', `<strong>${active ? active.units : '—'}</strong>`)}</li>`).join('')}
+      </ol>
+      ${pen.notes ? `<div class="b-note">${pen.notes}</div>` : ''}
+      ${pen.advisory ? `<div class="b-advisory">${pen.advisory}</div>` : ''}
+      ${active ? `<div class="b-head" style="margin-top:auto">Today's dose delivers</div>${breakdown}` : ''}
+      <button class="flip" data-flip>${FLIP_ICON} Turn back</button>
+    </div>
+  </div>`;
+}
+
+function render() {
+  const deck = document.getElementById('deck');
+  const dots = document.getElementById('dots');
+  const pens = CFG.protocol.pens || [];
+
+  deck.innerHTML = pens.map(p => `<div class="slot">${cardHTML(p)}</div>`).join('');
+  dots.innerHTML = pens.map((p, i) =>
+    `<button class="dot" aria-label="${p.name}" aria-current="${i === 0}"></button>`).join('');
+
+  deck.querySelectorAll('[data-flip]').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      btn.closest('.slot').classList.toggle('flipped');
+    }));
+
+  const slots = [...deck.querySelectorAll('.slot')];
+  const dotEls = [...dots.querySelectorAll('.dot')];
+
+  dotEls.forEach((d, i) => d.addEventListener('click', () =>
+    slots[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })));
+
+  // Mark the card nearest the centre of the viewport as current.
+  const sync = () => {
+    const mid = deck.scrollLeft + deck.clientWidth / 2;
+    let best = 0, bestD = Infinity;
+    slots.forEach((s, i) => {
+      const c = s.offsetLeft + s.offsetWidth / 2;
+      const d = Math.abs(c - mid);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    dotEls.forEach((d, i) => d.setAttribute('aria-current', i === best));
+  };
+  deck.addEventListener('scroll', () => requestAnimationFrame(sync), { passive: true });
+  sync();
+}
+
+(async function boot() {
+  try {
+    CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+  } catch {
+    document.getElementById('lede').textContent =
+      'Could not load your protocol. Please contact the atelier.';
+    return;
+  }
+  document.title = `My Protocol — ${CFG.patient.name}`;
+  render();
+
+  const c = (CFG.protocol && CFG.protocol.concierge) || {};
+  if (c.phone) {
+    const digits = String(c.phone).replace(/\D/g, '');
+    const number = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+    const sep = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
+    const href = `sms:${number}${sep}body=${encodeURIComponent(c.messageOpener || '')}`;
+    document.getElementById('cardsFoot').innerHTML =
+      `Questions about your protocol? <a href="${href}" style="color:var(--emboss)">Message the atelier</a>.`;
+  }
+})();
+</script>
+
+</body>
+</html>
