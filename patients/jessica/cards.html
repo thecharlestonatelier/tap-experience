@@ -113,14 +113,8 @@
   }
   .face.back { transform: rotateY(180deg); background: linear-gradient(155deg, rgba(255,255,255,.4), rgba(255,255,255,0) 42%), var(--paper-2); }
 
-  .mono {
-    text-align: center;
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 27px; line-height: 1; color: var(--emboss);
-    text-shadow: 0 1px 0 rgba(255,255,255,.9), 0 -1px 0 rgba(120,108,92,.18);
-    margin-bottom: 14px;
-  }
-  .mono .a { margin-left: -.32em; }
+  .mono { text-align: center; line-height: 0; color: var(--emboss); margin-bottom: 14px; }
+  .mono .mark { height: 30px; width: auto; }
 
   .c-title {
     text-align: center;
@@ -318,7 +312,7 @@ function cardHTML(pen) {
   return `
   <div class="card">
     <div class="face front">
-      <div class="mono"><span class="c">C</span><span class="a">A</span></div>
+      <div class="mono"><svg class="mark" viewBox="0 108 117 160" fill="currentColor" role="img" aria-label="The Charleston Atelier"><text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text><text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text></svg></div>
       <div class="c-title">${pen.name}</div>
       <div class="c-sub">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
       <div class="c-rule"></div>
@@ -342,7 +336,7 @@ function cardHTML(pen) {
     </div>
 
     <div class="face back">
-      <div class="mono"><span class="c">C</span><span class="a">A</span></div>
+      <div class="mono"><svg class="mark" viewBox="0 108 117 160" fill="currentColor" role="img" aria-label="The Charleston Atelier"><text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text><text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text></svg></div>
       <div class="b-head">How to give it</div>
       <ol class="b-steps">
         ${steps.map(s => `<li>${s.replace('{units}', `<strong>${active ? active.units : '—'}</strong>`)}</li>`).join('')}

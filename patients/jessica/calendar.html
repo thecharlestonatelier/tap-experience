@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<title>Calendar</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/fonts.css">
+
+<style>
+  :root {
+    --bg:            #F3EBE1;
+    --card:          #F8F2EA;
+    --espresso:      #3B2E20;
+    --espresso-soft: #4A3B2C;
+    --muted:         #8A7C6A;
+    --brass:         #8A7350;
+    --hairline:      rgba(138,115,80,.18);
+    --shadow:        0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045);
+    --clay:  #A8705A;
+    --sage:  #7E9080;
+    --gold:  #A38C69;
+    --plum:  #8A6B75;
+  }
+  .c-clay { --pc: var(--clay); } .c-sage { --pc: var(--sage); }
+  .c-brass{ --pc: var(--gold); } .c-plum { --pc: var(--plum); }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg); color: var(--espresso-soft);
+    font-family: 'Jost', -apple-system, sans-serif;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'lnum' 1;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 14px 16px calc(36px + env(safe-area-inset-bottom)); }
+
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 8px 4px 18px; }
+  .back {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--card); box-shadow: var(--shadow);
+    color: var(--brass); text-decoration: none; flex: none;
+  }
+  .back svg { width: 15px; height: 15px; }
+  .topbar-label { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+  .mono { margin-left: auto; line-height: 0; color: var(--brass); }
+  .mono .mark { height: 26px; width: auto; }
+
+  .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .month {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 30px; color: var(--espresso);
+  }
+  .nav-btn {
+    background: none; border: none; cursor: pointer; color: var(--brass);
+    padding: 8px 12px; font-size: 20px; line-height: 1;
+  }
+  .today-btn {
+    background: none; border: 1px solid var(--hairline); border-radius: 999px;
+    padding: 6px 12px; font-family: 'Jost', sans-serif; font-size: 10.5px;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--muted); cursor: pointer;
+  }
+  .sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+
+  /* ---------- Grid ---------- */
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .dow {
+    text-align: center; font-size: 9.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); padding-bottom: 8px;
+  }
+  .day {
+    min-height: 72px;
+    background: var(--card); border: none; border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 7px 5px 6px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-family: 'Jost', sans-serif; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .day.out { background: transparent; box-shadow: none; }
+  .day.out .dnum { color: rgba(138,124,106,.35); }
+  .day.rest { background: rgba(248,242,234,.5); box-shadow: none; }
+  .day.today { box-shadow: inset 0 0 0 1.6px var(--brass); }
+  .day.sel { box-shadow: inset 0 0 0 1.6px var(--espresso); }
+  .dnum { font-size: 12.5px; color: var(--espresso-soft); font-variant-numeric: tabular-nums; }
+  .day.today .dnum { color: var(--brass); font-weight: 600; }
+
+  .pill {
+    width: 100%; border-radius: 5px;
+    background: var(--pc); color: #FBF6F0;
+    font-size: 9.5px; line-height: 1.25; padding: 2px 3px;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* ---------- Day detail ---------- */
+  .detail {
+    margin-top: 18px; background: var(--card);
+    border-radius: 18px; box-shadow: var(--shadow); padding: 18px;
+  }
+  .detail-date {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px; color: var(--espresso); margin-bottom: 2px;
+  }
+  .detail-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 0; border-top: 1px solid var(--hairline);
+  }
+  .swatch { width: 9px; height: 9px; border-radius: 50%; background: var(--pc); flex: none; }
+  .rname { color: var(--espresso); font-size: 14px; }
+  .rmeta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .rdose { margin-left: auto; text-align: right; white-space: nowrap; }
+  .rdose b {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 21px; font-weight: 500; color: var(--pc);
+  }
+  .rdose span { font-size: 11px; color: var(--muted); display: block; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  .leg { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
+  .leg i { width: 9px; height: 9px; border-radius: 50%; background: var(--pc); display: inline-block; }
+
+  .foot { margin-top: 22px; text-align: center; font-size: 11.5px; color: var(--muted); }
+  .foot a { color: var(--brass); }
+
+  @media (max-width: 380px) {
+    .day { min-height: 62px; }
+    .pill { font-size: 8.5px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./" aria-label="Back to portal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4-8 8 8 8"/></svg>
+    </a>
+    <span class="topbar-label">Calendar</span>
+    <span class="mono"><svg class="mark" viewBox="0 108 117 160" fill="currentColor" role="img" aria-label="The Charleston Atelier"><text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text><text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text></svg></span>
+  </div>
+
+  <div class="head">
+    <button class="nav-btn" id="prev" aria-label="Previous month">‹</button>
+    <div class="month" id="month"></div>
+    <button class="nav-btn" id="next" aria-label="Next month">›</button>
+  </div>
+  <p class="sub" id="sub"></p>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="detail" id="detail"></div>
+  <div class="legend" id="legend"></div>
+
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+/* A month at a glance: every dosing day carries the pen and the number to
+   turn it to, so the calendar answers "what do I do today" without opening
+   anything else. Dates and doses come from the same protocol.json the rest
+   of the portal reads, anchored to the start day she picked. */
+
+const DAY_MS = 86400000;
+const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const ML_PER_UNIT = 0.01;
+
+let CFG, PENS, START, cursor, selected;
+
+const iso    = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parse  = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays= (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
+const isoDow = d => (d.getDay() + 6) % 7 + 1;
+const today  = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+const round  = (n,p=2) => Number(n.toFixed(p));
+const fmtLong = d => d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+
+const totalDays = pen => pen.phases.reduce((n,ph) => n + (ph.days == null ? 120 : ph.days), 0);
+
+function phaseOn(pen, date) {
+  const i = Math.round((date - START) / DAY_MS);
+  if (i < 0) return null;
+  let acc = 0;
+  for (const ph of pen.phases) {
+    const len = ph.days == null ? Infinity : ph.days;
+    if (i < acc + len) return ph;
+    acc += len;
+  }
+  return null;
+}
+
+function isDue(pen, date) {
+  const i = Math.round((date - START) / DAY_MS);
+  if (i < 0 || i >= totalDays(pen)) return false;
+  const { on, off } = pen.schedule;
+  return (i % (on + off)) < on;
+}
+
+const dueOn = date => PENS.filter(p => isDue(p, date));
+
+function doseOn(pen, date) {
+  const ph = phaseOn(pen, date);
+  if (!ph) return null;
+  const ml = ph.units * ML_PER_UNIT;
+  return {
+    phase: ph, units: ph.units, ml,
+    components: pen.components.map(c => ({ name: c.name, mg: (c.mg / pen.volumeMl) * ml })),
+    totalMg: pen.components.reduce((s,c) => s + (c.mg / pen.volumeMl) * ml, 0)
+  };
+}
+
+const cls = pen => `c-${pen.color || 'brass'}`;
+
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  document.getElementById('month').textContent =
+    cursor.toLocaleDateString(undefined, { month:'long', year:'numeric' });
+
+  DOW.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'dow'; h.textContent = d[0];
+    grid.appendChild(h);
+  });
+
+  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const start = addDays(first, -(isoDow(first) - 1));
+  const t = today();
+  let dosingDays = 0;
+
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i);
+    const inMonth = d.getMonth() === cursor.getMonth();
+    const due = dueOn(d);
+    if (inMonth && due.length) dosingDays++;
+
+    const b = document.createElement('button');
+    b.className = 'day'
+      + (inMonth ? '' : ' out')
+      + (due.length ? '' : ' rest')
+      + (iso(d) === iso(t) ? ' today' : '')
+      + (selected && iso(d) === iso(selected) ? ' sel' : '');
+
+    b.innerHTML = `<span class="dnum">${d.getDate()}</span>` +
+      due.map(pen => {
+        const dose = doseOn(pen, d);
+        return `<span class="pill ${cls(pen)}">${pen.short || pen.name.slice(0,3)} ${dose.units}</span>`;
+      }).join('');
+
+    b.addEventListener('click', () => { selected = d; render(); });
+    grid.appendChild(b);
+  }
+
+  document.getElementById('sub').textContent =
+    `${dosingDays} dosing ${dosingDays === 1 ? 'day' : 'days'} this month · the number is what to turn the pen to`;
+
+  renderDetail();
+}
+
+function renderDetail() {
+  const d = selected || today();
+  const due = dueOn(d);
+  const el = document.getElementById('detail');
+
+  el.innerHTML = `
+    <div class="detail-date">${fmtLong(d)}</div>
+    <div class="detail-sub">${due.length
+      ? `${due.length} pen${due.length === 1 ? '' : 's'} scheduled`
+      : (d < START ? 'Before your protocol begins' : 'A scheduled day off')}</div>
+    ${due.map(pen => {
+      const dose = doseOn(pen, d);
+      return `
+      <div class="row ${cls(pen)}">
+        <span class="swatch"></span>
+        <div>
+          <div class="rname">${pen.name}</div>
+          <div class="rmeta">${dose.phase.name} · ${pen.time} · ${pen.route}</div>
+          <div class="rmeta">${dose.components.map(c => `${c.name} ${round(c.mg,2)} mg`).join(' · ')}</div>
+        </div>
+        <div class="rdose"><b>${dose.units}</b><span>units · ${round(dose.ml,2)} mL</span></div>
+      </div>`;
+    }).join('')}`;
+}
+
+function renderLegend() {
+  document.getElementById('legend').innerHTML = PENS.map(p =>
+    `<span class="leg ${cls(p)}"><i></i>${p.name}</span>`).join('');
+}
+
+(async function boot() {
+  try {
+    CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+  } catch {
+    document.getElementById('detail').textContent = 'Could not load your protocol.';
+    return;
+  }
+
+  PENS = CFG.protocol.pens || [];
+  let saved = null;
+  try { saved = localStorage.getItem(`tca.start.${CFG.patient.id}`); } catch {}
+  START = parse(saved || CFG.protocol.startDate);
+
+  cursor = today();
+  selected = today();
+  document.title = `Calendar — ${CFG.patient.name}`;
+
+  render();
+  renderLegend();
+
+  document.getElementById('prev').addEventListener('click', () => {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); render();
+  });
+  document.getElementById('next').addEventListener('click', () => {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1); render();
+  });
+
+  const c = (CFG.protocol && CFG.protocol.concierge) || {};
+  if (c.phone) {
+    const digits = String(c.phone).replace(/\D/g, '');
+    const number = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+    const sep = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
+    document.getElementById('foot').innerHTML =
+      `Questions about your protocol? <a href="sms:${number}${sep}body=${encodeURIComponent(c.messageOpener || '')}">Message the atelier</a>.`;
+  }
+})();
+</script>
+
+</body>
+</html>
