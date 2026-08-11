@@ -9,6 +9,7 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
 
 <style>
   :root {
@@ -160,6 +161,31 @@
     font-size: 12.5px; line-height: 1.55; color: var(--espresso-soft);
   }
   .advisory strong { color: var(--espresso); }
+
+  /* ---------- Refill notice ---------- */
+  .refill-card {
+    background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
+    border-left: 4px solid var(--alert);
+    padding: 17px 18px; margin-bottom: 14px;
+  }
+  .refill-card.done { border-left-color: var(--muted); }
+  .refill-head {
+    font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--alert); margin-bottom: 6px;
+  }
+  .refill-card.done .refill-head { color: var(--muted); }
+  .refill-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px; color: var(--espresso); line-height: 1.2;
+  }
+  .refill-body { font-size: 13px; color: var(--muted); margin-top: 5px; }
+  .refill-btn {
+    display: inline-block; margin-top: 13px;
+    padding: 11px 18px; border-radius: 12px;
+    background: var(--espresso); color: #F6F0E7;
+    font-size: 12px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; text-decoration: none;
+  }
 
   .btn-row { display: flex; gap: 10px; margin-top: 17px; }
   .btn {
@@ -369,6 +395,8 @@
   <p class="subhead" id="todaySummary">Loading your protocol…</p>
   <button class="linky" id="btnStart" hidden></button>
 
+  <div id="refills"></div>
+
   <div class="stack" id="todayStack"></div>
 
   <div class="adherence" id="adherence" hidden>
@@ -471,136 +499,11 @@
    Injection logs are stored ON THIS DEVICE only (localStorage).
    ================================================================== */
 
-const DAY_MS = 86400000;
-const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const TIME_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
-const ML_PER_UNIT = 0.01;
-const OPEN_HORIZON = 120;   // days to project an open-ended final phase
+let LOGS, TRACKING, calCursor, selectedDay, pendingLog, chosenSite;
 
-let CFG, PENS, START, LOGS, TRACKING, calCursor, selectedDay, pendingLog, chosenSite;
-
-const iso    = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const parse  = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
-const addDays= (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
-const isoDow = d => (d.getDay() + 6) % 7 + 1;
-const today  = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
-const dayIndex = d => Math.round((d - START) / DAY_MS);
-
-const fmtLong  = d => d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
-const fmtShort = d => d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
-const round    = (n, p = 2) => Number(n.toFixed(p));
-
-/* ---------- phases ---------- */
-function totalDays(pen) {
-  let n = 0;
-  for (const ph of pen.phases) n += (ph.days == null ? OPEN_HORIZON : ph.days);
-  return n;
-}
-
-// Which phase is active on a given date, by days elapsed since start.
-function phaseOn(pen, date) {
-  const i = dayIndex(date);
-  if (i < 0) return null;
-  let acc = 0;
-  for (const ph of pen.phases) {
-    const len = ph.days == null ? Infinity : ph.days;
-    if (i < acc + len) return ph;
-    acc += len;
-  }
-  return null;
-}
-
-/* ---------- schedule: N days on, N days off, rolling from start ---------- */
-function isDue(pen, date) {
-  const i = dayIndex(date);
-  if (i < 0 || i >= totalDays(pen)) return false;
-  const { on, off } = pen.schedule;
-  return (i % (on + off)) < on;
-}
-
-const dueOn = date => PENS.filter(p => isDue(p, date));
-
-function occurrences(pen) {
-  const out = [];
-  for (let i = 0; i < totalDays(pen); i++) {
-    const d = addDays(START, i);
-    if (isDue(pen, d)) out.push(d);
-  }
-  return out;
-}
-
-/* ---------- what a dose delivers ---------- */
-function doseOn(pen, date) {
-  const ph = phaseOn(pen, date);
-  if (!ph) return null;
-  const ml = ph.units * ML_PER_UNIT;
-  const components = pen.components.map(c => ({
-    name: c.name,
-    mg: (c.mg / pen.volumeMl) * ml,
-    primary: !!c.dosedTo
-  }));
-  return { phase: ph, units: ph.units, ml, components };
-}
-
-const primaryOf = dose =>
-  dose.components.find(c => c.primary) ||
-  { name: 'total peptide', mg: dose.components.reduce((s, c) => s + c.mg, 0) };
-
-/* ---------- pen supply ----------
-   Walk every scheduled dose from the start, draining a pen and opening
-   a fresh one when the next dose won't fit. That gives an honest
-   run-out date even as the dial setting steps up between phases. */
-function penTimeline(pen) {
-  let remaining = pen.volumeMl;
-  let penNo = 1, opened = new Date(START);
-  const t = today();
-  let current = null;
-
-  for (const d of occurrences(pen)) {
-    const dose = doseOn(pen, d);
-    if (!dose) continue;
-    if (dose.ml > remaining + 1e-9) { penNo++; opened = new Date(d); remaining = pen.volumeMl; }
-    if (d >= t && !current) {
-      current = { penNo, opened: new Date(opened), remainingBefore: remaining };
-    }
-    remaining -= dose.ml;
-    if (current && !current.runsOut && remaining < (doseOn(pen, d) || {}).ml) {
-      current.runsOut = new Date(d);
-      current.dosesLeft = 0;
-    }
-  }
-
-  if (!current) return null;
-
-  // Count doses still available from the pen in use.
-  let left = current.remainingBefore, doses = 0, runsOut = null;
-  for (const d of occurrences(pen)) {
-    if (d < t) continue;
-    const dose = doseOn(pen, d);
-    if (!dose || dose.ml > left + 1e-9) { runsOut = runsOut || d; break; }
-    left -= dose.ml;
-    doses++;
-    runsOut = d;
-  }
-
-  return {
-    penNo: current.penNo,
-    pctLeft: Math.max(0, Math.min(100, (current.remainingBefore / pen.volumeMl) * 100)),
-    mlLeft: current.remainingBefore,
-    dosesLeft: doses,
-    lastDose: runsOut,
-    daysLeft: runsOut ? Math.round((runsOut - t) / DAY_MS) : null
-  };
-}
-
-/* ---------- start day (device-only) ----------
-   The patient sets the day she actually began. Everything — phases, the
-   on/off rhythm, refill dates, calendar events — counts from it, so the
-   schedule matches her life rather than the day the protocol was written. */
-const startKey = () => `tca.start.${CFG.patient.id}`;
-const loadStart = () => { try { return localStorage.getItem(startKey()); } catch { return null; } };
-const saveStart = s => { try { localStorage.setItem(startKey(), s); } catch {} };
-
+/* ---------- start day ----------
+   The patient sets the day she actually began. Phases, the on/off rhythm,
+   pen supply and the calendar all count from it. */
 function openStartPicker() {
   document.getElementById('startInput').value = iso(START);
 
@@ -625,7 +528,7 @@ const closeStartPicker = () => document.getElementById('startScrim').classList.r
 
 function commitStart() {
   const v = document.getElementById('startInput').value;
-  if (v) { saveStart(v); START = parse(v); }
+  if (v) setStart(v);
   closeStartPicker();
   calCursor = today();
   selectedDay = today();
@@ -637,8 +540,30 @@ function renderAll() {
   const btn = document.getElementById('btnStart');
   btn.hidden = false;
   btn.textContent = `Started ${fmtShort(START)} — change`;
-  renderToday(); renderAdherence(); renderPhases();
+  renderToday(); renderRefills(); renderAdherence(); renderPhases();
   renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
+}
+
+/* Ask for a refill a week out, and keep asking once the pen is empty. */
+function renderRefills() {
+  const el = document.getElementById('refills');
+  const notices = PENS.filter(p =>
+    needsRefill(p) || (isSpent(p) && supply(p).endReason === 'supply'));
+
+  el.innerHTML = notices.map(pen => {
+    const s = supply(pen);
+    const left = daysUntilOut(pen);
+    const out = isSpent(pen);
+    return `
+      <div class="refill-card${out ? ' done' : ''}">
+        <div class="refill-head">${out ? 'Pen empty' : 'Refill soon'}</div>
+        <div class="refill-title">${pen.name}</div>
+        <div class="refill-body">${out
+          ? `Your last dose from this pen was ${fmtShort(s.lastDose)}. It is paused on your schedule until a new pen arrives.`
+          : `Your last dose from this pen is ${fmtShort(s.lastDose)} — ${left} day${left === 1 ? '' : 's'} away.`}</div>
+        <a class="refill-btn" href="${refillHref(pen)}">Message for a refill</a>
+      </div>`;
+  }).join('');
 }
 
 /* ---------- log storage (device-only) ---------- */
@@ -653,7 +578,20 @@ function addLog(id, date, site) {
   saveLogs();
 }
 
-/* ---------- render: today ---------- */
+/* View-model over the shared supply engine — what the gauges display. */
+function supplyView(pen) {
+  const s = supply(pen);
+  return {
+    pctLeft: s.pctLeft,
+    mlLeft: s.mlLeft,
+    dosesLeft: dosesLeft(pen),
+    lastDose: s.lastDose,
+    daysLeft: daysUntilOut(pen),
+    spent: isSpent(pen),
+    endReason: s.endReason
+  };
+}
+
 function renderToday() {
   const t = today();
   document.getElementById('todayDate').textContent = fmtLong(t);
@@ -690,7 +628,7 @@ function renderToday() {
   due.forEach(pen => {
     const dose = doseOn(pen, t);
     if (!dose) return;
-    const supply = penTimeline(pen);
+    const supply = supplyView(pen);
     const done = isLogged(pen.id, t);
     const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
 
@@ -730,7 +668,7 @@ function renderToday() {
       ${supply ? `
       <div class="gauge">
         <div class="gauge-top">
-          <span>Pen ${supply.penNo} · ${supply.dosesLeft} dose${supply.dosesLeft === 1 ? '' : 's'} left</span>
+          <span>${supply.dosesLeft} dose${supply.dosesLeft === 1 ? '' : 's'} left in this pen</span>
           <span>${Math.round(supply.pctLeft)}%</span>
         </div>
         <div class="gauge-track">
@@ -898,7 +836,7 @@ function renderRhythm() {
       </div>`);
     }
     const dose = doseOn(pen, t) || doseOn(pen, addDays(t, 1));
-    const supply = penTimeline(pen);
+    const supply = supplyView(pen);
     return `
       <div class="sheet c-${pen.color || 'brass'}">
         <div class="supply-head">
@@ -919,16 +857,16 @@ function renderRhythm() {
 /* ---------- render: supply ---------- */
 function renderSupply() {
   document.getElementById('supplyList').innerHTML = PENS.map(pen => {
-    const s = penTimeline(pen);
+    const s = supplyView(pen);
     const dose = doseOn(pen, today());
     if (!s) return '';
-    const soon = s.daysLeft != null && s.daysLeft <= 7;
+    const soon = s.daysLeft != null && s.daysLeft <= REFILL_WARNING_DAYS;
     return `
       <div class="sheet c-${pen.color || 'brass'}">
         <div class="supply-head">
           <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
           <div><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
-          <div class="dose-meta">Pen ${s.penNo} · ${pen.volumeMl} mL</div></div>
+          <div class="dose-meta">${pen.volumeMl} mL pen${s.spent ? ' · empty' : ''}</div></div>
         </div>
         <div class="gauge">
           <div class="gauge-top"><span>${round(s.mlLeft, 2)} mL remaining</span><span>${Math.round(s.pctLeft)}%</span></div>
@@ -939,10 +877,12 @@ function renderSupply() {
           <div class="kv"><span class="k">Doses remaining</span><span class="v">${s.dosesLeft}</span></div>
           <div class="kv"><span class="k">Last dose from this pen</span><span class="v">${s.lastDose ? fmtShort(s.lastDose) : '—'}</span></div>
         </div>
-        <div class="flag${soon ? ' soon' : ''}">
-          ${s.daysLeft != null
-            ? `This pen runs out in about <strong>${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'}</strong>${soon ? ' — time to arrange a refill.' : '.'}`
-            : 'Supply projection unavailable.'}
+        <div class="flag${soon || s.spent ? ' soon' : ''}">
+          ${s.spent
+            ? `This pen is empty — its last dose was <strong>${fmtShort(s.lastDose)}</strong>. It is paused on your schedule until a new pen arrives.`
+            : s.daysLeft != null
+              ? `Last dose from this pen is <strong>${fmtShort(s.lastDose)}</strong>, about ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} away.${soon ? ' Time to arrange a refill.' : ''}`
+              : 'Supply projection unavailable.'}
         </div>
       </div>`;
   }).join('');
@@ -997,19 +937,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('visible'), 2800);
 }
 
-/* ---------- message the atelier ----------
-   Opens Messages with the number and an opening line already typed.
-   iOS wants &body= after the number, Android wants ?body= — and neither
-   platform supports placeholder text that clears when you start typing,
-   so the opener is written as a first line she carries on from. */
-function smsHref() {
-  const c = (CFG.protocol && CFG.protocol.concierge) || {};
-  if (!c.phone) return '#';
-  const digits = String(c.phone).replace(/\D/g, '');
-  const number = digits.length === 10 ? `+1${digits}` : `+${digits}`;
-  const sep = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
-  return `sms:${number}${sep}body=${encodeURIComponent(c.messageOpener || '')}`;
-}
 
 /* ---------- calendar export ---------- */
 function buildICS() {
@@ -1034,7 +961,7 @@ function buildICS() {
         'END:VEVENT');
     });
 
-    const s = penTimeline(pen);
+    const s = supplyView(pen);
     if (s && s.lastDose) {
       lines.push('BEGIN:VEVENT',
         `UID:${pen.id}-refill-${stamp(s.lastDose)}@atelier`,
@@ -1072,7 +999,7 @@ function wireTabs() {
 
 async function boot() {
   try {
-    CFG = await (await fetch('protocol.json', { cache:'no-store' })).json();
+    await loadProtocol();
   } catch {
     document.getElementById('todaySummary').textContent =
       'Could not load your protocol. Please contact the atelier.';

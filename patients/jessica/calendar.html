@@ -9,6 +9,7 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
 
 <style>
   :root {
@@ -169,53 +170,8 @@
    anything else. Dates and doses come from the same protocol.json the rest
    of the portal reads, anchored to the start day she picked. */
 
-const DAY_MS = 86400000;
-const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const ML_PER_UNIT = 0.01;
+let cursor, selected;
 
-let CFG, PENS, START, cursor, selected;
-
-const iso    = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const parse  = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
-const addDays= (d,n) => new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
-const isoDow = d => (d.getDay() + 6) % 7 + 1;
-const today  = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
-const round  = (n,p=2) => Number(n.toFixed(p));
-const fmtLong = d => d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
-
-const totalDays = pen => pen.phases.reduce((n,ph) => n + (ph.days == null ? 120 : ph.days), 0);
-
-function phaseOn(pen, date) {
-  const i = Math.round((date - START) / DAY_MS);
-  if (i < 0) return null;
-  let acc = 0;
-  for (const ph of pen.phases) {
-    const len = ph.days == null ? Infinity : ph.days;
-    if (i < acc + len) return ph;
-    acc += len;
-  }
-  return null;
-}
-
-function isDue(pen, date) {
-  const i = Math.round((date - START) / DAY_MS);
-  if (i < 0 || i >= totalDays(pen)) return false;
-  const { on, off } = pen.schedule;
-  return (i % (on + off)) < on;
-}
-
-const dueOn = date => PENS.filter(p => isDue(p, date));
-
-function doseOn(pen, date) {
-  const ph = phaseOn(pen, date);
-  if (!ph) return null;
-  const ml = ph.units * ML_PER_UNIT;
-  return {
-    phase: ph, units: ph.units, ml,
-    components: pen.components.map(c => ({ name: c.name, mg: (c.mg / pen.volumeMl) * ml })),
-    totalMg: pen.components.reduce((s,c) => s + (c.mg / pen.volumeMl) * ml, 0)
-  };
-}
 
 const cls = pen => `c-${pen.color || 'brass'}`;
 
@@ -297,16 +253,11 @@ function renderLegend() {
 
 (async function boot() {
   try {
-    CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+    await loadProtocol();
   } catch {
     document.getElementById('detail').textContent = 'Could not load your protocol.';
     return;
   }
-
-  PENS = CFG.protocol.pens || [];
-  let saved = null;
-  try { saved = localStorage.getItem(`tca.start.${CFG.patient.id}`); } catch {}
-  START = parse(saved || CFG.protocol.startDate);
 
   cursor = today();
   selected = today();
@@ -322,14 +273,8 @@ function renderLegend() {
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1); render();
   });
 
-  const c = (CFG.protocol && CFG.protocol.concierge) || {};
-  if (c.phone) {
-    const digits = String(c.phone).replace(/\D/g, '');
-    const number = digits.length === 10 ? `+1${digits}` : `+${digits}`;
-    const sep = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
-    document.getElementById('foot').innerHTML =
-      `Questions about your protocol? <a href="sms:${number}${sep}body=${encodeURIComponent(c.messageOpener || '')}">Message the atelier</a>.`;
-  }
+  document.getElementById('foot').innerHTML =
+    `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.`;
 })();
 </script>
 

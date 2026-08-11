@@ -9,6 +9,7 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
 
 <style>
   :root {
@@ -115,6 +116,29 @@
 
   .mono { text-align: center; line-height: 0; color: var(--emboss); margin-bottom: 14px; }
   .mono .mark { height: 30px; width: auto; }
+
+  /* A spent pen is stood down, not hidden — still fully readable, just
+     visibly no longer in play. */
+  .card.spent .face {
+    filter: grayscale(1);
+    opacity: .62;
+    box-shadow: 0 1px 1px rgba(74,65,55,.06), 0 4px 12px rgba(74,65,55,.08);
+  }
+  .status {
+    text-align: center; margin-top: 9px;
+    font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .status.warn { color: #A4553F; }
+  .refill {
+    display: block; margin: 10px auto 0; width: fit-content;
+    padding: 7px 15px; border-radius: 999px;
+    background: var(--ink); color: var(--paper);
+    font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase;
+    text-decoration: none;
+  }
+  /* Keep the call to action legible even while the card behind it is grey. */
+  .card.spent .refill { filter: grayscale(0); opacity: 1; }
 
   .c-title {
     text-align: center;
@@ -257,34 +281,8 @@
    it. Everything comes from protocol.json, so a card can never drift from
    the schedule the rest of the portal shows. */
 
-const ML_PER_UNIT = 0.01;
-let CFG;
 
-const round = (n, p = 2) => Number(n.toFixed(p));
-const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
-const today = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
-const DAY_MS = 86400000;
 
-function startDate() {
-  try {
-    const saved = localStorage.getItem(`tca.start.${CFG.patient.id}`);
-    if (saved) return parse(saved);
-  } catch {}
-  return parse(CFG.protocol.startDate);
-}
-
-// Which phase is running today — the card marks it, like a bookmark.
-function activePhase(pen) {
-  const i = Math.round((today() - startDate()) / DAY_MS);
-  if (i < 0) return null;
-  let acc = 0;
-  for (const ph of pen.phases) {
-    const len = ph.days == null ? Infinity : ph.days;
-    if (i < acc + len) return ph;
-    acc += len;
-  }
-  return null;
-}
 
 const totalMg = (pen, units) =>
   pen.components.reduce((s, c) => s + (c.mg / pen.volumeMl) * (units * ML_PER_UNIT), 0);
@@ -294,9 +292,21 @@ const componentMg = (pen, c, units) => (c.mg / pen.volumeMl) * (units * ML_PER_U
 const FLIP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/></svg>';
 
 function cardHTML(pen) {
-  const active = activePhase(pen);
+  const spent = isSpent(pen);
+  const active = spent ? null : phaseOn(pen, today());
   const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
   const steps = (CFG.protocol.injectionSteps || []);
+  const s = supply(pen);
+  const left = daysUntilOut(pen);
+
+  // A spent pen stays legible but stands down; a nearly-empty one asks.
+  const status = spent
+    ? `<div class="status">${s.endReason === 'supply'
+        ? `Pen empty since ${fmtShort(s.lastDose)} — refill to resume`
+        : `Course complete ${fmtShort(s.lastDose)}`}</div>`
+    : needsRefill(pen)
+      ? `<div class="status warn">Runs out ${fmtShort(s.lastDose)} · ${left} day${left === 1 ? '' : 's'} left</div>`
+      : '';
 
   const rows = pen.phases.map(ph => `
     <tr class="${active && active.name === ph.name ? 'now' : ''}">
@@ -310,11 +320,14 @@ function cardHTML(pen) {
     <span>${round(componentMg(pen, c, active.units), 2)} mg</span></div>`).join('') : '';
 
   return `
-  <div class="card">
+  <div class="card${spent ? ' spent' : ''}">
     <div class="face front">
       <div class="mono"><svg class="mark" viewBox="0 108 117 160" fill="currentColor" role="img" aria-label="The Charleston Atelier"><text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text><text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text></svg></div>
       <div class="c-title">${pen.name}</div>
       <div class="c-sub">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
+      ${status}
+      ${spent && s.endReason === 'supply'
+        ? `<a class="refill" href="${refillHref(pen)}">Message for a refill</a>` : ''}
       <div class="c-rule"></div>
       <div class="c-cols">
         <div class="c-col"><div class="c-lab">Frequency</div>
@@ -387,7 +400,7 @@ function render() {
 
 (async function boot() {
   try {
-    CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+    await loadProtocol();
   } catch {
     document.getElementById('lede').textContent =
       'Could not load your protocol. Please contact the atelier.';
