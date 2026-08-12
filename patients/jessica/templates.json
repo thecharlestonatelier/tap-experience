@@ -39,6 +39,28 @@
     },
 
     {
+      "id": "wolverine",
+      "name": "Wolverine Blend",
+      "short": "wol",
+      "color": "sage",
+      "_source": "UMS order S04593: PEN - BPC-157/TB-500 (Wolverine) 10mg/10mg 3mL Pen. BPC-157 and TB-500 sit at the same 3.33 mg/mL as the Glow Blend, so an identical dial number delivers an identical dose of each — the titration below mirrors Glow. Confirm before dispensing.",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "components": [
+        { "name": "BPC-157", "mg": 10 },
+        { "name": "TB-500",  "mg": 10 }
+      ],
+      "schedule": { "on": 5, "off": 2 },
+      "phases": [
+        { "name": "Starting",    "units": 4,  "days": 14 },
+        { "name": "Ramp-Up",     "units": 9,  "days": 14 },
+        { "name": "Maintenance", "units": 13, "days": 28 }
+      ],
+      "notes": "Rotate injection sites as needed."
+    },
+
+    {
       "id": "blend2x",
       "name": "2x Blend",
       "short": "2x",
