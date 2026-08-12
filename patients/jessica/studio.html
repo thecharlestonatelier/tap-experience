@@ -374,6 +374,9 @@ function build() {
   PENS = chosen;
   START = parse(start);
   const notes = chosen.map(pen => {
+    // Items the patient sets up herself have no schedule to project yet —
+    // the vial size, the regimen and the injection day are all still open.
+    if (pen.setup) return `${pen.name}: the patient chooses her vial size, regimen and injection day the first time she opens the card.`;
     const s = supply(pen);
     if (!s.lastDose) return `${pen.name}: no doses fit in this pen.`;
     const days = Math.round((s.lastDose - START) / 86400000) + 1;
