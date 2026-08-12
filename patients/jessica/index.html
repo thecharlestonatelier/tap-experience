@@ -87,7 +87,11 @@
     text-transform: uppercase;
     margin-top: 6px;
     margin-bottom: 40px;
-    white-space: nowrap;
+    /* A full name wraps between its parts rather than running off the
+       screen. Never mid-word — a name broken across a line is worse than a
+       small one, so fitName() shrinks instead. */
+    text-wrap: balance;
+    overflow-wrap: normal;
   }
 
   /* ---------- Buttons ---------- */
@@ -329,7 +333,24 @@ function renderName() {
   document.title = PORTAL.patientName + " — Patient Portal";
   document.querySelector(".greeting").textContent = PORTAL.greeting;
   document.getElementById("patientName").textContent = PORTAL.patientName;
+  fitName();
 }
+
+/* The greeting is set in tracked caps at a size chosen for "JESSICA".
+   A longer name wraps between its parts; anything that still runs wide, or
+   spills past two lines, comes down in size until it sits on the screen. */
+function fitName() {
+  const el = document.getElementById("patientName");
+  el.style.fontSize = "";
+  const start = parseFloat(getComputedStyle(el).fontSize);
+  for (let size = start; size >= 22; size -= 2) {
+    el.style.fontSize = size + "px";
+    const lines = Math.round(el.scrollHeight / (size * 1.15));
+    if (el.scrollWidth <= el.clientWidth && lines <= 2) return;
+  }
+}
+
+addEventListener("resize", fitName);
 
 function renderButtons() {
   const menu = document.getElementById("menu");
