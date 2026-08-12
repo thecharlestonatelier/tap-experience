@@ -33,9 +33,9 @@ Open **https://ca-tap.netlify.app/studio.html** on your laptop or iPad.
 
 ```
 https://ca-tap.netlify.app/#Jessica~glo~2x
-                            │       │   └── second pen (2x Blend)
-                            │       └────── first pen (Glow Blend)
-                            └────────────── patient name
+                            │       │   └─── second pen — 2x Blend
+                            │       └─────── first pen — Glow Blend
+                            └─────────────── patient name
 ```
 
 A pen with custom dosing carries its titration after a colon — units-days,
@@ -43,7 +43,7 @@ phases separated by dots:
 
 ```
 https://ca-tap.netlify.app/#Christie~glo~nad:30-28
-                                          └── NAD+, 30 units, 28 days
+                                         └── NAD+, 30 units, 28 days
 ```
 
 Everything after the `#` is a **fragment**. Browsers never send it to a server,
