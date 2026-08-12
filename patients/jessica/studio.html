@@ -272,7 +272,7 @@ function renderPens() {
         <div style="flex:1">
           <div class="pen-name">${pen.name}</div>
           <div class="pen-sub">${pen.components.map(c => `${c.name} ${c.mg}`).join(' / ')} mg ·
-            ${pen.volumeMl} mL · ${pen.schedule.on} on / ${pen.schedule.off} off</div>
+            ${pen.volumeMl} mL · ${freqShort(pen)}</div>
         </div>
         <button class="x" data-remove="${pi}" title="Remove">×</button>
       </div>

@@ -179,6 +179,26 @@
     font-size: 22px; color: var(--espresso); line-height: 1.2;
   }
   .refill-body { font-size: 13px; color: var(--muted); margin-top: 5px; }
+  .plus {
+    margin-left: auto; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--hairline); background: var(--card);
+    color: var(--brass); font-size: 20px; line-height: 1; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice {
+    display: block; width: 100%; text-align: left;
+    padding: 15px 16px; margin-bottom: 9px;
+    border: 1px solid var(--hairline); border-radius: 14px;
+    background: transparent; cursor: pointer;
+    font-family: 'Jost', sans-serif; font-size: 14.5px; color: var(--espresso-soft);
+  }
+  .choice b { display: block; color: var(--espresso); font-weight: 600; margin-bottom: 3px; }
+  .choice small { color: var(--muted); font-size: 12.5px; }
+  .choice[aria-pressed="true"] { background: var(--espresso); border-color: var(--espresso); color: #F6F0E7; }
+  .choice[aria-pressed="true"] b, .choice[aria-pressed="true"] small { color: #F6F0E7; }
+  .wiz-note { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; min-height: 18px; }
+  .wiz-note.bad { color: var(--alert); }
+
   .refill-btn {
     display: inline-block; margin-top: 13px;
     padding: 11px 18px; border-radius: 12px;
@@ -329,6 +349,11 @@
     width: 100%; max-width: 460px; background: var(--bg);
     border-radius: 26px 26px 0 0; padding: 26px 22px calc(26px + env(safe-area-inset-bottom));
   }
+  /* The setup wizard can offer a long list — cap the sheet and scroll the
+     choices inside it so the buttons never slide off the screen. */
+  .modal.wiz { display: flex; flex-direction: column; max-height: 86vh; }
+  .modal.wiz #wizChoices { display: block; flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .modal.wiz .btn-row { flex: 0 0 auto; }
   .modal-eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--brass); margin-bottom: 8px; }
   .modal-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 29px; color: var(--espresso); line-height: 1.15; margin-bottom: 8px; }
   .modal-body { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
@@ -348,6 +373,8 @@
     transition: opacity .25s ease, transform .25s ease; z-index: 150;
   }
   .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+  /* Over an open sheet the toast rides above the buttons, not on top of them. */
+  .toast.over-modal { bottom: calc(96px + env(safe-area-inset-bottom)); }
 
   .footnote { margin-top: 26px; font-size: 11.5px; line-height: 1.6; color: var(--muted); text-align: center; }
   .footnote a { color: var(--brass); text-decoration: none; border-bottom: 1px solid var(--hairline); }
@@ -388,6 +415,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4-8 8 8 8"/></svg>
     </a>
     <span class="topbar-label" id="protocolName">Protocol</span>
+    <button class="plus" id="btnAdd" aria-label="Add a peptide" title="Add a peptide">+</button>
   </div>
 
   <p class="eyebrow" id="todayDate">—</p>
@@ -485,6 +513,21 @@
   </div>
 </div>
 
+<div class="scrim" id="wizScrim">
+  <div class="modal wiz" role="dialog" aria-modal="true" aria-labelledby="wizTitle">
+    <p class="modal-eyebrow" id="wizEyebrow">Set up</p>
+    <h2 class="modal-title" id="wizTitle"></h2>
+    <p class="modal-body" id="wizBody"></p>
+    <div id="wizChoices" class="site-pick"></div>
+    <input class="date-field" id="wizInput" type="number" min="1" hidden>
+    <p class="wiz-note" id="wizNote"></p>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="wizBack">Back</button>
+      <button class="btn btn-primary" id="wizNext">Continue</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -560,11 +603,195 @@ function renderRefills() {
         <div class="refill-head">${out ? 'Pen empty' : 'Refill soon'}</div>
         <div class="refill-title">${pen.name}</div>
         <div class="refill-body">${out
-          ? `Your last dose from this pen was ${fmtShort(s.lastDose)}. It is paused on your schedule until a new pen arrives.`
-          : `Your last dose from this pen is ${fmtShort(s.lastDose)} — ${left} day${left === 1 ? '' : 's'} away.`}</div>
+          ? `Your last dose from this ${vessel(pen)} was ${fmtShort(s.lastDose)}. It is paused on your schedule until a new one arrives.`
+          : `Your last dose from this ${vessel(pen)} is ${fmtShort(s.lastDose)} — ${left} day${left === 1 ? '' : 's'} away.`}</div>
         <a class="refill-btn" href="${refillHref(pen)}">Message for a refill</a>
       </div>`;
   }).join('');
+}
+
+/* ---------- setup wizard ----------
+   Items flagged `setup` ask the patient three things before their schedule
+   can be drawn: which vial she was given, whether she follows the printed
+   guide or carries her own number of units, and which day she injects.
+   One question per screen, in that order. */
+let wizPen = null, wizStep = 0, wizData = {}, wizAdding = false;
+
+const WEEKDAYS = [
+  [1,'Monday'],[2,'Tuesday'],[3,'Wednesday'],[4,'Thursday'],
+  [5,'Friday'],[6,'Saturday'],[7,'Sunday']
+];
+
+function openWizard() {
+  document.getElementById('wizScrim').classList.add('open');
+  renderWizard();
+}
+
+function closeWizard() {
+  document.getElementById('wizScrim').classList.remove('open');
+  wizPen = null; wizAdding = false; wizData = {}; wizStep = 0;
+}
+
+function startWizard(pen) {
+  wizPen = pen; wizStep = 0; wizData = {}; wizAdding = false;
+  openWizard();
+}
+
+/* The plus sign starts the same wizard one screen earlier: first which
+   peptide, then whatever that peptide needs to know. */
+function startAdd() {
+  wizPen = null; wizStep = 0; wizData = {}; wizAdding = true;
+  openWizard();
+}
+
+function wizSteps() {
+  const steps = [];
+  if (wizAdding) steps.push('pick');
+  if (wizPen && wizPen.setup) {
+    if (wizPen.vialOptions) steps.push('vial');
+    if (wizPen.guide) steps.push('mode');
+    if (wizData.mode === 'own' || (!wizPen.guide && wizPen.maxUnits)) steps.push('units');
+    if (wizPen.schedule && wizPen.schedule.weekly) steps.push('day');
+  }
+  return steps;
+}
+
+/* Templates she doesn't already carry — the same list the atelier writes
+   cards from, minus anything already on her protocol. */
+function addableTemplates() {
+  return ((TEMPLATES && TEMPLATES.templates) || [])
+    .filter(t => t.id !== 'custom')
+    .filter(t => !PENS.some(p => p.id === t.id || p.template === t.id));
+}
+
+function renderWizard() {
+  const steps = wizSteps();
+  const step = steps[wizStep];
+  const choices = document.getElementById('wizChoices');
+  const input = document.getElementById('wizInput');
+  const note = document.getElementById('wizNote');
+
+  document.getElementById('wizEyebrow').textContent =
+    `${wizPen ? wizPen.name : 'Add a peptide'} · ${wizStep + 1} of ${steps.length}`;
+  input.hidden = true; note.textContent = ''; note.className = 'wiz-note';
+  choices.innerHTML = '';
+  document.getElementById('wizBack').textContent = wizStep === 0 ? 'Cancel' : 'Back';
+  document.getElementById('wizNext').textContent = wizStep === steps.length - 1 ? 'Done' : 'Continue';
+
+  if (step === 'pick') {
+    document.getElementById('wizTitle').textContent = 'Which peptide are you adding?';
+    document.getElementById('wizBody').textContent =
+      'Only add what the atelier has dispensed to you. It starts from today.';
+    const list = addableTemplates();
+    choices.innerHTML = list.length
+      ? list.map(t => `<button class="choice" data-t="${t.id}" aria-pressed="${wizData.template === t.id}">
+          <b>${t.name}</b><small>${t.components.map(c => `${c.name} ${c.mg} mg`).join(' / ')} · ${t.volumeMl} mL</small>
+        </button>`).join('')
+      : '<p class="modal-body">You already have every peptide we carry on your protocol.</p>';
+  }
+
+  if (step === 'vial') {
+    document.getElementById('wizTitle').textContent = 'Which vial do you have?';
+    document.getElementById('wizBody').textContent = 'It is printed on the label. This only changes how long the vial lasts, never your dose.';
+    choices.innerHTML = wizPen.vialOptions.map(v =>
+      `<button class="choice" data-v="${v}" aria-pressed="${wizData.vialMl === v}">
+        <b>${v} mL vial</b><small>${v * 100} units in total</small></button>`).join('');
+  }
+
+  if (step === 'mode' && wizPen.guide) {
+    document.getElementById('wizTitle').textContent = 'Which are you starting with?';
+    document.getElementById('wizBody').textContent = '';
+    choices.innerHTML = `
+      <button class="choice" data-m="guide" aria-pressed="${wizData.mode === 'guide'}">
+        <b>It's my first time — follow the guide</b>
+        <small>Starts at ${wizPen.guide[0].units} units and steps up on schedule</small></button>
+      <button class="choice" data-m="own" aria-pressed="${wizData.mode === 'own'}">
+        <b>I'm an established patient</b>
+        <small>I have my own number of units</small></button>`;
+  }
+
+  if (step === 'units') {
+    document.getElementById('wizTitle').textContent = 'How many units each week?';
+    document.getElementById('wizBody').textContent = 'The number you draw to on the syringe.';
+    input.hidden = false;
+    input.max = wizPen.maxUnits || 50;
+    input.value = wizData.units || '';
+    input.placeholder = `Up to ${wizPen.maxUnits || 50}`;
+    showUnitsNote();
+  }
+
+  if (step === 'day') {
+    document.getElementById('wizTitle').textContent = 'Which day do you inject?';
+    document.getElementById('wizBody').textContent = 'Once a week, the same day each week.';
+    choices.innerHTML = WEEKDAYS.map(([n, name]) =>
+      `<button class="choice" data-d="${n}" aria-pressed="${wizData.day === n}">
+        <b>${name}</b></button>`).join('');
+  }
+
+  choices.querySelectorAll('.choice').forEach(b =>
+    b.addEventListener('click', () => {
+      if (b.dataset.t) {
+        wizData = { template: b.dataset.t };
+        wizPen = addableTemplates().find(t => t.id === b.dataset.t) || null;
+      }
+      if (b.dataset.v) wizData.vialMl = Number(b.dataset.v);
+      if (b.dataset.m) wizData.mode = b.dataset.m;
+      if (b.dataset.d) wizData.day = Number(b.dataset.d);
+      renderWizard();
+    }));
+}
+
+function showUnitsNote() {
+  const input = document.getElementById('wizInput');
+  const note = document.getElementById('wizNote');
+  const max = wizPen.maxUnits || 50;
+  const v = Number(input.value);
+  if (!v) { note.textContent = ''; return; }
+  if (v > max) {
+    note.className = 'wiz-note bad';
+    note.textContent = `That is above the ${max} unit limit — please check with the atelier.`;
+    return;
+  }
+  note.className = 'wiz-note';
+  const mg = v * ML_PER_UNIT * (wizPen.concentrationMgPerMl || 0);
+  note.textContent = `${v} units = ${round(v * ML_PER_UNIT, 2)} mL${mg ? ` — ${round(mg, 2)} mg` : ''}`;
+}
+
+function wizAdvance() {
+  const steps = wizSteps();
+  const step = steps[wizStep];
+  const max = (wizPen && wizPen.maxUnits) || 50;
+
+  if (step === 'pick' && !wizPen) return showToast('Choose a peptide.');
+  if (step === 'vial' && !wizData.vialMl) return showToast('Choose a vial size.');
+  if (step === 'mode' && !wizData.mode) return showToast('Choose one.');
+  if (step === 'units') {
+    const v = Number(document.getElementById('wizInput').value);
+    if (!v) return showToast('Enter your units.');
+    if (v > max) return showToast(`${max} units is the maximum.`);
+    wizData.units = v;
+  }
+  if (step === 'day' && !wizData.day) return showToast('Choose a day.');
+
+  if (wizStep < wizSteps().length - 1) { wizStep++; renderWizard(); return; }
+
+  // On the last screen wizPen is either a pen already on her protocol, or —
+  // when she came in through the plus sign — the template she just picked.
+  const pen = wizAdding ? addPen(wizPen) : wizPen;
+  if (pen.setup) saveSetup(pen, wizData);
+  const name = pen.name;
+  const added = wizAdding;
+  closeWizard();
+  renderAll();
+  showToast(added ? `${name} added to your protocol.` : `${name} is set up.`);
+}
+
+function wizBack() {
+  if (wizStep === 0) { closeWizard(); return; }
+  wizStep--;
+  // Stepping back to the peptide list clears the pick so nothing is half-set.
+  if (wizSteps()[wizStep] === 'pick') { wizPen = null; wizData = {}; }
+  renderWizard();
 }
 
 /* ---------- log storage (device-only) ---------- */
@@ -608,22 +835,36 @@ function renderToday() {
     return;
   }
 
-  if (!due.length) {
-    document.getElementById('todaySummary').textContent = 'A scheduled day off.';
+  if (!due.length && !PENS.some(needsSetup)) {
+    // A weekly-only protocol has no cycle to rest from — most days are just quiet.
+    const weeklyOnly = PENS.length > 0 && PENS.every(p => p.schedule.weekly);
+    document.getElementById('todaySummary').textContent =
+      weeklyOnly ? 'Nothing to inject today.' : 'A scheduled day off.';
     stack.innerHTML = `<div class="rest">
-      <div class="rest-title">Rest day</div>
+      <div class="rest-title">${weeklyOnly ? 'No dose today' : 'Rest day'}</div>
       <div class="rest-sub">Your next dose is ${nextDueText()}.</div></div>`;
     return;
   }
 
   if (!TRACKING) {
     document.getElementById('todaySummary').textContent =
-      `${due.length} pen${due.length === 1 ? '' : 's'} today.`;
+      `${due.length} dose${due.length === 1 ? '' : 's'} today.`;
   } else {
   const remaining = due.filter(p => !isLogged(p.id, t)).length;
   document.getElementById('todaySummary').textContent = remaining
-    ? `${remaining} of ${due.length} pen${due.length === 1 ? '' : 's'} still to do.`
+    ? `${remaining} of ${due.length} dose${due.length === 1 ? '' : 's'} still to do.`
     : 'Everything logged for today.';
+  }
+
+  const pending = PENS.filter(needsSetup);
+  if (pending.length) {
+    stack.innerHTML = pending.map(pen => `
+      <div class="rest">
+        <div class="rest-title">${pen.name}</div>
+        <div class="rest-sub">A few questions before your schedule can start.</div>
+        <div class="btn-row"><button class="btn btn-primary" data-setup="${pen.id}">Set it up</button></div>
+      </div>`).join('') + stack.innerHTML;
+    document.getElementById('todaySummary').textContent = 'Finish setting up your protocol.';
   }
 
   due.forEach(pen => {
@@ -647,13 +888,13 @@ function renderToday() {
       </div>
 
       <div class="dial">
-        <span class="dial-lead">Turn your pen to</span>
+        <span class="dial-lead">${dialLead(pen)}</span>
         <span class="dial-num">${dose.units}</span>
       </div>
       <div class="dial-sub">${round(dose.ml, 2)} mL per dose</div>
 
       <ol class="steps">
-        ${(CFG.protocol.injectionSteps || []).map(s =>
+        ${stepsFor(pen).map(s =>
           `<li>${s.replace('{units}', `<strong>${dose.units}</strong>`)}</li>`).join('')}
       </ol>
 
@@ -669,7 +910,7 @@ function renderToday() {
       ${supply ? `
       <div class="gauge">
         <div class="gauge-top">
-          <span>${supply.dosesLeft} dose${supply.dosesLeft === 1 ? '' : 's'} left in this pen</span>
+          <span>${supply.dosesLeft} dose${supply.dosesLeft === 1 ? '' : 's'} left in this ${vessel(pen)}</span>
           <span>${Math.round(supply.pctLeft)}%</span>
         </div>
         <div class="gauge-track">
@@ -677,6 +918,7 @@ function renderToday() {
         </div>
       </div>` : ''}
 
+      ${pen.storage ? `<div class="advisory">${pen.storage}</div>` : ''}
       ${pen.advisory ? `<div class="advisory">${pen.advisory}</div>` : ''}
 
       ${!TRACKING ? '' : done ? `<div class="logged">
@@ -689,6 +931,8 @@ function renderToday() {
 
   stack.querySelectorAll('[data-log]').forEach(b =>
     b.addEventListener('click', () => openLog(b.dataset.log)));
+  stack.querySelectorAll('[data-setup]').forEach(b =>
+    b.addEventListener('click', () => startWizard(PENS.find(p => p.id === b.dataset.setup))));
 }
 
 function nextDueText() {
@@ -753,7 +997,7 @@ function renderPhases() {
             <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
           </div>
         </div>
-        <div class="kv"><span class="k">Frequency</span><span class="v">${pen.schedule.on} days on / ${pen.schedule.off} off</span></div>
+        <div class="kv"><span class="k">Frequency</span><span class="v">${freqText(pen)}</span></div>
         <div class="kv"><span class="k">Route</span><span class="v">${pen.route}</span></div>
         <table class="ptable" style="margin-top:14px">
           <thead><tr><th>Phase</th><th>Units</th><th>${primaryHeader(pen)}</th></tr></thead>
@@ -843,7 +1087,7 @@ function renderRhythm() {
         <div class="supply-head">
           <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
           <div><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
-          <div class="dose-meta">${pen.schedule.on} on / ${pen.schedule.off} off · ${pen.time}</div></div>
+          <div class="dose-meta">${freqShort(pen)} · ${pen.time}</div></div>
         </div>
         <div class="rhythm">${cells.join('')}</div>
         <div style="margin-top:16px">
@@ -867,7 +1111,7 @@ function renderSupply() {
         <div class="supply-head">
           <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
           <div><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
-          <div class="dose-meta">${pen.volumeMl} mL pen${s.spent ? ' · empty' : ''}</div></div>
+          <div class="dose-meta">${pen.volumeMl} mL ${vessel(pen)}${s.spent ? ' · empty' : ''}</div></div>
         </div>
         <div class="gauge">
           <div class="gauge-top"><span>${round(s.mlLeft, 2)} mL remaining</span><span>${Math.round(s.pctLeft)}%</span></div>
@@ -876,13 +1120,13 @@ function renderSupply() {
         <div style="margin-top:14px">
           <div class="kv"><span class="k">Current dose</span><span class="v">${dose ? `${dose.units} units · ${round(dose.ml,2)} mL` : '—'}</span></div>
           <div class="kv"><span class="k">Doses remaining</span><span class="v">${s.dosesLeft}</span></div>
-          <div class="kv"><span class="k">Last dose from this pen</span><span class="v">${s.lastDose ? fmtShort(s.lastDose) : '—'}</span></div>
+          <div class="kv"><span class="k">Last dose from this ${vessel(pen)}</span><span class="v">${s.lastDose ? fmtShort(s.lastDose) : '—'}</span></div>
         </div>
         <div class="flag${soon || s.spent ? ' soon' : ''}">
           ${s.spent
             ? `This pen is empty — its last dose was <strong>${fmtShort(s.lastDose)}</strong>. It is paused on your schedule until a new pen arrives.`
             : s.daysLeft != null
-              ? `Last dose from this pen is <strong>${fmtShort(s.lastDose)}</strong>, about ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} away.${soon ? ' Time to arrange a refill.' : ''}`
+              ? `Last dose from this ${vessel(pen)} is <strong>${fmtShort(s.lastDose)}</strong>, about ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} away.${soon ? ' Time to arrange a refill.' : ''}`
               : 'Supply projection unavailable.'}
         </div>
       </div>`;
@@ -933,6 +1177,7 @@ let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
+  t.classList.toggle('over-modal', !!document.querySelector('.scrim.open'));
   t.classList.add('visible');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('visible'), 2800);
@@ -946,11 +1191,12 @@ function buildICS() {
   const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//The Charleston Atelier//Ritual//EN','CALSCALE:GREGORIAN'];
 
   PENS.forEach(pen => {
-    const [hh, mm] = (TIME_AT[pen.time] || '09:00').split(':');
+    // Weekly injections are calendared at 9am on the day she chose.
+    const [hh, mm] = (pen.schedule.weekly ? '09:00' : (TIME_AT[pen.time] || '09:00')).split(':');
     occurrences(pen).forEach((d, i) => {
       const dose = doseOn(pen, d);
       if (!dose) return;
-      const title = `${pen.name} — turn to ${dose.units}`;
+      const title = `${pen.name} — ${dialLead(pen).toLowerCase()} ${dose.units}`;
       lines.push('BEGIN:VEVENT',
         `UID:${pen.id}-${stamp(d)}-${i}@atelier`,
         `DTSTAMP:${stamp(new Date())}T000000`,
@@ -1050,6 +1296,12 @@ document.getElementById('btnStart').addEventListener('click', openStartPicker);
 document.getElementById('startSave').addEventListener('click', commitStart);
 document.getElementById('startCancel').addEventListener('click', closeStartPicker);
 document.getElementById('startScrim').addEventListener('click', e => { if (e.target.id === 'startScrim') closeStartPicker(); });
+document.getElementById('btnAdd').addEventListener('click', startAdd);
+document.getElementById('wizNext').addEventListener('click', wizAdvance);
+document.getElementById('wizBack').addEventListener('click', wizBack);
+document.getElementById('wizInput').addEventListener('input', showUnitsNote);
+document.getElementById('wizInput').addEventListener('keydown', e => { if (e.key === 'Enter') wizAdvance(); });
+document.getElementById('wizScrim').addEventListener('click', e => { if (e.target.id === 'wizScrim') closeWizard(); });
 
 wireTabs();
 boot();

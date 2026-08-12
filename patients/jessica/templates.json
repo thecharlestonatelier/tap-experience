@@ -1,20 +1,21 @@
 {
   "_note": "Protocol templates the dashboard offers. Each is a pen as dispensed: composition, volume, and the default titration. The clinician can override units and durations per patient without touching this file. Only pens with verified concentrations belong here — a pen whose mg/mL is unknown cannot compute a dose.",
-
-  "sites": ["Left abdomen", "Right abdomen", "Left thigh", "Right thigh"],
-
+  "sites": [
+    "Left abdomen",
+    "Right abdomen",
+    "Left thigh",
+    "Right thigh"
+  ],
   "injectionSteps": [
     "Turn the pen dial to {units}",
     "Inject at your chosen site",
     "Press the plunger all the way down and hold for 10 seconds"
   ],
-
   "concierge": {
     "phone": "843-377-3713",
     "messageOpener": "Hi Dr. Phelps-Polirer — ",
     "refillOpener": "Hi Dr. Phelps-Polirer — I need a refill of my {pen}."
   },
-
   "templates": [
     {
       "id": "glow",
@@ -25,19 +26,42 @@
       "route": "Subcutaneous",
       "time": "Evening",
       "components": [
-        { "name": "BPC-157", "mg": 10 },
-        { "name": "TB-500",  "mg": 10 },
-        { "name": "GHK-Cu",  "mg": 50 }
+        {
+          "name": "BPC-157",
+          "mg": 10
+        },
+        {
+          "name": "TB-500",
+          "mg": 10
+        },
+        {
+          "name": "GHK-Cu",
+          "mg": 50
+        }
       ],
-      "schedule": { "on": 5, "off": 2 },
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
       "phases": [
-        { "name": "Starting",    "units": 4,  "days": 14 },
-        { "name": "Ramp-Up",     "units": 9,  "days": 14 },
-        { "name": "Maintenance", "units": 13, "days": 28 }
+        {
+          "name": "Starting",
+          "units": 4,
+          "days": 14
+        },
+        {
+          "name": "Ramp-Up",
+          "units": 9,
+          "days": 14
+        },
+        {
+          "name": "Maintenance",
+          "units": 13,
+          "days": 28
+        }
       ],
       "notes": "Rotate injection sites as needed."
     },
-
     {
       "id": "wolverine",
       "name": "Wolverine Blend",
@@ -48,18 +72,38 @@
       "route": "Subcutaneous",
       "time": "Evening",
       "components": [
-        { "name": "BPC-157", "mg": 10 },
-        { "name": "TB-500",  "mg": 10 }
+        {
+          "name": "BPC-157",
+          "mg": 10
+        },
+        {
+          "name": "TB-500",
+          "mg": 10
+        }
       ],
-      "schedule": { "on": 5, "off": 2 },
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
       "phases": [
-        { "name": "Starting",    "units": 4,  "days": 14 },
-        { "name": "Ramp-Up",     "units": 9,  "days": 14 },
-        { "name": "Maintenance", "units": 13, "days": 28 }
+        {
+          "name": "Starting",
+          "units": 4,
+          "days": 14
+        },
+        {
+          "name": "Ramp-Up",
+          "units": 9,
+          "days": 14
+        },
+        {
+          "name": "Maintenance",
+          "units": 13,
+          "days": 28
+        }
       ],
       "notes": "Rotate injection sites as needed."
     },
-
     {
       "id": "blend2x",
       "name": "2x Blend",
@@ -70,18 +114,38 @@
       "time": "Evening",
       "ratioNote": "10 / 2 mg blend",
       "components": [
-        { "name": "Tesamorelin", "mg": 10 },
-        { "name": "Ipamorelin",  "mg": 2 }
+        {
+          "name": "Tesamorelin",
+          "mg": 10
+        },
+        {
+          "name": "Ipamorelin",
+          "mg": 2
+        }
       ],
-      "schedule": { "on": 5, "off": 2 },
-      "doseRange": { "minUnits": 30, "maxUnits": 100, "label": "Card range 1–3 mg (30–100 units)" },
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
+      "doseRange": {
+        "minUnits": 30,
+        "maxUnits": 100,
+        "label": "Card range 1–3 mg (30–100 units)"
+      },
       "phases": [
-        { "name": "Weeks 1–2", "units": 30, "days": 14 },
-        { "name": "Weeks 3–4", "units": 50, "days": 14 }
+        {
+          "name": "Weeks 1–2",
+          "units": 30,
+          "days": 14
+        },
+        {
+          "name": "Weeks 3–4",
+          "units": 50,
+          "days": 14
+        }
       ],
       "notes": "Administer once daily, preferably in a fasted state or prior to bedtime. Rotate injection sites as needed."
     },
-
     {
       "id": "nad",
       "name": "NAD+",
@@ -92,15 +156,238 @@
       "route": "Subcutaneous",
       "time": "Morning",
       "components": [
-        { "name": "NAD+", "mg": 500 }
+        {
+          "name": "NAD+",
+          "mg": 500
+        }
       ],
-      "schedule": { "on": 5, "off": 2 },
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
       "phases": [
-        { "name": "Maintenance", "units": 30, "days": 28 }
+        {
+          "name": "Maintenance",
+          "units": 30,
+          "days": 28
+        }
       ],
       "notes": "Rotate injection sites as needed."
     },
-
+    {
+      "id": "bpc",
+      "name": "BPC-157",
+      "short": "bpc",
+      "color": "sage",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "components": [
+        {
+          "name": "BPC-157",
+          "mg": 10
+        }
+      ],
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
+      "needsDose": true,
+      "phases": [
+        {
+          "name": "Maintenance",
+          "units": 10,
+          "days": 28
+        }
+      ],
+      "notes": "Rotate injection sites as needed."
+    },
+    {
+      "id": "ghk",
+      "name": "GHK-Cu",
+      "short": "ghk",
+      "color": "clay",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "components": [
+        {
+          "name": "GHK-Cu",
+          "mg": 50
+        }
+      ],
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
+      "needsDose": true,
+      "phases": [
+        {
+          "name": "Maintenance",
+          "units": 10,
+          "days": 28
+        }
+      ],
+      "notes": "Rotate injection sites as needed."
+    },
+    {
+      "id": "cjcipa",
+      "name": "CJC / Ipamorelin",
+      "short": "cjc",
+      "color": "plum",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "components": [
+        {
+          "name": "CJC-1295 (no DAC)",
+          "mg": 10
+        },
+        {
+          "name": "Ipamorelin",
+          "mg": 10
+        }
+      ],
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
+      "needsDose": true,
+      "phases": [
+        {
+          "name": "Maintenance",
+          "units": 10,
+          "days": 28
+        }
+      ],
+      "notes": "Rotate injection sites as needed.",
+      "ratioNote": "10 / 10 mg blend"
+    },
+    {
+      "id": "tesa",
+      "name": "Tesamorelin",
+      "short": "tes",
+      "color": "brass",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "components": [
+        {
+          "name": "Tesamorelin",
+          "mg": 30
+        }
+      ],
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
+      "needsDose": true,
+      "phases": [
+        {
+          "name": "Maintenance",
+          "units": 10,
+          "days": 28
+        }
+      ],
+      "notes": "Rotate injection sites as needed."
+    },
+    {
+      "id": "semax",
+      "name": "Semax",
+      "short": "sem",
+      "color": "slate",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Morning",
+      "components": [
+        {
+          "name": "Semax",
+          "mg": 20
+        }
+      ],
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
+      "needsDose": true,
+      "phases": [
+        {
+          "name": "Maintenance",
+          "units": 10,
+          "days": 28
+        }
+      ],
+      "notes": "Rotate injection sites as needed."
+    },
+    {
+      "id": "tirz",
+      "name": "Tirzepatide",
+      "short": "tir",
+      "color": "clay",
+      "_source": "Atelier Tirzepatide Guide: 17 mg/mL. Drawn with an insulin syringe, not a pen — one unit is 0.01 mL, so a unit delivers 0.17 mg.",
+      "delivery": "syringe",
+      "concentrationMgPerMl": 17,
+      "vialOptions": [
+        1,
+        2
+      ],
+      "volumeMl": 2,
+      "route": "Subcutaneous",
+      "time": "Morning",
+      "components": [
+        {
+          "name": "Tirzepatide",
+          "mg": 34
+        }
+      ],
+      "schedule": {
+        "weekly": true,
+        "day": 1
+      },
+      "setup": true,
+      "maxUnits": 50,
+      "storage": "Keep the vial in the freezer in a light-filtering zip lock. Do not leave it out more than 24 hours.",
+      "guide": [
+        {
+          "name": "Weeks 1–2",
+          "units": 17,
+          "days": 14
+        },
+        {
+          "name": "Week 3",
+          "units": 19,
+          "days": 7
+        },
+        {
+          "name": "Weeks 4–5",
+          "units": 22,
+          "days": 14
+        },
+        {
+          "name": "Weeks 6–7",
+          "units": 25,
+          "days": 14
+        },
+        {
+          "name": "Weeks 8–9",
+          "units": 27,
+          "days": 14
+        },
+        {
+          "name": "Week 10+",
+          "units": 30,
+          "days": 70
+        }
+      ],
+      "phases": [
+        {
+          "name": "Weeks 1–2",
+          "units": 17,
+          "days": 14
+        }
+      ],
+      "notes": "Inject on the same day each week. If nausea follows a dose increase, take one Zofran every 6–8 hours as needed. Weigh yourself weekly and tell the atelier if you are losing more than 3–4 lb a week. Increase protein so you lose fat rather than muscle."
+    },
     {
       "id": "custom",
       "name": "Custom pen",
@@ -110,13 +397,31 @@
       "route": "Subcutaneous",
       "time": "Evening",
       "components": [
-        { "name": "Peptide", "mg": 10 }
+        {
+          "name": "Peptide",
+          "mg": 10
+        }
       ],
-      "schedule": { "on": 5, "off": 2 },
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
       "phases": [
-        { "name": "Starting", "units": 10, "days": 28 }
+        {
+          "name": "Starting",
+          "units": 10,
+          "days": 28
+        }
       ],
       "notes": ""
     }
+  ],
+  "injectionStepsSyringe": [
+    "Take the vial out of the freezer and let it thaw ~5 minutes",
+    "Wipe the top of the vial with alcohol",
+    "Draw up to {units} units — the dashes on the syringe are units",
+    "Wipe the skin on your lower stomach with alcohol",
+    "Pinch an inch, insert at 90° and push the plunger",
+    "Remove the needle and place it in a sharps container"
   ]
 }

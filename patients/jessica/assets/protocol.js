@@ -27,7 +27,10 @@ function parse(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y,
 function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()+n); }
 function isoDow(d) { return (d.getDay() + 6) % 7 + 1; }
 function today() { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
-function dayIndex(d) { return Math.round((d - START) / DAY_MS); }
+/* A pen the patient added part-way through carries its own start day, so its
+   phases count from the day it was added rather than from the protocol's. */
+function penStart(pen) { return pen && pen.startDate ? parse(pen.startDate) : START; }
+function dayIndex(d, pen) { return Math.round((d - penStart(pen)) / DAY_MS); }
 function daysBetween(a, b) { return Math.round((b - a) / DAY_MS); }
 
 function fmtLong(d)  { return d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' }); }
@@ -40,7 +43,7 @@ function phaseDays(pen) {
 }
 
 function phaseOn(pen, date) {
-  const i = dayIndex(date);
+  const i = dayIndex(date, pen);
   if (i < 0) return null;
   let acc = 0;
   for (const ph of pen.phases || []) {
@@ -51,12 +54,72 @@ function phaseOn(pen, date) {
   return null;
 }
 
-/* The raw rhythm, before supply is considered: N days on, N days off. */
+/* The raw rhythm, before supply is considered. Either a rolling N-on/N-off
+   cycle, or one fixed weekday a week — tirzepatide is dosed weekly on a day
+   the patient chooses. */
 function scheduledOn(pen, date) {
-  const i = dayIndex(date);
+  const i = dayIndex(date, pen);
   if (i < 0 || i >= phaseDays(pen)) return false;
+  if (pen.schedule.weekly) return isoDow(date) === (pen.schedule.day || 1);
   const { on, off } = pen.schedule;
   return (i % (on + off)) < on;
+}
+
+var WEEKDAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+/* How the rhythm reads on the page — a cycle, or the one day a week. */
+function freqText(pen) {
+  if (pen.schedule.weekly) return `Once a week · ${WEEKDAY_NAMES[(pen.schedule.day || 1) - 1]}`;
+  return `${pen.schedule.on} days on / ${pen.schedule.off} off`;
+}
+
+function freqShort(pen) {
+  if (pen.schedule.weekly) return `Weekly · ${DOW[(pen.schedule.day || 1) - 1]}`;
+  return `${pen.schedule.on} on / ${pen.schedule.off} off`;
+}
+
+/* ---------- patient setup ----------
+   Some items need the patient to answer a question before the schedule can
+   be drawn: which vial she was given, whether she follows the printed guide
+   or carries her own number of units, and which day she injects. Her answers
+   live on the device, next to her start day. */
+function setupKey(pen) { return `tca.setup.${CFG.patient.id}.${pen.id}`; }
+
+function loadSetup(pen) {
+  try { return JSON.parse(localStorage.getItem(setupKey(pen))) || null; } catch { return null; }
+}
+
+function saveSetup(pen, data) {
+  try { localStorage.setItem(setupKey(pen), JSON.stringify(data)); } catch {}
+  applySetup(pen, data);
+  _supplyCache.clear();
+}
+
+function needsSetup(pen) { return !!pen.setup && !loadSetup(pen); }
+
+/* Fold the patient's answers into the pen the rest of the engine sees. */
+function applySetup(pen, data) {
+  if (!data) return;
+
+  if (data.vialMl) {
+    pen.volumeMl = data.vialMl;
+    // Components are stated for the whole vial, so rescale to the size she has.
+    if (pen.concentrationMgPerMl && pen.components.length === 1) {
+      pen.components[0].mg = pen.concentrationMgPerMl * data.vialMl;
+    }
+  }
+
+  if (data.day) pen.schedule = Object.assign({}, pen.schedule, { weekly: true, day: data.day });
+
+  if (data.mode === 'guide' && pen.guide) {
+    pen.phases = JSON.parse(JSON.stringify(pen.guide));
+  } else if (data.mode === 'own' && data.units) {
+    pen.phases = [{ name: 'Your dose', units: data.units, days: 364 }];
+  }
+}
+
+function applySetups() {
+  PENS.forEach(pen => { const s = loadSetup(pen); if (s) applySetup(pen, s); });
 }
 
 /* ---------- what a dose delivers ---------- */
@@ -91,27 +154,35 @@ const _supplyCache = new Map();
 function supply(pen) {
   if (_supplyCache.has(pen.id)) return _supplyCache.get(pen.id);
 
+  const t = today();
   let remaining = pen.volumeMl;
+  let drawnSoFar = 0;                  // what today's dose has already used up
   let lastDose = null, exhaustedOn = null, doses = 0;
 
   for (let i = 0; i < phaseDays(pen); i++) {
-    const d = addDays(START, i);
+    const d = addDays(penStart(pen), i);
     if (!scheduledOn(pen, d)) continue;
     const dose = doseOn(pen, d);
     if (!dose) continue;
     if (dose.ml > remaining + 1e-9) { exhaustedOn = d; break; }
     remaining -= dose.ml;
+    if (d < t) drawnSoFar += dose.ml;
     lastDose = d;
     doses++;
   }
+
+  // The gauge shows what is in the pen NOW, not what will be left when the
+  // course ends — those are different numbers on a pen that empties exactly.
+  const mlNow = Math.max(0, pen.volumeMl - drawnSoFar);
 
   const out = {
     lastDose,
     exhaustedOn,
     // 'supply' means the pen emptied; 'protocol' means the course simply ended.
     endReason: exhaustedOn ? 'supply' : 'protocol',
-    mlLeft: remaining,
-    pctLeft: Math.max(0, Math.min(100, (remaining / pen.volumeMl) * 100)),
+    mlLeft: mlNow,
+    pctLeft: Math.max(0, Math.min(100, (mlNow / pen.volumeMl) * 100)),
+    mlAtEnd: remaining,
     totalDoses: doses
   };
   _supplyCache.set(pen.id, out);
@@ -124,11 +195,25 @@ function dosesLeft(pen) {
   if (!s.lastDose) return 0;
   let n = 0;
   for (let i = 0; i < phaseDays(pen); i++) {
-    const d = addDays(START, i);
+    const d = addDays(penStart(pen), i);
     if (d < t || d > s.lastDose) continue;
     if (scheduledOn(pen, d)) n++;
   }
   return n;
+}
+
+/* Every day this pen is actually given: in phase, on the rhythm, and still
+   within what the pen holds. The calendar export and the adherence figure
+   both count from this list. */
+function occurrences(pen) {
+  const out = [], s = supply(pen);
+  if (!s.lastDose) return out;
+  for (let i = 0; i < phaseDays(pen); i++) {
+    const d = addDays(penStart(pen), i);
+    if (d > s.lastDose) break;
+    if (scheduledOn(pen, d) && doseOn(pen, d)) out.push(d);
+  }
+  return out;
 }
 
 /* ---------- active / spent ---------- */
@@ -162,6 +247,27 @@ function needsRefill(pen) {
   if (s.endReason !== 'supply') return false;      // the course ended, not the pen
   const left = daysUntilOut(pen);
   return left !== null && left <= REFILL_WARNING_DAYS;
+}
+
+/* ---------- delivery ----------
+   A pen is dialled to a number; a vial is drawn up with a syringe. The verb
+   and the steps both change, and the dose number means the same thing. */
+function isSyringe(pen) { return pen.delivery === 'syringe'; }
+
+function dialLead(pen) {
+  return isSyringe(pen) ? 'Draw up to' : 'Turn your pen to';
+}
+
+/* What the medication actually comes in — a pen she dials, or a vial she draws
+   from. The copy follows the thing in her hand. */
+function vessel(pen) { return isSyringe(pen) ? 'vial' : 'pen'; }
+
+function stepsFor(pen) {
+  const p = CFG.protocol;
+  const steps = isSyringe(pen)
+    ? (p.injectionStepsSyringe || p.injectionSteps || [])
+    : (p.injectionSteps || []);
+  return steps;
 }
 
 /* ---------- messaging ---------- */
@@ -272,6 +378,7 @@ function buildConfig(name, pens, templates, startDate) {
       delivery: 'pen',
       tracking: false,
       injectionSteps: templates.injectionSteps,
+      injectionStepsSyringe: templates.injectionStepsSyringe,
       sites: templates.sites,
       concierge: templates.concierge,
       pens
@@ -293,12 +400,70 @@ function readCard() {
   return { card: raw, start: null };
 }
 
+/* ---------- pens the patient adds herself ----------
+   The card carries what was dispensed. If she is later given something else
+   and the card hasn't been rewritten, the plus sign lets her add it from the
+   same template list the atelier writes cards from. It counts from the day
+   she adds it, and it lives on her device only. */
+function addedKey() { return `tca.added.${CFG.patient.id}`; }
+
+function loadAdded() {
+  try { return JSON.parse(localStorage.getItem(addedKey())) || []; } catch { return []; }
+}
+
+function saveAdded(list) {
+  try { localStorage.setItem(addedKey(), JSON.stringify(list)); } catch {}
+}
+
+function penFromTemplate(tpl, id, startDate) {
+  const pen = JSON.parse(JSON.stringify(tpl));
+  pen.id = id;
+  pen.template = tpl.id;
+  pen.startDate = startDate;
+  pen.addedByPatient = true;
+  return pen;
+}
+
+function applyAdded(templates) {
+  const list = (templates.templates || []);
+  loadAdded().forEach(rec => {
+    if (PENS.some(p => p.id === rec.id)) return;
+    const tpl = list.find(t => t.id === rec.template);
+    if (tpl) PENS.push(penFromTemplate(tpl, rec.id, rec.startDate));
+  });
+}
+
+function addPen(tpl) {
+  const start = iso(today());
+  const rec = { id: `${tpl.id}+${Date.now().toString(36)}`, template: tpl.id, startDate: start };
+  saveAdded(loadAdded().concat([rec]));
+  const pen = penFromTemplate(tpl, rec.id, start);
+  PENS.push(pen);
+  _supplyCache.clear();
+  return pen;
+}
+
+function removePen(pen) {
+  saveAdded(loadAdded().filter(r => r.id !== pen.id));
+  try { localStorage.removeItem(setupKey(pen)); } catch {}
+  const i = PENS.indexOf(pen);
+  if (i >= 0) PENS.splice(i, 1);
+  _supplyCache.clear();
+}
+
 /* ---------- boot ---------- */
+var TEMPLATES = null;
+
+async function loadTemplates() {
+  if (!TEMPLATES) TEMPLATES = await (await fetch('templates.json', { cache: 'no-store' })).json();
+  return TEMPLATES;
+}
+
 async function loadProtocol() {
   const { card, start: pinned } = readCard();
+  const templates = await loadTemplates();
 
   if (card) {
-    const templates = await (await fetch('templates.json', { cache: 'no-store' })).json();
     CFG = decodeCard(card, templates, pinned);
   } else {
     CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
@@ -306,6 +471,8 @@ async function loadProtocol() {
 
   PENS = CFG.protocol.pens || [];
   START = parse(loadStart() || CFG.protocol.startDate);
+  applyAdded(templates);
+  applySetups();
   _supplyCache.clear();
   return CFG;
 }
