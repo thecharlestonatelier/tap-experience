@@ -198,42 +198,83 @@ function setStart(isoDate) {
    The fragment never reaches the web server — it stays on the device.
 
    Compact on purpose: an NTAG213 sticker holds ~130 characters of URL. */
-function encodeCard(cfg) {
-  const compact = {
-    n: cfg.patient.name,
-    s: cfg.protocol.startDate,
-    p: (cfg.protocol.pens || []).map(pen => ({
-      t: pen.templateId || pen.id,
-      // Only carry what differs from the template: the titration.
-      f: pen.phases.map(ph => [ph.name, ph.units, ph.days == null ? 0 : ph.days])
-    }))
-  };
-  return btoa(unescape(encodeURIComponent(JSON.stringify(compact))))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+/* Format:  Name~pen~pen        e.g.  Dustin~wol
+            pen = short  |  short:units-days.units-days
+   Phase names and any titration matching the template are left out — they
+   are already on the site. An NTAG213 holds roughly 130 characters of URL,
+   and this keeps a typical card well inside that. */
+function encodeCard(cfg, templates) {
+  const byId = Object.fromEntries((templates.templates || []).map(t => [t.id, t]));
+
+  const pens = (cfg.protocol.pens || []).map(pen => {
+    const base = byId[pen.templateId || pen.id];
+    const key = (base && base.short) || pen.short || pen.id;
+    const phases = pen.phases.map(ph => `${ph.units}-${ph.days == null ? 0 : ph.days}`).join('.');
+    const stock = base
+      ? base.phases.map(ph => `${ph.units}-${ph.days == null ? 0 : ph.days}`).join('.')
+      : null;
+    return phases === stock ? key : `${key}:${phases}`;   // default titration needs no numbers
+  });
+
+  const parts = [cfg.patient.name, ...pens].join('~');
+  return encodeURIComponent(parts).replace(/%20/g, '+');
 }
 
-function decodeCard(payload, templates) {
+function decodeCard(payload, templates, startOverride) {
+  // Cards written before the compact format used base64 JSON — still honoured.
+  if (/^eyJ/.test(payload)) return decodeLegacyCard(payload, templates);
+
+  const parts = decodeURIComponent(payload.replace(/\+/g, ' ')).split('~');
+  const name = parts.shift() || 'Patient';
+  const byKey = {};
+  (templates.templates || []).forEach(t => { byKey[t.short] = t; byKey[t.id] = t; });
+
+  const pens = parts.map(chunk => {
+    const [key, spec] = chunk.split(':');
+    const base = byKey[key];
+    if (!base) return null;
+    if (!spec) return JSON.parse(JSON.stringify(base));
+
+    const phases = spec.split('.').map((s, i) => {
+      const [units, days] = s.split('-').map(Number);
+      const named = base.phases[i];
+      return { name: named ? named.name : `Phase ${i + 1}`, units, days: days || null };
+    });
+    return Object.assign(JSON.parse(JSON.stringify(base)), { phases });
+  }).filter(Boolean);
+
+  return buildConfig(name, pens, templates, startOverride);
+}
+
+function decodeLegacyCard(payload, templates) {
   const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
   const small = JSON.parse(decodeURIComponent(escape(atob(b64))));
   const byId = Object.fromEntries((templates.templates || []).map(t => [t.id, t]));
+  const pens = (small.p || []).map(p => {
+    const base = byId[p.t];
+    if (!base) return null;
+    return Object.assign(JSON.parse(JSON.stringify(base)), {
+      phases: p.f.map(([name, units, days]) => ({ name, units, days: days || null }))
+    });
+  }).filter(Boolean);
+  return buildConfig(small.n, pens, templates, small.s);
+}
 
+function buildConfig(name, pens, templates, startDate) {
+  const t = new Date();
+  const fallback = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   return {
-    patient: { name: small.n, id: small.n.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+    patient: { name, id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
     protocol: {
-      name: `${small.n}'s Protocol`,
-      startDate: small.s,
+      name: `${name}'s Protocol`,
+      // With no date on the card the patient sets her own on first open.
+      startDate: startDate || fallback,
       delivery: 'pen',
       tracking: false,
       injectionSteps: templates.injectionSteps,
       sites: templates.sites,
       concierge: templates.concierge,
-      pens: (small.p || []).map(p => {
-        const base = byId[p.t];
-        if (!base) return null;
-        return Object.assign({}, base, {
-          phases: p.f.map(([name, units, days]) => ({ name, units, days: days || null }))
-        });
-      }).filter(Boolean)
+      pens
     }
   };
 }
@@ -245,7 +286,7 @@ async function loadProtocol() {
 
   if (card) {
     const templates = await (await fetch('templates.json', { cache: 'no-store' })).json();
-    CFG = decodeCard(card, templates);
+    CFG = decodeCard(card, templates, new URLSearchParams(hash).get('s'));
   } else {
     CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
   }

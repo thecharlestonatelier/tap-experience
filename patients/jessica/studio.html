@@ -141,7 +141,7 @@
         <div class="options" id="patientOptions"></div>
       </div>
       <div>
-        <label for="start">Start day</label>
+        <label for="start">Start day <span style="text-transform:none;letter-spacing:0">— leave as today and the patient picks her own</span></label>
         <input id="start" type="date">
       </div>
     </div>
@@ -349,7 +349,8 @@ function build() {
     protocol: { startDate: start, pens: chosen }
   };
 
-  const url = `${location.origin}${location.pathname.replace(/studio\.html$/, '')}#c=${encodeCard(cfg)}`;
+  const pinned = start !== isoToday() ? `&s=${start}` : '';
+  const url = `${location.origin}${location.pathname.replace(/studio\.html$/, '')}#c=${encodeCard(cfg, TPL)}${pinned}`;
   $('url').value = url;
   $('preview').href = url;
 
