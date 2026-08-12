@@ -83,6 +83,25 @@
     },
 
     {
+      "id": "nad",
+      "name": "NAD+",
+      "short": "nad",
+      "color": "brass",
+      "_source": "UMS order S04593: PEN - NAD+ 500mg 3mL Pen. 500 mg in 3 mL = 166.7 mg/mL, so one unit delivers 1.67 mg. Dose and frequency set by the physician: 30 units (50 mg), 5 days on / 2 off.",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Morning",
+      "components": [
+        { "name": "NAD+", "mg": 500 }
+      ],
+      "schedule": { "on": 5, "off": 2 },
+      "phases": [
+        { "name": "Maintenance", "units": 30, "days": 28 }
+      ],
+      "notes": "Rotate injection sites as needed."
+    },
+
+    {
       "id": "custom",
       "name": "Custom pen",
       "short": "cus",
