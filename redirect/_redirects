@@ -1,0 +1,6 @@
+# Jessica's card was written before the portal moved to ca-tap.netlify.app.
+# Her tag is in her wallet and cannot be rewritten, so this subdomain is
+# held permanently and forwards to wherever the portal lives.
+# The fragment (#Name~pen) is re-applied by the browser after the redirect;
+# it never reaches a server, so it survives this hop untouched.
+/*  https://ca-tap.netlify.app/:splat  301!

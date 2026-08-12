@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>The Charleston Atelier</title>
+<style>
+  body { background:#F3EBE1; color:#8A7C6A; font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+         display:flex; align-items:center; justify-content:center; min-height:100dvh; margin:0; }
+  p { font-size:15px; }
+</style>
+</head>
+<body>
+<p>Opening your portal…</p>
+<script>
+  /* Only reached if the redirect rule did not fire. Carries the card
+     payload across by hand so the tap still lands on the right protocol. */
+  location.replace('https://ca-tap.netlify.app/' + location.search + location.hash);
+</script>
+</body>
+</html>

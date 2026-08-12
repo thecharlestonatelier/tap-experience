@@ -1,0 +1,10 @@
+# Forwarding-only site. Holds atelier-portal-jessica.netlify.app so cards
+# written against the portal's old name keep working.
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
