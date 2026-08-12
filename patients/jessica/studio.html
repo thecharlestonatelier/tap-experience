@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Card Studio</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
+
+<style>
+  :root {
+    --bg:      #F3EBE1;
+    --panel:   #F8F2EA;
+    --ink:     #3B2E20;
+    --ink-2:   #4A3B2C;
+    --muted:   #8A7C6A;
+    --brass:   #8A7350;
+    --line:    rgba(138,115,80,.2);
+    --shadow:  0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045);
+    --alert:   #A4553F;
+    --ok:      #6F8672;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Jost', -apple-system, sans-serif;
+    font-feature-settings: 'lnum' 1;
+    -webkit-font-smoothing: antialiased;
+    padding: 30px 20px 80px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  header { display:flex; align-items:center; gap:14px; margin-bottom: 6px; }
+  .mark { height: 40px; width:auto; color: var(--brass); }
+  h1 {
+    font-family:'Cormorant Garamond', Georgia, serif;
+    font-weight:500; font-size:40px; color:var(--ink); line-height:1;
+  }
+  .lede { color: var(--muted); font-size: 14px; margin: 6px 0 28px; }
+
+  .panel {
+    background: var(--panel); border-radius: 18px;
+    box-shadow: var(--shadow); padding: 22px; margin-bottom: 18px;
+  }
+  .panel h2 {
+    font-family:'Cormorant Garamond', Georgia, serif;
+    font-weight:500; font-size:24px; color:var(--ink); margin-bottom: 4px;
+  }
+  .panel .hint { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+
+  label { display:block; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  input, select {
+    width:100%; padding:12px 13px; border:1px solid var(--line); border-radius:11px;
+    background:#FDFAF6; color:var(--ink); font-family:'Jost',sans-serif; font-size:15px;
+    font-feature-settings:'lnum' 1;
+  }
+  input:focus, select:focus { outline:none; border-color: var(--brass); }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .row-3 { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; }
+
+  .btn {
+    padding:12px 18px; border:none; border-radius:11px; cursor:pointer;
+    font-family:'Jost',sans-serif; font-size:12px; font-weight:600;
+    letter-spacing:.1em; text-transform:uppercase;
+  }
+  .btn-primary { background: var(--ink); color:#F6F0E7; }
+  .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--ink-2); }
+  .btn-sm { padding:8px 12px; font-size:11px; }
+
+  /* typeahead */
+  .combo { position:relative; }
+  .options {
+    position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20;
+    background:#FDFAF6; border:1px solid var(--line); border-radius:11px;
+    box-shadow: 0 10px 30px rgba(59,46,32,.14); max-height:230px; overflow:auto; display:none;
+  }
+  .options.open { display:block; }
+  .opt { padding:11px 13px; cursor:pointer; font-size:14px; }
+  .opt:hover, .opt.active { background: rgba(138,115,80,.1); }
+  .opt small { display:block; color:var(--muted); font-size:11.5px; }
+
+  /* chosen pens */
+  .pen {
+    border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:12px;
+    background:#FDFAF6;
+  }
+  .pen-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .pen-name { font-family:'Cormorant Garamond',Georgia,serif; font-size:21px; color:var(--ink); }
+  .pen-sub { font-size:12px; color:var(--muted); }
+  .swatch { width:12px; height:12px; border-radius:4px; }
+  .phase-row { display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:8px; align-items:end; margin-top:8px; }
+  .mini { font-size:11px; color:var(--muted); margin-top:6px; }
+  .x { background:none; border:none; color:var(--muted); cursor:pointer; font-size:18px; padding:0 6px; }
+
+  /* output */
+  .url {
+    width:100%; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+    padding:14px; border-radius:11px; border:1px solid var(--line);
+    background:#FDFAF6; color:var(--ink); word-break:break-all; min-height:96px; resize:vertical;
+  }
+  .meter { display:flex; align-items:center; gap:10px; margin-top:10px; font-size:12px; color:var(--muted); }
+  .meter b { color:var(--ink); font-variant-numeric:tabular-nums; }
+  .fit { padding:3px 9px; border-radius:999px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; }
+  .fit.ok { background:rgba(111,134,114,.18); color:var(--ok); }
+  .fit.tight { background:rgba(164,85,63,.16); color:var(--alert); }
+  .actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+
+  .note { font-size:12.5px; line-height:1.6; color:var(--muted); margin-top:14px; }
+  .note strong { color:var(--ink-2); }
+  .warn { border-left:3px solid var(--alert); padding-left:12px; }
+
+  .toast {
+    position:fixed; left:50%; bottom:26px; transform:translate(-50%,12px);
+    background:var(--ink); color:#F6F0E7; padding:13px 20px; border-radius:13px;
+    font-size:13.5px; opacity:0; pointer-events:none; transition:.25s;
+  }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+
+  @media (max-width:640px) { .row, .row-3, .phase-row { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <svg class="mark" viewBox="0 108 117 160" fill="currentColor" aria-hidden="true"><text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text><text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text></svg>
+    <h1>Card Studio</h1>
+  </header>
+  <p class="lede">Build a patient's tap card at the end of a visit, then write the URL to the NFC tag.</p>
+
+  <div class="panel">
+    <h2>Patient</h2>
+    <p class="hint" id="patientHint">Type a name. Practice Better lookup appears here once connected.</p>
+    <div class="row">
+      <div class="combo">
+        <label for="patient">Patient</label>
+        <input id="patient" autocomplete="off" placeholder="First name as it should appear on the card">
+        <div class="options" id="patientOptions"></div>
+      </div>
+      <div>
+        <label for="start">Start day</label>
+        <input id="start" type="date">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Protocol</h2>
+    <p class="hint">Type to find a pen, then adjust the titration. Only pens with a verified concentration are listed — a dose cannot be computed without one.</p>
+    <div class="combo">
+      <label for="penSearch">Add a pen</label>
+      <input id="penSearch" autocomplete="off" placeholder="Start typing — Glow, 2x, custom…">
+      <div class="options" id="penOptions"></div>
+    </div>
+    <div id="pens"></div>
+  </div>
+
+  <div class="panel">
+    <h2>The card</h2>
+    <p class="hint">Copy this into your NFC writer as a URL / link record.</p>
+    <textarea class="url" id="url" readonly spellcheck="false"></textarea>
+    <div class="meter">
+      <span><b id="len">0</b> characters</span>
+      <span id="fit" class="fit ok">fits NTAG213</span>
+      <span id="doses"></span>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" id="copy">Copy URL</button>
+      <a class="btn btn-ghost" id="preview" target="_blank" rel="noopener">Preview card</a>
+      <button class="btn btn-ghost" id="reset">Start over</button>
+    </div>
+    <p class="note" id="supplyNote"></p>
+    <p class="note warn">
+      <strong>The protocol travels in the link.</strong> Nothing is stored on a server, so no
+      patient record is created — but the card can only be changed by writing the tag again.
+      If a dose changes between visits, generate a new URL and re-write her tag.
+    </p>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==================================================================
+   CARD STUDIO — clinician side
+   The whole protocol is encoded into the URL fragment, so a card is
+   self-contained: no database, no patient record, nothing to leak.
+   ================================================================== */
+
+let TPL = null;
+let chosen = [];
+const $ = id => document.getElementById(id);
+
+const isoToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+
+/* ---------- patient lookup ----------
+   Tries the Netlify function that talks to Practice Better. If it isn't
+   wired up yet the field stays a plain text box, so the studio is usable
+   from day one. */
+async function loadPatients() {
+  try {
+    const res = await fetch('/.netlify/functions/patients');
+    if (!res.ok) throw new Error(String(res.status));
+    const data = await res.json();
+    if (!Array.isArray(data.patients) || !data.patients.length) throw new Error('empty');
+    wireCombo($('patient'), $('patientOptions'),
+      q => data.patients
+        .filter(p => p.name.toLowerCase().includes(q))
+        .slice(0, 40)
+        .map(p => ({ label: p.name, sub: p.email || '', value: p.name })),
+      v => { $('patient').value = v; build(); });
+    $('patientHint').textContent = `${data.patients.length} patients from Practice Better.`;
+  } catch (e) {
+    $('patientHint').innerHTML =
+      'Practice Better lookup is not connected yet — type the name instead. ' +
+      '<em>Set PRACTICE_BETTER_API_KEY in Netlify and deploy the patients function.</em>';
+  }
+}
+
+/* ---------- a small reusable typeahead ---------- */
+function wireCombo(input, box, search, choose) {
+  let items = [], active = -1;
+
+  const render = () => {
+    box.innerHTML = items.map((it, i) =>
+      `<div class="opt${i === active ? ' active' : ''}" data-i="${i}">${it.label}${
+        it.sub ? `<small>${it.sub}</small>` : ''}</div>`).join('');
+    box.classList.toggle('open', items.length > 0);
+    box.querySelectorAll('.opt').forEach(el =>
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        choose(items[+el.dataset.i].value);
+        box.classList.remove('open');
+      }));
+  };
+
+  const run = () => { items = search(input.value.trim().toLowerCase()); active = -1; render(); };
+
+  input.addEventListener('input', run);
+  input.addEventListener('focus', run);
+  input.addEventListener('blur', () => setTimeout(() => box.classList.remove('open'), 120));
+  input.addEventListener('keydown', e => {
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') { active = Math.min(active + 1, items.length - 1); render(); e.preventDefault(); }
+    if (e.key === 'ArrowUp')   { active = Math.max(active - 1, 0); render(); e.preventDefault(); }
+    if (e.key === 'Enter' && active >= 0) { choose(items[active].value); box.classList.remove('open'); e.preventDefault(); }
+  });
+}
+
+/* ---------- pens ---------- */
+function addPen(id) {
+  const t = TPL.templates.find(x => x.id === id);
+  if (!t) return;
+  chosen.push(JSON.parse(JSON.stringify(t)));   // a working copy, template untouched
+  $('penSearch').value = '';
+  renderPens();
+  build();
+}
+
+function renderPens() {
+  $('pens').innerHTML = chosen.map((pen, pi) => `
+    <div class="pen">
+      <div class="pen-head">
+        <span class="swatch" style="background:var(--${pen.color === 'brass' ? 'brass' : pen.color})"></span>
+        <div style="flex:1">
+          <div class="pen-name">${pen.name}</div>
+          <div class="pen-sub">${pen.components.map(c => `${c.name} ${c.mg}`).join(' / ')} mg ·
+            ${pen.volumeMl} mL · ${pen.schedule.on} on / ${pen.schedule.off} off</div>
+        </div>
+        <button class="x" data-remove="${pi}" title="Remove">×</button>
+      </div>
+
+      ${pen.phases.map((ph, fi) => `
+        <div class="phase-row">
+          <div><label>Phase</label><input value="${ph.name}" data-p="${pi}" data-f="${fi}" data-k="name"></div>
+          <div><label>Units</label><input type="number" min="1" value="${ph.units}" data-p="${pi}" data-f="${fi}" data-k="units"></div>
+          <div><label>Days</label><input type="number" min="1" value="${ph.days || ''}" data-p="${pi}" data-f="${fi}" data-k="days"></div>
+          <button class="x" data-dropphase="${pi}:${fi}" title="Remove phase">×</button>
+        </div>
+        <div class="mini">${describe(pen, ph)}</div>`).join('')}
+
+      <button class="btn btn-ghost btn-sm" data-addphase="${pi}" style="margin-top:12px">Add phase</button>
+    </div>`).join('');
+
+  $('pens').querySelectorAll('input').forEach(el =>
+    el.addEventListener('input', () => {
+      const { p, f, k } = el.dataset;
+      const v = k === 'name' ? el.value : Number(el.value);
+      chosen[p].phases[f][k] = k === 'name' ? v : (v || (k === 'days' ? null : 0));
+      renderMini();
+      build();
+    }));
+
+  $('pens').querySelectorAll('[data-remove]').forEach(el =>
+    el.addEventListener('click', () => { chosen.splice(+el.dataset.remove, 1); renderPens(); build(); }));
+
+  $('pens').querySelectorAll('[data-addphase]').forEach(el =>
+    el.addEventListener('click', () => {
+      const pen = chosen[+el.dataset.addphase];
+      const last = pen.phases[pen.phases.length - 1] || { units: 10, days: 14 };
+      pen.phases.push({ name: 'Next phase', units: last.units, days: 14 });
+      renderPens(); build();
+    }));
+
+  $('pens').querySelectorAll('[data-dropphase]').forEach(el =>
+    el.addEventListener('click', () => {
+      const [pi, fi] = el.dataset.dropphase.split(':').map(Number);
+      if (chosen[pi].phases.length > 1) chosen[pi].phases.splice(fi, 1);
+      renderPens(); build();
+    }));
+}
+
+function renderMini() {
+  const nodes = $('pens').querySelectorAll('.mini');
+  let i = 0;
+  chosen.forEach(pen => pen.phases.forEach(ph => { if (nodes[i]) nodes[i].textContent = describe(pen, ph); i++; }));
+}
+
+/* What the clinician needs to sanity-check: mg delivered per dose. */
+function describe(pen, ph) {
+  const ml = (ph.units || 0) * 0.01;
+  const parts = pen.components.map(c => `${c.name} ${((c.mg / pen.volumeMl) * ml).toFixed(2)} mg`);
+  const total = pen.components.reduce((s, c) => s + (c.mg / pen.volumeMl) * ml, 0);
+  return `${ph.units || 0} units = ${ml.toFixed(2)} mL — ${parts.join(' · ')} (${total.toFixed(2)} mg total)`;
+}
+
+/* ---------- build the card ---------- */
+function build() {
+  const name = $('patient').value.trim();
+  const start = $('start').value || isoToday();
+
+  if (!name || !chosen.length) {
+    $('url').value = '';
+    $('len').textContent = '0';
+    $('supplyNote').textContent = '';
+    $('preview').removeAttribute('href');
+    return;
+  }
+
+  const cfg = {
+    patient: { name },
+    protocol: { startDate: start, pens: chosen }
+  };
+
+  const url = `${location.origin}${location.pathname.replace(/studio\.html$/, '')}#c=${encodeCard(cfg)}`;
+  $('url').value = url;
+  $('preview').href = url;
+
+  $('len').textContent = url.length;
+  const fit = $('fit');
+  if (url.length <= 130)      { fit.className = 'fit ok';    fit.textContent = 'fits NTAG213'; }
+  else if (url.length <= 490) { fit.className = 'fit ok';    fit.textContent = 'fits NTAG215'; }
+  else if (url.length <= 870) { fit.className = 'fit ok';    fit.textContent = 'fits NTAG216'; }
+  else                        { fit.className = 'fit tight'; fit.textContent = 'too long for most tags'; }
+
+  // Project supply so an under-filled pen is caught before the card is written.
+  CFG = { patient: { name, id: 'preview' }, protocol: { startDate: start, pens: chosen } };
+  PENS = chosen;
+  START = parse(start);
+  const notes = chosen.map(pen => {
+    const s = supply(pen);
+    if (!s.lastDose) return `${pen.name}: no doses fit in this pen.`;
+    const days = Math.round((s.lastDose - START) / 86400000) + 1;
+    return `${pen.name}: ${s.totalDoses} doses, lasting ${days} days${
+      s.endReason === 'supply' ? ' before the pen empties' : ' to the end of the course'}.`;
+  });
+  $('doses').textContent = '';
+  $('supplyNote').innerHTML = '<strong>Projected supply.</strong> ' + notes.join(' ');
+}
+
+/* ---------- boot ---------- */
+(async function boot() {
+  TPL = await (await fetch('templates.json', { cache: 'no-store' })).json();
+
+  wireCombo($('penSearch'), $('penOptions'),
+    q => TPL.templates
+      .filter(t => !q || t.name.toLowerCase().includes(q) || t.id.includes(q) ||
+                   t.components.some(c => c.name.toLowerCase().includes(q)))
+      .map(t => ({ label: t.name, sub: t.components.map(c => `${c.name} ${c.mg}`).join(' / ') + ` mg · ${t.volumeMl} mL`, value: t.id })),
+    id => addPen(id));
+
+  $('start').value = isoToday();
+  $('patient').addEventListener('input', build);
+  $('start').addEventListener('input', build);
+
+  $('copy').addEventListener('click', async () => {
+    if (!$('url').value) return toast('Add a patient and at least one pen first.');
+    try { await navigator.clipboard.writeText($('url').value); toast('URL copied — paste it into your NFC writer.'); }
+    catch { $('url').select(); document.execCommand('copy'); toast('URL copied.'); }
+  });
+
+  $('reset').addEventListener('click', () => {
+    chosen = []; $('patient').value = ''; $('start').value = isoToday();
+    renderPens(); build();
+  });
+
+  loadPatients();
+  build();
+})();
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>

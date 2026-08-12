@@ -6,6 +6,18 @@
   publish = "."
   command = ""
 
+[functions]
+  directory = "netlify/functions"
+
+# Card Studio is the clinician's side — keep it out of search results and
+# out of the patient-facing surface. Netlify password protection is worth
+# turning on for this path once the plan allows it.
+[[headers]]
+  for = "/studio.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
 [[headers]]
   for = "/*"
   [headers.values]

@@ -265,6 +265,7 @@ function renderLegend() {
 
   render();
   renderLegend();
+  applyCardLinks();
 
   document.getElementById('prev').addEventListener('click', () => {
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); render();

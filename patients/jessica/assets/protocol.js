@@ -192,11 +192,91 @@ function setStart(isoDate) {
   _supplyCache.clear();          // every projection depends on the start day
 }
 
+/* ---------- card payloads ----------
+   A tap card carries its own protocol in the URL fragment, so a card can
+   be written at the end of a visit with no server and no record to keep.
+   The fragment never reaches the web server — it stays on the device.
+
+   Compact on purpose: an NTAG213 sticker holds ~130 characters of URL. */
+function encodeCard(cfg) {
+  const compact = {
+    n: cfg.patient.name,
+    s: cfg.protocol.startDate,
+    p: (cfg.protocol.pens || []).map(pen => ({
+      t: pen.templateId || pen.id,
+      // Only carry what differs from the template: the titration.
+      f: pen.phases.map(ph => [ph.name, ph.units, ph.days == null ? 0 : ph.days])
+    }))
+  };
+  return btoa(unescape(encodeURIComponent(JSON.stringify(compact))))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function decodeCard(payload, templates) {
+  const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+  const small = JSON.parse(decodeURIComponent(escape(atob(b64))));
+  const byId = Object.fromEntries((templates.templates || []).map(t => [t.id, t]));
+
+  return {
+    patient: { name: small.n, id: small.n.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+    protocol: {
+      name: `${small.n}'s Protocol`,
+      startDate: small.s,
+      delivery: 'pen',
+      tracking: false,
+      injectionSteps: templates.injectionSteps,
+      sites: templates.sites,
+      concierge: templates.concierge,
+      pens: (small.p || []).map(p => {
+        const base = byId[p.t];
+        if (!base) return null;
+        return Object.assign({}, base, {
+          phases: p.f.map(([name, units, days]) => ({ name, units, days: days || null }))
+        });
+      }).filter(Boolean)
+    }
+  };
+}
+
 /* ---------- boot ---------- */
 async function loadProtocol() {
-  CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+  const hash = location.hash.replace(/^#/, '');
+  const card = new URLSearchParams(hash).get('c');
+
+  if (card) {
+    const templates = await (await fetch('templates.json', { cache: 'no-store' })).json();
+    CFG = decodeCard(card, templates);
+  } else {
+    CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+  }
+
   PENS = CFG.protocol.pens || [];
   START = parse(loadStart() || CFG.protocol.startDate);
   _supplyCache.clear();
   return CFG;
+}
+
+/* Carry the card payload across in-portal links, so every page of a
+   tapped card sees the same protocol. */
+function cardSuffix() {
+  const hash = location.hash.replace(/^#/, '');
+  const card = new URLSearchParams(hash).get('c');
+  return card ? `#c=${card}` : '';
+}
+
+function linkWithCard(href) {
+  if (!href || /^(https?:|sms:|tel:|mailto:)/i.test(href)) return href;
+  const suffix = cardSuffix();
+  if (!suffix) return href;
+  return href.split('#')[0] + suffix;
+}
+
+/* Rewrite every in-portal link so a tapped card keeps its protocol as the
+   patient moves between Ritual, Protocol and Calendar. */
+function applyCardLinks(root) {
+  if (!cardSuffix()) return;
+  (root || document).querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && !/^(https?:|sms:|tel:|mailto:|#)/i.test(href)) a.setAttribute('href', linkWithCard(href));
+  });
 }

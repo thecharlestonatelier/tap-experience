@@ -533,6 +533,7 @@ function commitStart() {
   calCursor = today();
   selectedDay = today();
   renderAll();
+  applyCardLinks();
   showToast(`Schedule set from ${fmtShort(START)}.`);
 }
 

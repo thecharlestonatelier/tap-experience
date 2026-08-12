@@ -1,0 +1,81 @@
+{
+  "_note": "Protocol templates the dashboard offers. Each is a pen as dispensed: composition, volume, and the default titration. The clinician can override units and durations per patient without touching this file. Only pens with verified concentrations belong here — a pen whose mg/mL is unknown cannot compute a dose.",
+
+  "sites": ["Left abdomen", "Right abdomen", "Left thigh", "Right thigh"],
+
+  "injectionSteps": [
+    "Turn the pen dial to {units}",
+    "Inject at your chosen site",
+    "Press the plunger all the way down and hold for 10 seconds"
+  ],
+
+  "concierge": {
+    "phone": "843-377-3713",
+    "messageOpener": "Hi Dr. Phelps-Polirer — ",
+    "refillOpener": "Hi Dr. Phelps-Polirer — I need a refill of my {pen}."
+  },
+
+  "templates": [
+    {
+      "id": "glow",
+      "name": "Glow Blend",
+      "short": "glo",
+      "color": "clay",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "components": [
+        { "name": "BPC-157", "mg": 10 },
+        { "name": "TB-500",  "mg": 10 },
+        { "name": "GHK-Cu",  "mg": 50 }
+      ],
+      "schedule": { "on": 5, "off": 2 },
+      "phases": [
+        { "name": "Starting",    "units": 4,  "days": 14 },
+        { "name": "Ramp-Up",     "units": 9,  "days": 14 },
+        { "name": "Maintenance", "units": 13, "days": 28 }
+      ],
+      "notes": "Rotate injection sites as needed."
+    },
+
+    {
+      "id": "blend2x",
+      "name": "2x Blend",
+      "short": "2x",
+      "color": "plum",
+      "volumeMl": 4,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "ratioNote": "10 / 2 mg blend",
+      "components": [
+        { "name": "Tesamorelin", "mg": 10 },
+        { "name": "Ipamorelin",  "mg": 2 }
+      ],
+      "schedule": { "on": 5, "off": 2 },
+      "doseRange": { "minUnits": 30, "maxUnits": 100, "label": "Card range 1–3 mg (30–100 units)" },
+      "phases": [
+        { "name": "Weeks 1–2", "units": 30, "days": 14 },
+        { "name": "Weeks 3–4", "units": 50, "days": 14 }
+      ],
+      "notes": "Administer once daily, preferably in a fasted state or prior to bedtime. Rotate injection sites as needed."
+    },
+
+    {
+      "id": "custom",
+      "name": "Custom pen",
+      "short": "cus",
+      "color": "sage",
+      "volumeMl": 3,
+      "route": "Subcutaneous",
+      "time": "Evening",
+      "components": [
+        { "name": "Peptide", "mg": 10 }
+      ],
+      "schedule": { "on": 5, "off": 2 },
+      "phases": [
+        { "name": "Starting", "units": 10, "days": 28 }
+      ],
+      "notes": ""
+    }
+  ]
+}

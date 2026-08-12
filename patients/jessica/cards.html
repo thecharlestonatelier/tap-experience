@@ -408,6 +408,7 @@ function render() {
   }
   document.title = `My Protocol — ${CFG.patient.name}`;
   render();
+  applyCardLinks();
 
   const c = (CFG.protocol && CFG.protocol.concierge) || {};
   if (c.phone) {
