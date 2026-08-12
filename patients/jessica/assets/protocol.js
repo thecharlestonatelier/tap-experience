@@ -279,14 +279,27 @@ function buildConfig(name, pens, templates, startDate) {
   };
 }
 
+/* The fragment is the payload itself — "#Dustin~wol" — unless a start date
+   had to be pinned, in which case it falls back to "#c=…&s=…". Every byte
+   counts: a 64-byte MIFARE Ultralight leaves ~40 characters after the
+   https:// prefix, and the domain eats most of that. */
+function readCard() {
+  const raw = location.hash.replace(/^#/, '');
+  if (!raw) return { card: null, start: null };
+  if (raw.includes('=')) {
+    const q = new URLSearchParams(raw);
+    return { card: q.get('c'), start: q.get('s') };
+  }
+  return { card: raw, start: null };
+}
+
 /* ---------- boot ---------- */
 async function loadProtocol() {
-  const hash = location.hash.replace(/^#/, '');
-  const card = new URLSearchParams(hash).get('c');
+  const { card, start: pinned } = readCard();
 
   if (card) {
     const templates = await (await fetch('templates.json', { cache: 'no-store' })).json();
-    CFG = decodeCard(card, templates, new URLSearchParams(hash).get('s'));
+    CFG = decodeCard(card, templates, pinned);
   } else {
     CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
   }
@@ -300,9 +313,7 @@ async function loadProtocol() {
 /* Carry the card payload across in-portal links, so every page of a
    tapped card sees the same protocol. */
 function cardSuffix() {
-  const hash = location.hash.replace(/^#/, '');
-  const card = new URLSearchParams(hash).get('c');
-  return card ? `#c=${card}` : '';
+  return location.hash && readCard().card ? location.hash : '';
 }
 
 function linkWithCard(href) {

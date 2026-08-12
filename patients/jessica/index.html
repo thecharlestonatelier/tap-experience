@@ -403,11 +403,11 @@ function showToast(message) {
 /* A card written in Card Studio carries its patient and protocol in the
    URL fragment; the portal greets whoever the card is for. */
 (async function start() {
-  const card = new URLSearchParams(location.hash.replace(/^#/, '')).get('c');
+  const { card, start } = readCard();
   if (card) {
     try {
       const templates = await (await fetch('templates.json', { cache: 'no-store' })).json();
-      const cfg = decodeCard(card, templates);
+      const cfg = decodeCard(card, templates, start);
       PORTAL.patientName = cfg.patient.name;
       if (cfg.protocol.concierge) {
         PORTAL.conciergePhone = cfg.protocol.concierge.phone || PORTAL.conciergePhone;

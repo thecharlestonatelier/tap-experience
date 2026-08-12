@@ -349,17 +349,25 @@ function build() {
     protocol: { startDate: start, pens: chosen }
   };
 
-  const pinned = start !== isoToday() ? `&s=${start}` : '';
-  const url = `${location.origin}${location.pathname.replace(/studio\.html$/, '')}#c=${encodeCard(cfg, TPL)}${pinned}`;
+  const payload = encodeCard(cfg, TPL);
+  const base = `${location.origin}${location.pathname.replace(/studio\.html$/, '')}`;
+  // Bare fragment normally; the c=/s= form only when a start date is pinned.
+  const url = start !== isoToday()
+    ? `${base}#c=${payload}&s=${start}`
+    : `${base}#${payload}`;
   $('url').value = url;
   $('preview').href = url;
 
-  $('len').textContent = url.length;
+  // A tag stores the URL minus the https:// prefix, plus ~8 bytes of NDEF
+  // overhead. That, not the visible length, is what has to fit.
+  const stored = url.replace(/^https?:\/\//, '').length + 8;
+  $('len').textContent = `${url.length} chars · ${stored} bytes on tag`;
   const fit = $('fit');
-  if (url.length <= 130)      { fit.className = 'fit ok';    fit.textContent = 'fits NTAG213'; }
-  else if (url.length <= 490) { fit.className = 'fit ok';    fit.textContent = 'fits NTAG215'; }
-  else if (url.length <= 870) { fit.className = 'fit ok';    fit.textContent = 'fits NTAG216'; }
-  else                        { fit.className = 'fit tight'; fit.textContent = 'too long for most tags'; }
+  if (stored <= 48)       { fit.className = 'fit ok';    fit.textContent = 'fits Ultralight 64B'; }
+  else if (stored <= 137) { fit.className = 'fit ok';    fit.textContent = 'fits NTAG213'; }
+  else if (stored <= 496) { fit.className = 'fit ok';    fit.textContent = 'fits NTAG215'; }
+  else if (stored <= 872) { fit.className = 'fit ok';    fit.textContent = 'fits NTAG216'; }
+  else                    { fit.className = 'fit tight'; fit.textContent = 'too long for most tags'; }
 
   // Project supply so an under-filled pen is caught before the card is written.
   CFG = { patient: { name, id: 'preview' }, protocol: { startDate: start, pens: chosen } };
