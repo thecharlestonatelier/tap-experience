@@ -451,8 +451,51 @@ function removePen(pen) {
   _supplyCache.clear();
 }
 
+/* ---------- stored cards ----------
+   A card written as an address rather than a payload — /phil.h — carries
+   no protocol of its own. The tag is written once and the record behind it
+   is edited from the dashboard, so what the patient sees on the next tap
+   is whatever the atelier last saved. The slug arrives either from the
+   server, which stamps it into the page it serves, or on the query string
+   as the patient moves between pages. */
+function readSlug() {
+  const q = new URLSearchParams(location.search).get('c');
+  if (q && /^[a-z0-9][a-z0-9.\-]{0,38}[a-z0-9]$/i.test(q)) return q.toLowerCase();
+  if (typeof window !== 'undefined' && window.__CARD_SLUG__) return window.__CARD_SLUG__;
+  return null;
+}
+
+/* Expand a stored record's template ids into the pens the engine runs on.
+   Dosing maths stays in templates.json, so a corrected concentration fixes
+   every patient at once instead of every record needing an edit. */
+function hydrateRecord(rec, templates) {
+  const byKey = {};
+  (templates.templates || []).forEach(t => { byKey[t.id] = t; byKey[t.short] = t; });
+
+  const pens = (rec.pens || []).map((entry, i) => {
+    const base = byKey[entry.template];
+    if (!base) return null;
+    const pen = JSON.parse(JSON.stringify(base));
+    pen.template = base.id;
+    // Two pens of the same template need distinct ids for supply and setup.
+    pen.id = (rec.pens || []).filter(p => p.template === entry.template).length > 1
+      ? `${base.id}#${i}` : base.id;
+    if (entry.phases && entry.phases.length) pen.phases = entry.phases;
+    if (entry.schedule) pen.schedule = entry.schedule;
+    if (entry.startDate) pen.startDate = entry.startDate;
+    return pen;
+  }).filter(Boolean);
+
+  const cfg = buildConfig(rec.name || 'Patient', pens, templates, rec.startDate);
+  cfg.patient.id = rec.slug || cfg.patient.id;
+  cfg.slug = rec.slug || null;
+  cfg.status = rec.status || 'active';
+  return cfg;
+}
+
 /* ---------- boot ---------- */
 var TEMPLATES = null;
+var CARD_SLUG = null;
 
 async function loadTemplates() {
   if (!TEMPLATES) TEMPLATES = await (await fetch('templates.json', { cache: 'no-store' })).json();
@@ -462,9 +505,15 @@ async function loadTemplates() {
 async function loadProtocol() {
   const { card, start: pinned } = readCard();
   const templates = await loadTemplates();
+  CARD_SLUG = readSlug();
 
   if (card) {
+    // Cards written before the service existed carry their own protocol.
     CFG = decodeCard(card, templates, pinned);
+  } else if (CARD_SLUG) {
+    const res = await fetch(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
+    CFG = hydrateRecord(await res.json(), templates);
   } else {
     CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
   }
@@ -477,23 +526,33 @@ async function loadProtocol() {
   return CFG;
 }
 
-/* Carry the card payload across in-portal links, so every page of a
-   tapped card sees the same protocol. */
+/* Carry the card across in-portal links, so every page of a tapped card
+   sees the same protocol. A payload card carries its fragment; a stored
+   card carries its slug on the query string, since the path only names
+   the card on the page the server handed over. */
 function cardSuffix() {
   return location.hash && readCard().card ? location.hash : '';
+}
+
+function cardQuery() {
+  const slug = CARD_SLUG || readSlug();
+  return slug ? `?c=${encodeURIComponent(slug)}` : '';
 }
 
 function linkWithCard(href) {
   if (!href || /^(https?:|sms:|tel:|mailto:)/i.test(href)) return href;
   const suffix = cardSuffix();
-  if (!suffix) return href;
-  return href.split('#')[0] + suffix;
+  if (suffix) return href.split('#')[0] + suffix;
+  const query = cardQuery();
+  if (!query) return href;
+  const [base, hash] = href.split('#');
+  return base.split('?')[0] + query + (hash ? '#' + hash : '');
 }
 
 /* Rewrite every in-portal link so a tapped card keeps its protocol as the
    patient moves between Ritual, Protocol and Calendar. */
 function applyCardLinks(root) {
-  if (!cardSuffix()) return;
+  if (!cardSuffix() && !cardQuery()) return;
   (root || document).querySelectorAll('a[href]').forEach(a => {
     const href = a.getAttribute('href');
     if (href && !/^(https?:|sms:|tel:|mailto:|#)/i.test(href)) a.setAttribute('href', linkWithCard(href));

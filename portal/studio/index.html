@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Card Studio — The Charleston Atelier</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg:#F3EBE1; --card:#F8F2EA; --sunk:#EDE3D6;
+    --ink:#3B2E20; --ink-soft:#4A3B2C; --muted:#8A7C6A;
+    --brass:#8A7350; --alert:#A4553F; --ok:#5C7A5E;
+    --line:rgba(138,115,80,.2); --line-hi:rgba(138,115,80,.36);
+    --shadow:0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--ink-soft);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+    font-variant-numeric:lining-nums;
+  }
+  .wrap { max-width:1080px; margin:0 auto; padding:36px 24px 90px; }
+
+  header { border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:30px;
+           display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; }
+  .crest { font-family:Georgia,serif; font-size:12px; letter-spacing:.3em;
+           text-transform:uppercase; color:var(--brass); margin-bottom:8px; }
+  h1 { font-family:Georgia,serif; font-weight:400; font-size:38px; line-height:1.05; color:var(--ink); }
+  .header-note { color:var(--muted); font-size:13.5px; margin-left:auto; text-align:right; }
+
+  h2 { font-family:Georgia,serif; font-weight:500; font-size:22px; color:var(--ink); margin-bottom:4px; }
+  .hint { color:var(--muted); font-size:13.5px; margin-bottom:16px; }
+  section { margin-bottom:38px; }
+
+  .panel { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:22px; }
+
+  label { display:block; font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+          color:var(--muted); margin-bottom:6px; }
+  input, select, textarea {
+    width:100%; font:inherit; color:var(--ink); background:var(--bg);
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+  }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--brass); outline-offset:1px; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .row > div { flex:1 1 160px; min-width:0; }
+
+  button { font:inherit; cursor:pointer; border-radius:999px; border:1px solid transparent;
+           padding:10px 20px; letter-spacing:.02em; }
+  .primary { background:var(--ink); color:#F6F0E7; }
+  .ghost { background:transparent; color:var(--ink-soft); border-color:var(--line-hi); }
+  .danger { background:transparent; color:var(--alert); border-color:rgba(164,85,63,.4); }
+  .sm { padding:6px 13px; font-size:13px; }
+  button:disabled { opacity:.45; cursor:default; }
+
+  .toggle { display:flex; align-items:center; gap:9px; font-size:13.5px; color:var(--ink-soft); }
+  .toggle input { width:auto; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+       color:var(--muted); font-weight:600; padding:0 12px 10px 0; border-bottom:1px solid var(--line-hi); }
+  td { padding:13px 12px 13px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  .slug { font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--ink); }
+  .who { color:var(--ink); font-weight:600; }
+  .pens { font-size:13px; color:var(--muted); }
+
+  .pill { display:inline-block; font-size:10px; letter-spacing:.11em; text-transform:uppercase;
+          padding:3px 9px; border-radius:999px; border:1px solid var(--line-hi); color:var(--muted); }
+  .pill.active { color:var(--ok); border-color:rgba(92,122,94,.45); }
+  .pill.blank { color:var(--brass); }
+  .pill.retired { color:var(--alert); border-color:rgba(164,85,63,.35); }
+
+  .url { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--sunk);
+         border:1px solid var(--line); border-radius:9px; padding:9px 11px;
+         word-break:break-all; color:var(--ink); }
+  .bytes { font-size:12px; color:var(--muted); margin-top:5px; }
+  .bytes b { color:var(--ok); font-weight:600; }
+  .bytes b.tight { color:var(--alert); }
+
+  dialog { border:0; border-radius:20px; padding:0; background:var(--card); color:var(--ink-soft);
+           max-width:640px; width:calc(100% - 36px); box-shadow:0 24px 70px rgba(59,46,32,.3); }
+  dialog::backdrop { background:rgba(59,46,32,.45); }
+  .dlg { padding:26px; max-height:82vh; overflow-y:auto; }
+  .dlg h2 { margin-bottom:14px; }
+  .dlg-foot { display:flex; gap:10px; justify-content:flex-end; margin-top:22px;
+              padding-top:18px; border-top:1px solid var(--line); }
+
+  .pen-row { border:1px solid var(--line); border-radius:13px; padding:14px; margin-bottom:11px; }
+  .pen-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .pen-name { font-weight:600; color:var(--ink); flex:1; }
+  .phase { display:grid; grid-template-columns:1fr 90px 90px 34px; gap:8px; margin-bottom:7px; align-items:center; }
+  .phase input { padding:7px 9px; font-size:13.5px; }
+  .x { background:transparent; border:0; color:var(--muted); font-size:19px; line-height:1; padding:2px 7px; }
+  .mg { font-size:12px; color:var(--muted); margin-top:6px; }
+  .setup-note { font-size:12.5px; color:var(--brass); margin-top:8px; }
+
+  .empty { color:var(--muted); font-size:14px; padding:22px 0; text-align:center; }
+  .toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%,10px);
+           background:var(--ink); color:#F6F0E7; padding:12px 20px; border-radius:13px;
+           font-size:13.5px; opacity:0; pointer-events:none; transition:.22s; z-index:50; }
+  .toast.on { opacity:1; transform:translate(-50%,0); }
+  .gate { max-width:380px; margin:16vh auto; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="gate" hidden>
+  <div class="gate panel">
+    <p class="crest">The Charleston Atelier</p>
+    <h2>Card Studio</h2>
+    <p class="hint">Enter the studio passphrase.</p>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Passphrase">
+    <div style="margin-top:14px"><button class="primary" id="signIn">Sign in</button></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <div>
+      <p class="crest">The Charleston Atelier</p>
+      <h1>Card Studio</h1>
+    </div>
+    <p class="header-note" id="storeNote"></p>
+  </header>
+
+  <section>
+    <h2>Write a card</h2>
+    <p class="hint">
+      The address goes on the tag once. What sits behind it is edited here for
+      as long as the card exists — the patient never needs a new one.
+    </p>
+    <div class="panel">
+      <div class="row">
+        <div>
+          <label for="first">First name</label>
+          <input id="first" placeholder="Phillip" autocomplete="off">
+        </div>
+        <div>
+          <label for="last">Last name</label>
+          <input id="last" placeholder="Hurley" autocomplete="off">
+        </div>
+        <div style="flex:0 0 auto">
+          <button class="primary" id="create">Create card</button>
+        </div>
+      </div>
+      <div style="margin-top:14px" class="toggle">
+        <input type="checkbox" id="unique" checked>
+        <label for="unique" style="margin:0; text-transform:none; letter-spacing:0; font-size:13.5px; color:var(--ink-soft)">
+          Add three random characters so the address cannot be guessed
+        </label>
+      </div>
+      <div style="margin-top:16px">
+        <div class="url" id="preview">—</div>
+        <div class="bytes" id="previewBytes"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Blank tags</h2>
+    <p class="hint">
+      Write a tray now, assign them as patients come through. Each one opens
+      the portal and waits to be given a name.
+    </p>
+    <div class="panel row">
+      <div style="flex:0 0 120px">
+        <label for="blankCount">How many</label>
+        <input id="blankCount" type="number" min="1" max="50" value="10">
+      </div>
+      <div style="flex:0 0 auto"><button class="ghost" id="makeBlanks">Mint blanks</button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Cards</h2>
+    <p class="hint" id="cardCount"></p>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Address</th><th>Patient</th><th>Protocol</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="noCards" hidden>No cards yet.</div>
+    </div>
+  </section>
+</div>
+
+<dialog id="editor">
+  <form method="dialog" class="dlg" id="editForm">
+    <p class="crest">Card</p>
+    <h2 id="editTitle">—</h2>
+    <div class="url" id="editUrl"></div>
+    <div class="bytes" id="editBytes"></div>
+
+    <div class="row" style="margin-top:20px">
+      <div>
+        <label for="editName">Greeting name</label>
+        <input id="editName" placeholder="Phillip" autocomplete="off">
+      </div>
+      <div>
+        <label for="editStart">Start date</label>
+        <input id="editStart" type="date">
+      </div>
+      <div>
+        <label for="editStatus">Status</label>
+        <select id="editStatus">
+          <option value="active">Active</option>
+          <option value="blank">Blank</option>
+          <option value="retired">Retired</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:22px">
+      <label>Protocol</label>
+      <div id="penList"></div>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <select id="penPick"><option value="">Add a peptide…</option></select>
+        </div>
+        <div style="flex:0 0 auto"><button type="button" class="ghost sm" id="addPen">Add</button></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <label for="editNote">Chart note <span style="text-transform:none;letter-spacing:0">— never shown to the patient</span></label>
+      <textarea id="editNote" rows="2"></textarea>
+    </div>
+
+    <div class="dlg-foot">
+      <button type="button" class="danger sm" id="deleteCard">Delete</button>
+      <span style="flex:1"></span>
+      <button type="button" class="ghost" id="cancelEdit">Cancel</button>
+      <button type="button" class="primary" id="saveCard">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ==================================================================
+   Card Studio — the atelier's side of the tap card.
+
+   Everything here talks to /api. The dosing maths and the peptide
+   templates are the portal's, fetched from the same templates.json the
+   patient's phone reads, so a number shown here is the number she sees.
+   ================================================================== */
+
+const $ = id => document.getElementById(id);
+const ORIGIN = location.origin;
+const ML_PER_UNIT = 0.01;
+
+let TEMPLATES = null;
+let CARDS = [];
+let editing = null;
+
+/* ---------- plumbing ---------- */
+
+async function api(path, options = {}) {
+  const res = await fetch(path, Object.assign({
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin'
+  }, options));
+  if (res.status === 204) return null;
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { body, status: res.status });
+  return body;
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), 2600);
+}
+
+/* A tag stores the address without https:// plus about eight bytes of
+   NDEF overhead. That, not the visible length, is what has to fit. */
+function tagBytes(url) { return url.replace(/^https?:\/\//, '').length + 8; }
+
+function fitsNote(url) {
+  const b = tagBytes(url);
+  const where = b <= 48 ? 'fits Ultralight 64B'
+              : b <= 137 ? 'fits NTAG213'
+              : b <= 496 ? 'fits NTAG215'
+              : b <= 872 ? 'fits NTAG216' : 'too long for most tags';
+  return `${url.length} chars · ${b} bytes on tag · <b class="${b > 496 ? 'tight' : ''}">${where}</b>`;
+}
+
+function cardUrl(slug) { return `${ORIGIN}/${slug}`; }
+
+/* ---------- sign in ---------- */
+
+async function boot() {
+  const s = await api('/api/session');
+  if (s.required && !s.signedIn) {
+    $('gate').hidden = false;
+    $('pass').focus();
+    return;
+  }
+  await start();
+}
+
+$('signIn').addEventListener('click', async () => {
+  try {
+    await api('/api/session', { method: 'POST', body: JSON.stringify({ passphrase: $('pass').value }) });
+    $('gate').hidden = true;
+    await start();
+  } catch { toast('That passphrase was not accepted.'); }
+});
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
+
+async function start() {
+  $('app').hidden = false;
+  TEMPLATES = await (await fetch('/templates.json', { cache: 'no-store' })).json();
+  $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
+    TEMPLATES.templates.filter(t => t.id !== 'custom')
+      .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  await refresh();
+  updatePreview();
+}
+
+/* ---------- the card list ---------- */
+
+async function refresh() {
+  const data = await api('/api/cards');
+  CARDS = data.cards || [];
+  $('storeNote').textContent = `${CARDS.length} card${CARDS.length === 1 ? '' : 's'} · ${data.store} store`;
+  $('cardCount').textContent = CARDS.length
+    ? 'Tap a row to edit. Changes reach the patient on her next tap — no rewriting.'
+    : '';
+  $('noCards').hidden = CARDS.length > 0;
+
+  $('rows').innerHTML = CARDS.map(c => {
+    const pens = (c.pens || []).map(p => {
+      const t = TEMPLATES.templates.find(x => x.id === p.template);
+      return t ? t.name : p.template;
+    }).join(' · ');
+    return `<tr data-slug="${c.slug}" style="cursor:pointer">
+      <td class="slug">/${c.slug}</td>
+      <td class="who">${c.name || '<span style="color:var(--muted);font-weight:400">unassigned</span>'}</td>
+      <td class="pens">${pens || '—'}</td>
+      <td><span class="pill ${c.status}">${c.status}</span></td>
+      <td style="text-align:right"><button class="ghost sm" data-copy="${c.slug}">Copy URL</button></td>
+    </tr>`;
+  }).join('');
+
+  $('rows').querySelectorAll('tr').forEach(tr =>
+    tr.addEventListener('click', e => {
+      if (e.target.dataset.copy) return;
+      openEditor(tr.dataset.slug);
+    }));
+  $('rows').querySelectorAll('[data-copy]').forEach(b =>
+    b.addEventListener('click', async e => {
+      e.stopPropagation();
+      await navigator.clipboard.writeText(cardUrl(b.dataset.copy));
+      toast('Address copied — paste it into NFC Tools.');
+    }));
+}
+
+/* ---------- creating ---------- */
+
+function slugPreview() {
+  const first = $('first').value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  const last = $('last').value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  if (!first) return '';
+  const stem = first.slice(0, 4) + (last ? '.' + last[0] : '');
+  return $('unique').checked ? stem + '-•••' : stem;
+}
+
+function updatePreview() {
+  const slug = slugPreview();
+  if (!slug) { $('preview').textContent = '—'; $('previewBytes').textContent = ''; return; }
+  const url = cardUrl(slug);
+  $('preview').textContent = url;
+  $('previewBytes').innerHTML = fitsNote(url);
+}
+
+['first', 'last'].forEach(id => $(id).addEventListener('input', updatePreview));
+$('unique').addEventListener('change', updatePreview);
+
+$('create').addEventListener('click', async () => {
+  const firstName = $('first').value.trim();
+  if (!firstName) return toast('A first name, at least.');
+  try {
+    const rec = await api('/api/cards', {
+      method: 'POST',
+      body: JSON.stringify({
+        firstName, lastName: $('last').value.trim(),
+        unique: $('unique').checked,
+        name: firstName, status: 'active'
+      })
+    });
+    $('first').value = ''; $('last').value = '';
+    updatePreview();
+    await refresh();
+    await navigator.clipboard.writeText(cardUrl(rec.slug)).catch(() => {});
+    toast(`/${rec.slug} created — address copied.`);
+    openEditor(rec.slug);
+  } catch (e) {
+    toast(e.status === 409 ? 'That address is already taken.' : 'Could not create that card.');
+  }
+});
+
+$('makeBlanks').addEventListener('click', async () => {
+  const count = Number($('blankCount').value) || 10;
+  const out = await api('/api/blanks', { method: 'POST', body: JSON.stringify({ count }) });
+  await refresh();
+  toast(`${out.cards.length} blank tag${out.cards.length === 1 ? '' : 's'} minted.`);
+});
+
+/* ---------- editing ---------- */
+
+function openEditor(slug) {
+  editing = JSON.parse(JSON.stringify(CARDS.find(c => c.slug === slug)));
+  if (!editing) return;
+  $('editTitle').textContent = editing.name || 'Unassigned card';
+  $('editUrl').textContent = cardUrl(editing.slug);
+  $('editBytes').innerHTML = fitsNote(cardUrl(editing.slug));
+  $('editName').value = editing.name || '';
+  $('editStart').value = editing.startDate || '';
+  $('editStatus').value = editing.status || 'active';
+  $('editNote').value = editing.note || '';
+  renderPens();
+  $('editor').showModal();
+}
+
+function renderPens() {
+  const list = $('penList');
+  if (!editing.pens || !editing.pens.length) {
+    list.innerHTML = '<p class="hint" style="margin:0">Nothing on this card yet.</p>';
+    return;
+  }
+  list.innerHTML = editing.pens.map((pen, pi) => {
+    const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
+    const phases = pen.phases || t.phases || [];
+    const perMl = t.volumeMl || 1;
+
+    // A pen the patient sets up herself has no phases to show here.
+    if (t.setup) {
+      return `<div class="pen-row">
+        <div class="pen-head">
+          <span class="pen-name">${t.name}</span>
+          <button type="button" class="x" data-drop="${pi}" title="Remove">×</button>
+        </div>
+        <p class="setup-note">The patient chooses her vial size, regimen and injection day
+        the first time she taps this card.</p>
+      </div>`;
+    }
+
+    return `<div class="pen-row">
+      <div class="pen-head">
+        <span class="pen-name">${t.name || pen.template}</span>
+        <button type="button" class="x" data-drop="${pi}" title="Remove">×</button>
+      </div>
+      ${phases.map((ph, fi) => `
+        <div class="phase">
+          <input data-p="${pi}" data-f="${fi}" data-k="name" value="${ph.name || ''}" placeholder="Phase">
+          <input data-p="${pi}" data-f="${fi}" data-k="units" type="number" min="1" value="${ph.units || ''}" placeholder="units">
+          <input data-p="${pi}" data-f="${fi}" data-k="days" type="number" min="1" value="${ph.days == null ? '' : ph.days}" placeholder="days">
+          <button type="button" class="x" data-dropphase="${pi}:${fi}" title="Remove phase">×</button>
+        </div>`).join('')}
+      <div class="mg">${phases.map(ph => {
+        const mg = (t.components || []).reduce((s, c) => s + (c.mg / perMl) * (ph.units * ML_PER_UNIT), 0);
+        return `${ph.units}u ≈ ${mg.toFixed(2)} mg`;
+      }).join(' · ')}</div>
+      <button type="button" class="ghost sm" data-addphase="${pi}" style="margin-top:10px">Add phase</button>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('input').forEach(inp =>
+    inp.addEventListener('input', () => {
+      const { p, f, k } = inp.dataset;
+      const pen = editing.pens[p];
+      pen.phases = pen.phases || JSON.parse(JSON.stringify(
+        (TEMPLATES.templates.find(x => x.id === pen.template) || {}).phases || []));
+      pen.phases[f][k] = k === 'name' ? inp.value
+        : (inp.value === '' ? (k === 'days' ? null : 0) : Number(inp.value));
+    }));
+
+  list.querySelectorAll('[data-drop]').forEach(b =>
+    b.addEventListener('click', () => { editing.pens.splice(b.dataset.drop, 1); renderPens(); }));
+
+  list.querySelectorAll('[data-dropphase]').forEach(b =>
+    b.addEventListener('click', () => {
+      const [pi, fi] = b.dataset.dropphase.split(':').map(Number);
+      const pen = editing.pens[pi];
+      pen.phases = pen.phases || JSON.parse(JSON.stringify(
+        (TEMPLATES.templates.find(x => x.id === pen.template) || {}).phases || []));
+      pen.phases.splice(fi, 1);
+      renderPens();
+    }));
+
+  list.querySelectorAll('[data-addphase]').forEach(b =>
+    b.addEventListener('click', () => {
+      const pen = editing.pens[b.dataset.addphase];
+      const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
+      pen.phases = pen.phases || JSON.parse(JSON.stringify(t.phases || []));
+      const last = pen.phases[pen.phases.length - 1];
+      pen.phases.push({ name: 'Next', units: last ? last.units : 10, days: 14 });
+      renderPens();
+    }));
+}
+
+$('addPen').addEventListener('click', () => {
+  const id = $('penPick').value;
+  if (!id) return;
+  editing.pens = editing.pens || [];
+  editing.pens.push({ template: id });
+  $('penPick').value = '';
+  renderPens();
+});
+
+$('saveCard').addEventListener('click', async () => {
+  editing.name = $('editName').value.trim();
+  editing.startDate = $('editStart').value || null;
+  editing.status = $('editStatus').value;
+  editing.note = $('editNote').value;
+  if (editing.name && editing.status === 'blank') editing.status = 'active';
+  await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
+  $('editor').close();
+  await refresh();
+  toast('Saved. It is live on the next tap.');
+});
+
+$('cancelEdit').addEventListener('click', () => $('editor').close());
+
+$('deleteCard').addEventListener('click', async () => {
+  if (!confirm(`Delete /${editing.slug}? Any tag already written with this address will stop working.`)) return;
+  await api(`/api/cards/${editing.slug}`, { method: 'DELETE' });
+  $('editor').close();
+  await refresh();
+  toast('Card deleted.');
+});
+
+boot().catch(e => {
+  document.body.innerHTML =
+    '<div class="wrap"><p class="hint">Could not reach the card service. ' +
+    (e.message || '') + '</p></div>';
+});
+</script>
+
+</body>
+</html>

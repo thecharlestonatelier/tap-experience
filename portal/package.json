@@ -1,0 +1,18 @@
+{
+  "name": "atelier-tap-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Charleston Atelier — tap card service. Serves the patient portal, resolves a card address to a protocol, and lets the atelier edit that protocol without rewriting the tag.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "CARD_STORE=file node server.js",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.10.0"
+  }
+}

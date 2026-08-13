@@ -421,25 +421,44 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove("visible"), 2600);
 }
 
-/* A card written in Card Studio carries its patient and protocol in the
-   URL fragment; the portal greets whoever the card is for. */
+/* Two kinds of card reach this page. One carries its patient and protocol
+   in the URL fragment. The other is an address — /phil.h — whose record is
+   fetched and can be re-edited without the tag ever being rewritten.
+   Either way the portal greets whoever the card is for. */
 (async function start() {
-  const { card, start } = readCard();
-  if (card) {
-    try {
-      const templates = await (await fetch('templates.json', { cache: 'no-store' })).json();
-      const cfg = decodeCard(card, templates, start);
-      PORTAL.patientName = cfg.patient.name;
-      if (cfg.protocol.concierge) {
+  try {
+    const cfg = await loadProtocol();
+    if (cfg && cfg.patient) {
+      // An unassigned tag has a record but no name yet.
+      PORTAL.patientName = cfg.patient.name || PORTAL.patientName;
+      if (cfg.protocol && cfg.protocol.concierge) {
         PORTAL.conciergePhone = cfg.protocol.concierge.phone || PORTAL.conciergePhone;
         PORTAL.messageOpener  = cfg.protocol.concierge.messageOpener || PORTAL.messageOpener;
       }
-      document.title = cfg.patient.name + ' — Patient Portal';
-    } catch (e) { /* fall back to the built-in patient */ }
+      document.title = PORTAL.patientName + ' — Patient Portal';
+    }
+  } catch (e) {
+    // A tag written before it was assigned to anyone. It still opens, and
+    // says plainly that it is waiting rather than greeting a stranger.
+    if (readSlug()) {
+      PORTAL.greeting = 'This card is';
+      PORTAL.patientName = 'Not Yet Set Up';
+      PORTAL.unassigned = true;
+    }
   }
   renderName();
   renderButtons();
   renderNav();
+  applyCardLinks(document);
+
+  if (PORTAL.unassigned) {
+    // Nothing behind this card yet — the menu would lead nowhere.
+    const menu = document.getElementById("menu");
+    menu.innerHTML =
+      '<p style="text-align:center;font-size:14px;color:#8A7C6A;line-height:1.6;padding:0 12px">' +
+      'Hand this card to the atelier and we will set up your protocol on it.' +
+      '</p>';
+  }
 })();
 </script>
 
