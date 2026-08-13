@@ -1,0 +1,434 @@
+<title>Your Portal Card</title>
+
+<style>
+/* ==================================================================
+   Patient-facing 5 × 7 card, two sides. Printed and handed over with
+   the tap card, so it commits to one look — ivory paper, brass rules —
+   rather than following a screen theme. Only the surround around the
+   two cards reacts to the viewer's theme; the cards themselves are
+   always the paper they will be.
+
+   480 × 672 px is exactly 5 × 7 in at the 96dpi browsers print at, so
+   the layout below is measured in the units it will be cut in.
+   ================================================================== */
+
+:root {
+  --ivory:   #F3EBE1;
+  --paper:   #F8F2EA;
+  --sunk:    #EDE3D6;
+  --ink:     #3B2E20;
+  --ink2:    #4A3B2C;
+  --muted:   #8A7C6A;
+  --brass:   #8A7350;
+  --brass2:  #A38C69;
+  --clay:    #A8705A;
+  --sage:    #7E9080;
+  --alert:   #A4553F;
+  --rule:    rgba(138, 115, 80, .22);
+  --rule2:   rgba(138, 115, 80, .42);
+
+  --surround: #E4D9C9;
+  --surround-ink: #6B5C48;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --surround: #1E1810; --surround-ink: #9C8E7A; }
+}
+:root[data-theme="dark"] { --surround: #1E1810; --surround-ink: #9C8E7A; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--surround);
+  color: var(--surround-ink);
+  font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-feature-settings: 'lnum' 1;
+  -webkit-font-smoothing: antialiased;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 26px; padding: 34px 16px 60px;
+}
+
+.sheet-note {
+  font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+  text-align: center; max-width: 480px;
+}
+
+/* ---------- the card ---------- */
+.card {
+  position: relative;
+  width: 480px; height: 672px; flex: none;
+  background: var(--ivory);
+  color: var(--ink2);
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,.16), 0 18px 44px rgba(0,0,0,.20);
+}
+
+.crest {
+  position: absolute; top: 30px; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 9.5px; letter-spacing: .36em; text-transform: uppercase;
+  color: var(--brass);
+}
+.mono {
+  position: absolute; top: 50px; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 34px; color: var(--brass); line-height: 1;
+}
+.mono .a { margin-left: -12px; }
+
+h1 {
+  position: absolute; top: 96px; left: 0; right: 0;
+  text-align: center;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 400; font-size: 32px; line-height: 1; color: var(--ink);
+}
+.kicker {
+  position: absolute; top: 134px; left: 0; right: 0;
+  text-align: center; font-size: 11.5px; letter-spacing: .04em; color: var(--muted);
+}
+
+/* ---------- phone ---------- */
+.phone {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  width: 200px; border-radius: 26px;
+  background: var(--paper);
+  border: 5px solid var(--ink);
+  padding: 12px 11px 9px;
+  box-shadow: 0 6px 20px rgba(59,46,32,.14);
+}
+.phone::before {   /* the speaker slot, so it reads as a phone at a glance */
+  content: ''; position: absolute; top: 5px; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 3.5px; border-radius: 2px; background: rgba(59,46,32,.22);
+}
+
+.p-mono {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 15px; color: var(--brass); text-align: center; line-height: 1; margin-bottom: 7px;
+}
+.p-greet {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 10.5px; color: var(--ink); text-align: center; line-height: 1;
+}
+.p-name {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 15px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink); text-align: center; line-height: 1.2; margin-bottom: 10px;
+}
+
+.p-btn {
+  display: flex; align-items: center;
+  background: var(--ivory); border-radius: 9px;
+  padding: 8px 9px; margin-bottom: 5px;
+  font-size: 7.4px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink); font-weight: 500;
+  box-shadow: 0 1px 2px rgba(59,46,32,.05);
+}
+.p-btn .chev { margin-left: auto; color: var(--brass2); font-size: 8px; }
+.p-btn.lit { outline: 1.5px solid var(--brass); outline-offset: 1px; }
+
+.p-nav {
+  display: flex; justify-content: space-around; align-items: center;
+  border-top: 1px solid var(--rule); margin-top: 8px; padding-top: 8px;
+}
+.p-nav svg { width: 12px; height: 12px; color: var(--brass); display: block; }
+
+/* ---------- callouts ----------
+   Each box is anchored by its bottom edge to the y of the thing it points
+   at, so the label always sits clear above its own leader line. Only --y
+   changes between them; every one is measured off the rendered screen. */
+.callout {
+  position: absolute; width: var(--w, 100px);
+  top: var(--y); transform: translateY(-100%);
+  font-size: 10.2px; line-height: 1.32; letter-spacing: .08em;
+  text-transform: uppercase; font-weight: 500; color: var(--ink);
+}
+.callout.l { left: 18px; text-align: right; }
+.callout.r { right: 18px; text-align: left; }
+
+/* The text stops well clear of the screen; only the hairline crosses the
+   gap, so a long label can never collide with the phone it points at. */
+.callout .lead {
+  position: relative; height: 1px; margin-top: 6px;
+  width: calc(100% + var(--reach, 22px));
+  background: var(--rule2);
+}
+.callout.r .lead { margin-left: calc(-1 * var(--reach, 22px)); }
+.callout .lead::after {
+  content: ''; position: absolute; top: -2px;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--brass);
+}
+.callout.l .lead::after { right: -2px; }
+.callout.r .lead::after { left: -2px; }
+
+/* The back's screen is wider, so its labels sit narrower and reach less. */
+.back .callout { --w: 104px; --reach: 10px; }
+.back .callout.l { left: 16px; }
+.back .callout.r { right: 16px; }
+
+.closing {
+  position: absolute; left: 60px; right: 60px; top: 512px;
+  text-align: center; font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 13px; line-height: 1.5; color: var(--muted); font-style: italic;
+}
+
+/* ---------- footer strip ---------- */
+.strip {
+  position: absolute; left: 34px; right: 34px; bottom: 30px;
+  border-top: 1px solid var(--rule); padding-top: 14px;
+  display: flex; gap: 10px;
+}
+.strip-item { flex: 1; text-align: center; }
+.strip-item svg { width: 17px; height: 17px; color: var(--brass); margin-bottom: 5px; }
+.strip-item b {
+  display: block; font-size: 8.6px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink); font-weight: 600; line-height: 1.3;
+}
+
+/* ---------- back-side dose card ----------
+   The back exists to explain one screen, so that screen is drawn large:
+   wide enough that the steps and the dial number are legible on paper,
+   which mock type at six pixels never is. */
+.phone.big { width: 224px; padding: 14px 12px 11px; }
+
+.dose {
+  background: var(--paper); border-radius: 11px;
+  border-left: 3px solid var(--clay);
+  padding: 11px 12px; margin-bottom: 8px;
+}
+.dose-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.chip {
+  width: 23px; height: 23px; border-radius: 7px; background: var(--clay);
+  color: #FBF6F0; font-size: 7.4px; display: flex; align-items: center; justify-content: center;
+}
+.dose-name { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 14px; color: var(--ink); line-height: 1; }
+.dose-sub { font-size: 7.6px; color: var(--muted); margin-top: 1px; }
+
+.dial { display: flex; align-items: baseline;
+        border-top: 1px solid var(--rule); padding-top: 16px; }
+.dial-lead { font-size: 8.4px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink2); }
+.dial-num {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 40px; line-height: .8; color: var(--clay); margin-left: auto;
+}
+
+.steps { list-style: none; margin: 7px 0 0; }
+.steps li {
+  position: relative; padding: 3px 0 3px 19px;
+  font-size: 8.4px; line-height: 1.45; color: var(--ink2);
+}
+.steps li span {
+  position: absolute; left: 0; top: 2px;
+  width: 13px; height: 13px; border-radius: 50%;
+  background: rgba(138,115,80,.14); color: var(--brass);
+  font-size: 7.2px; display: flex; align-items: center; justify-content: center;
+}
+
+.delivers { margin-top: 10px; }
+.delivers b {
+  display: block; font-size: 6.8px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); font-weight: 500; margin-bottom: 4px;
+}
+.delivers span {
+  display: flex; justify-content: space-between;
+  font-size: 8.2px; color: var(--ink2); padding: 1.5px 0;
+}
+.delivers i { font-style: normal; color: var(--ink); }
+
+.gauge-label { display: flex; justify-content: space-between; font-size: 7.6px; color: var(--muted); margin: 8px 0 3px; }
+.gauge { height: 5px; border-radius: 999px; background: var(--sunk); overflow: hidden; }
+.gauge i { display: block; height: 100%; width: 64%; background: var(--clay); border-radius: 999px; }
+
+.p-actions { display: flex; gap: 5px; margin-top: 8px; }
+.p-action {
+  flex: 1; background: var(--ivory); border-radius: 9px; padding: 8px 4px;
+  text-align: center; font-size: 8px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink); box-shadow: 0 1px 2px rgba(59,46,32,.05);
+}
+.p-action.lit { outline: 1.5px solid var(--brass); outline-offset: 1px; }
+
+.refill {
+  background: rgba(164,85,63,.09); border-left: 3px solid var(--alert);
+  border-radius: 0 9px 9px 0; padding: 8px 10px; margin-top: 8px;
+}
+.refill b { display: block; font-size: 7.2px; letter-spacing: .1em; text-transform: uppercase; color: var(--alert); }
+.refill span { display: block; font-family: 'Cormorant Garamond', Georgia, serif; font-size: 12px; color: var(--ink); margin-top: 1px; }
+
+/* ---------- tap illustration ---------- */
+.tap-art { position: absolute; top: 168px; left: 50%; transform: translateX(-50%); }
+
+/* ---------- print ---------- */
+@page { size: 5in 7in; margin: 0; }
+@media print {
+  body { background: #fff; padding: 0; gap: 0; display: block; }
+  .sheet-note { display: none; }
+  .card { box-shadow: none; page-break-after: always; break-after: page; }
+  .card:last-of-type { page-break-after: auto; break-after: auto; }
+}
+</style>
+
+<p class="sheet-note">Two sides · 5 × 7 in · print at 100%, no scaling</p>
+
+<!-- ============================ FRONT ============================ -->
+<div class="card">
+  <p class="crest">The Charleston Atelier</p>
+  <p class="mono">C<span class="a">A</span></p>
+  <h1>Your Portal</h1>
+  <p class="kicker">Hold the card to the top of your phone</p>
+
+  <!-- the tap, drawn rather than described -->
+  <svg class="tap-art" width="120" height="46" viewBox="0 0 120 46" fill="none"
+       stroke="#8A7350" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">
+    <rect x="30" y="4" width="26" height="42" rx="5" stroke="#3B2E20"/>
+    <rect x="66" y="13" width="30" height="20" rx="3"/>
+    <path d="M60 15.5c1.8 1.9 1.8 5.1 0 7M63 12c3.2 3.4 3.2 9.6 0 13" opacity=".85"/>
+    <path d="M78 19.5h6M78 23h9" opacity=".5"/>
+  </svg>
+
+  <div class="phone" style="top: 228px;">
+    <p class="p-mono">C<span style="margin-left:-4px">A</span></p>
+    <p class="p-greet">Welcome Back,</p>
+    <p class="p-name">Jessica</p>
+
+    <div class="p-btn lit">Today's Ritual<span class="chev">›</span></div>
+    <div class="p-btn">My Protocol<span class="chev">›</span></div>
+    <div class="p-btn">Peptide Library<span class="chev">›</span></div>
+    <div class="p-btn">Book Concierge<span class="chev">›</span></div>
+
+    <div class="p-nav">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.2" width="17.6" height="15.6" rx="2.2"/><path d="M3.2 10h17.6M8.4 2.8v4.4M15.6 2.8v4.4"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6A1.6 1.6 0 0 1 5.6 3H11a2 2 0 0 1 2 2v15a1.6 1.6 0 0 0-1.6-1.4H5.6A1.6 1.6 0 0 1 4 17V4.6z"/><path d="M20 4.6A1.6 1.6 0 0 0 18.4 3H13a2 2 0 0 0-2 2v15a1.6 1.6 0 0 1 1.6-1.4h5.8A1.6 1.6 0 0 0 20 17V4.6z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 3.6h2.2l1.7 4.1-2 1.4a11.8 11.8 0 0 0 5.6 5.6l1.4-2 4.1 1.7v2.2a2.4 2.4 0 0 1-2.6 2.4C10.4 18.6 5.4 13.6 4 6.2A2.4 2.4 0 0 1 6.3 3.6z"/></svg>
+    </div>
+  </div>
+
+  <!-- Buttons, in the order they appear. Positions are measured off the
+       rendered screen, not estimated. -->
+  <div class="callout l" style="--y: 320px">
+    See Today's Dose
+    <div class="lead"></div>
+  </div>
+  <div class="callout r" style="--y: 353px">
+    Your Peptide Cards
+    <div class="lead"></div>
+  </div>
+  <div class="callout l" style="--y: 386px">
+    Learn Each Peptide
+    <div class="lead"></div>
+  </div>
+  <div class="callout r" style="--y: 419px">
+    Book Your Next Visit
+    <div class="lead"></div>
+  </div>
+
+  <p class="closing">Your protocol is kept current by the atelier.<br>
+     You will never need a new card.</p>
+
+  <div class="strip">
+    <div class="strip-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.2" width="17.6" height="15.6" rx="2.2"/><path d="M3.2 10h17.6M8.4 2.8v4.4M15.6 2.8v4.4"/></svg>
+      <b>Your Dosing<br>Calendar</b>
+    </div>
+    <div class="strip-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6A1.6 1.6 0 0 1 5.6 3H11a2 2 0 0 1 2 2v15a1.6 1.6 0 0 0-1.6-1.4H5.6A1.6 1.6 0 0 1 4 17V4.6z"/><path d="M20 4.6A1.6 1.6 0 0 0 18.4 3H13a2 2 0 0 0-2 2v15a1.6 1.6 0 0 1 1.6-1.4h5.8A1.6 1.6 0 0 0 20 17V4.6z"/></svg>
+      <b>The Peptide<br>Library</b>
+    </div>
+    <div class="strip-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 3.6h2.2l1.7 4.1-2 1.4a11.8 11.8 0 0 0 5.6 5.6l1.4-2 4.1 1.7v2.2a2.4 2.4 0 0 1-2.6 2.4C10.4 18.6 5.4 13.6 4 6.2A2.4 2.4 0 0 1 6.3 3.6z"/></svg>
+      <b>Message Dr.<br>Kendall Here</b>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ BACK ============================= -->
+<div class="card back">
+  <p class="crest">The Charleston Atelier</p>
+  <h1 style="top: 52px;">Today's Ritual</h1>
+  <p class="kicker" style="top: 90px;">Everything for today, on one screen</p>
+
+  <div class="phone big" style="top: 150px;">
+    <div class="dose">
+      <div class="dose-top">
+        <div class="chip">glo</div>
+        <div>
+          <div class="dose-name">Glow Blend</div>
+          <div class="dose-sub">Evening · Subcutaneous</div>
+        </div>
+      </div>
+
+      <div class="dial">
+        <span class="dial-lead">Turn your pen to</span>
+        <span class="dial-num">13</span>
+      </div>
+
+      <ol class="steps">
+        <li><span>1</span>Turn the pen dial to 13</li>
+        <li><span>2</span>Inject at your chosen site</li>
+        <li><span>3</span>Press down and hold 10 seconds</li>
+      </ol>
+
+      <div class="delivers">
+        <b>Delivers</b>
+        <span>BPC-157 <i>0.43 mg</i></span>
+        <span>TB-500 <i>0.43 mg</i></span>
+        <span>GHK-Cu <i>2.17 mg</i></span>
+      </div>
+
+      <div class="gauge-label"><span>9 doses left in this pen</span><span>64%</span></div>
+      <div class="gauge"><i></i></div>
+    </div>
+
+    <div class="refill">
+      <b>Refill soon</b>
+      <span>Message for a refill</span>
+    </div>
+
+    <div class="p-actions">
+      <div class="p-action lit">Add to Calendar</div>
+      <div class="p-action">Print</div>
+    </div>
+  </div>
+
+  <div class="callout r" style="--y: 237px">
+    Turn Your Pen To This Number
+    <div class="lead"></div>
+  </div>
+  <div class="callout l" style="--y: 295px">
+    Follow In Order
+    <div class="lead"></div>
+  </div>
+  <div class="callout r" style="--y: 362px">
+    What This Dose Gives You
+    <div class="lead"></div>
+  </div>
+  <div class="callout l" style="--y: 416px">
+    View How Many Doses Remain
+    <div class="lead"></div>
+  </div>
+  <div class="callout r" style="--y: 459px">
+    We Tell You When To Reorder
+    <div class="lead"></div>
+  </div>
+  <div class="callout l" style="--y: 502px">
+    Add Calendar Reminders
+    <div class="lead"></div>
+  </div>
+
+  <div class="strip" style="bottom: 34px;">
+    <div class="strip-item" style="flex: 1.4; text-align: left">
+      <b style="font-family: 'Cormorant Garamond', Georgia, serif; font-size: 15px;
+                letter-spacing: 0; text-transform: none; color: var(--ink); font-weight: 400">
+        Questions?</b>
+      <span style="display:block; font-size: 9px; color: var(--muted); margin-top: 3px; line-height:1.4">
+        Tap the phone icon in your portal —<br>it messages Dr. Kendall directly.
+      </span>
+    </div>
+    <div class="strip-item" style="flex: 0 0 96px; text-align: right">
+      <span style="display:block; font-size: 8.4px; letter-spacing: .14em;
+                   text-transform: uppercase; color: var(--brass)">843·377·3713</span>
+      <span style="display:block; font-family: 'Cormorant Garamond', Georgia, serif;
+                   font-size: 10px; color: var(--muted); margin-top: 3px">
+        The Charleston Atelier</span>
+    </div>
+  </div>
+</div>
