@@ -5,8 +5,13 @@ card. Side one is the portal home screen with each button named in plain words;
 side two is Today's Ritual with the dial number, the supply gauge and the
 calendar button called out.
 
+Generic by design: the greeting reads **Your Name**, so one print run serves
+every patient. White stock, since it is printed front and back.
+
 The page is drawn at 480 × 672 px, which is exactly 5 × 7 in at the 96dpi
-browsers print at, and `@page` is set to match. **Print at 100% with scaling
+browsers print at, and `@page` is set to match. The phone on side one is drawn
+at 9 : 19.5 — a handset's proportions — so the patient recognises her own
+screen. Side two is sized to its content instead, because that screen scrolls. **Print at 100% with scaling
 off**, double-sided, flip on the short edge.
 
 The fonts are pulled from `patients/jessica/assets/fonts.css` at build time so
