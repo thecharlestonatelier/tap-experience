@@ -5,10 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#F3EBE1">
 <meta name="robots" content="noindex, nofollow">
-<title>Jessica — Patient Portal</title>
+<title>Patient Portal</title>
 <meta name="description" content="Private patient portal. Dosing instructions, protocol and concierge access.">
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<!-- What iOS puts on the home screen. Replace these four PNGs to change it;
+     nothing else needs touching. -->
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest" id="manifestLink">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<!-- The label under the icon. Deliberately the practice, not the patient —
+     a home screen is read over shoulders. -->
+<meta name="apple-mobile-web-app-title" content="Atelier">
+
 <link rel="stylesheet" href="assets/fonts.css">
 <script src="assets/protocol.js"></script>
 
@@ -73,6 +84,17 @@
     line-height: 1.1;
     color: var(--espresso-soft);
     letter-spacing: 0.005em;
+  }
+
+  .greeting, .patient-name {
+    /* Nothing is shown until we know whose card this is. Painting a name
+       and correcting it is worse than a beat of nothing. */
+    opacity: 0;
+    transition: opacity .22s ease;
+  }
+  body.resolved .greeting, body.resolved .patient-name { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .greeting, .patient-name { transition: none; }
   }
 
   .patient-name {
@@ -181,6 +203,50 @@
   }
   .nav svg { width: 25px; height: 25px; }
 
+  /* ---------- Add to Home Screen ---------- */
+  .add-home {
+    display: block; margin: 22px auto 0; padding: 9px 18px;
+    background: none; border: 1px solid var(--hairline); border-radius: 999px;
+    font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--brass);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .add-home:hover, .add-home:focus-visible { color: var(--espresso); outline: none; }
+
+  .sheet-scrim {
+    position: fixed; inset: 0; background: rgba(59,46,32,.45);
+    display: flex; align-items: flex-end; justify-content: center; z-index: 120;
+  }
+  .sheet-scrim[hidden] { display: none; }
+  .sheet {
+    width: 100%; max-width: 430px; background: var(--bg);
+    border-radius: 26px 26px 0 0; padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+    text-align: center;
+  }
+  .sheet-icon { border-radius: 15px; box-shadow: 0 4px 14px rgba(59,46,32,.18); }
+  .sheet-title {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500;
+    font-size: 26px; color: var(--espresso); margin: 14px 0 18px; line-height: 1.2;
+  }
+  .sheet-steps { list-style: none; text-align: left; margin: 0 0 22px; padding: 0; counter-reset: s; }
+  .sheet-steps li {
+    counter-increment: s; position: relative; padding: 8px 0 8px 34px;
+    font-size: 14.5px; line-height: 1.5; color: var(--espresso-soft);
+  }
+  .sheet-steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 8px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(138,115,80,.14); color: var(--brass);
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+  }
+  .sheet-steps b { color: var(--espresso); font-weight: 600; }
+  .sheet-close {
+    width: 100%; padding: 14px; border: none; border-radius: 999px;
+    background: var(--espresso); color: #F6F0E7;
+    font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+  }
+
   /* ---------- Toast (shown for buttons with nothing attached yet) ---------- */
   .toast {
     position: fixed;
@@ -224,11 +290,22 @@
   <div class="monogram"><svg class="mark" viewBox="0 108 117 160" fill="currentColor" role="img" aria-label="The Charleston Atelier"><text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text><text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text></svg></div>
 
   <p class="greeting">Welcome Back,</p>
-  <h1 class="patient-name" id="patientName">Jessica</h1>
+  <h1 class="patient-name" id="patientName"></h1>
 
   <nav class="menu" id="menu" aria-label="Patient portal"></nav>
 
+  <button class="add-home" id="addHome" hidden>Add to Home Screen</button>
+
   <div class="nav" id="bottomNav"></div>
+
+  <div class="sheet-scrim" id="a2hsScrim" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="a2hsTitle">
+      <img class="sheet-icon" src="assets/icons/icon-180.png" alt="" width="66" height="66">
+      <h2 class="sheet-title" id="a2hsTitle">Keep this on your home screen</h2>
+      <ol class="sheet-steps" id="a2hsSteps"></ol>
+      <button class="sheet-close" id="a2hsClose">Done</button>
+    </div>
+  </div>
 
 </main>
 
@@ -259,7 +336,7 @@
 
 const PORTAL = {
 
-  patientName: "Jessica",
+  patientName: "",
   greeting:    "Welcome Back,",
 
   // Message shown when a button has no href yet.
@@ -330,7 +407,9 @@ const isExternal = (href) => /^(https?:|mailto:|tel:|sms:)/i.test(href);
 const opensNewTab = (href) => /^https?:/i.test(href) || /.(pdf|jpe?g|png|heic)$/i.test(href);
 
 function renderName() {
-  document.title = PORTAL.patientName + " — Patient Portal";
+  document.title = PORTAL.patientName
+    ? PORTAL.patientName + " — Patient Portal"
+    : "Patient Portal";
   document.querySelector(".greeting").textContent = PORTAL.greeting;
   document.getElementById("patientName").textContent = PORTAL.patientName;
   fitName();
@@ -421,6 +500,78 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove("visible"), 2600);
 }
 
+/* ---------- Add to Home Screen ----------
+   The card is the way in, but a card lives in a drawer. On the home screen
+   the portal is one tap from the lock screen, under the atelier's own mark.
+
+   iOS has no programmatic install prompt, so there it is instructions —
+   which is why the sheet shows the icon: the patient is looking for that
+   picture, not for a menu item. Android fires beforeinstallprompt and can
+   simply be asked. */
+let deferredInstall = null;
+
+addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+  const btn = document.getElementById("addHome");
+  if (btn) btn.hidden = false;
+});
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches ||
+         window.navigator.standalone === true;
+}
+
+function setupHomeScreen() {
+  const btn = document.getElementById("addHome");
+  const scrim = document.getElementById("a2hsScrim");
+  if (!btn || !scrim) return;
+
+  // Already installed: there is nothing to offer.
+  if (isStandalone()) return;
+
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // On iOS the button is always useful; elsewhere it waits for the browser
+  // to say an install is possible.
+  if (isIOS || deferredInstall) btn.hidden = false;
+
+  btn.addEventListener("click", async () => {
+    if (deferredInstall) {
+      deferredInstall.prompt();
+      await deferredInstall.userChoice;
+      deferredInstall = null;
+      btn.hidden = true;
+      return;
+    }
+    document.getElementById("a2hsSteps").innerHTML = isIOS
+      ? `<li>Tap the <b>Share</b> button at the bottom of Safari — the square with an arrow pointing up.</li>
+         <li>Scroll down and choose <b>Add to Home Screen</b>.</li>
+         <li>Tap <b>Add</b>. Look for the gold <b>CA</b> on your home screen.</li>`
+      : `<li>Open your browser's menu — the three dots.</li>
+         <li>Choose <b>Add to Home screen</b>, or <b>Install</b>.</li>
+         <li>Confirm. Look for the gold <b>CA</b> on your home screen.</li>`;
+    scrim.hidden = false;
+  });
+
+  document.getElementById("a2hsClose").addEventListener("click", () => { scrim.hidden = true; });
+  scrim.addEventListener("click", e => { if (e.target === scrim) scrim.hidden = true; });
+
+  /* A saved card has to reopen on the right patient. iOS uses whatever URL
+     is on screen, but Chrome takes start_url from the manifest — so the
+     manifest is rebuilt here with this card's address in it. */
+  const link = document.getElementById("manifestLink");
+  if (link && (location.pathname !== "/" || location.hash || location.search)) {
+    fetch(link.href).then(r => r.json()).then(m => {
+      m.start_url = location.href;
+      const blob = new Blob([JSON.stringify(m)], { type: "application/manifest+json" });
+      link.href = URL.createObjectURL(blob);
+    }).catch(() => {});
+  }
+}
+
 /* Two kinds of card reach this page. One carries its patient and protocol
    in the URL fragment. The other is an address — /phil.h — whose record is
    fetched and can be re-edited without the tag ever being rewritten.
@@ -450,6 +601,8 @@ function showToast(message) {
   renderButtons();
   renderNav();
   applyCardLinks(document);
+  setupHomeScreen();
+  document.body.classList.add("resolved");
 
   if (PORTAL.unassigned) {
     // Nothing behind this card yet — the menu would lead nowhere.
