@@ -39,7 +39,16 @@ const WEB_ROOT = process.env.WEB_ROOT
         ? path.join(__dirname, 'public')
         : path.join(__dirname, '..', 'patients', 'jessica'));
 const STUDIO_PASSPHRASE = process.env.STUDIO_PASSPHRASE || '';
-const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+
+/* Cloud Run runs several instances and replaces them freely, so a random
+   per-process secret would sign a cookie one instance could not verify —
+   the dashboard would appear to log itself out at random. Derive it from
+   the passphrase instead, so every instance agrees without a second secret
+   to manage. SESSION_SECRET still overrides if one is set. */
+const SESSION_SECRET = process.env.SESSION_SECRET
+  || (STUDIO_PASSPHRASE
+        ? crypto.createHash('sha256').update(`tca.session.${STUDIO_PASSPHRASE}`).digest('hex')
+        : crypto.randomBytes(32).toString('hex'));
 
 const store = openStore();
 

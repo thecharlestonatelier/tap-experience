@@ -2,9 +2,11 @@
 #
 # The portal's pages are copied in from patients/jessica so the container
 # and the static site serve byte-identical HTML, CSS and dosing engine.
-# Build from the REPOSITORY ROOT, not from this directory:
+# This lives at the repository root on purpose. `gcloud run deploy --source .`
+# only picks up a Dockerfile in the source root; without one it falls back to
+# buildpacks, finds the static site's package.json, and builds the wrong thing.
 #
-#   docker build -f portal/Dockerfile -t atelier-tap .
+#   docker build -t atelier-tap .
 
 FROM node:20-slim
 

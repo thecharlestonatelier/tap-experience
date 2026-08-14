@@ -110,9 +110,12 @@ done
 
 ## 5. Deploy
 
-From the **repository root**, not from `portal/`:
+From the **repository root** — that is where the `Dockerfile` lives, and
+`--source .` only picks up a Dockerfile in the source root:
 
 ```bash
+cd ~/path/to/tap-experience
+
 gcloud run deploy atelier-tap \
   --source . \
   --region us-east1 \
@@ -121,19 +124,37 @@ gcloud run deploy atelier-tap \
   --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,PRACTICE_BETTER_API_KEY=practice-better-key:latest
 ```
 
+First run takes three or four minutes; later ones are under a minute.
+
 `--allow-unauthenticated` is right here: patients tap a card, they do not sign
 in to Google. Card Studio is protected separately by the passphrase.
 
-If Cloud Build asks which Dockerfile to use, point it at `portal/Dockerfile`.
-You can also pass it explicitly by adding a `cloudbuild.yaml`, but the default
-works because the Dockerfile expects the repository root as its build context.
-
 The deploy prints a URL like `https://atelier-tap-xxxxx-ue.a.run.app`.
-Open `/health` on it — you should see `{"ok":true,"store":"firestore"}`.
+Open `/health` on it — you should see `{"ok":true,"store":"firestore"}`. Then
+open `/studio`, sign in with the passphrase, and make one test card.
 
 ---
 
-## 6. Point the domain at it
+## 6. Check it before the domain moves
+
+Do this on the `run.app` URL, while the printed cards still point at the old
+site and nothing is at risk:
+
+```bash
+SVC=https://atelier-tap-xxxxx-ue.a.run.app
+
+curl -s $SVC/health                 # {"ok":true,"store":"firestore"}
+curl -s -o /dev/null -w '%{http_code}\n' $SVC/api/cards   # 401 — the gate is on
+```
+
+In a browser: open `/studio`, sign in, create a card, open the address it gives
+you, and confirm the portal greets that name. Edit the card, reload the address,
+and confirm the change is there without anything being rewritten. That is the
+whole point of the service, so it is worth watching it happen once.
+
+---
+
+## 7. Point the domain at it
 
 You already own `tap.thecharlestonatelier.com`. Move it off Netlify and onto
 Cloud Run:
@@ -156,7 +177,7 @@ running as it is, free, forever. So does the forwarding site holding
 
 ---
 
-## 7. Lock down Card Studio
+## 8. Lock down Card Studio
 
 The passphrase keeps the dashboard off the open web. If you want a second lock,
 put Identity-Aware Proxy in front of `/studio` so it also requires your Google
