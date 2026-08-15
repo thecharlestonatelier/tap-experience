@@ -500,9 +500,61 @@ function hydrateRecord(rec, templates) {
   return cfg;
 }
 
+/* ---------- remembering the card ----------
+   A tapped card carries its identity in the address. Added to the home
+   screen, that address is not always what comes back — iOS has been seen
+   saving the page without its fragment, and the portal then has no idea
+   whose card it is.
+
+   So the device remembers. Once a card resolves, what identified it is
+   written here; if the portal is ever opened with nothing in the address,
+   it is read back and the address restored. A phone holds one patient's
+   card, so this cannot cross patients — and if nothing was ever
+   remembered, the portal still refuses rather than guessing. */
+var REMEMBER_KEY = 'tca.card.v2';
+
+function rememberCard(state) {
+  try { localStorage.setItem(REMEMBER_KEY, JSON.stringify(state)); } catch {}
+}
+
+function recallCard() {
+  try {
+    const m = JSON.parse(localStorage.getItem(REMEMBER_KEY));
+    return (m && (m.card || m.slug || m.legacy)) ? m : null;
+  } catch { return null; }
+}
+
+function forgetCard() {
+  try { localStorage.removeItem(REMEMBER_KEY); } catch {}
+}
+
+/* Only a portal launched from the home screen may fall back to memory.
+   That is the one place the address is lost through no fault of the
+   patient. In an ordinary browser tab a bare address still refuses —
+   otherwise a phone that had opened two cards would show the wrong one. */
+function isHomeScreenApp() {
+  try {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
+  } catch { return false; }
+}
+
+/* Put the identity back in the address bar, so links between pages carry
+   it and a reload behaves like a fresh tap. */
+function restoreAddress(state) {
+  try {
+    let url = location.pathname;
+    if (state.legacy) url += '?card=legacy';
+    else if (state.slug) url += `?c=${encodeURIComponent(state.slug)}`;
+    else if (state.card) url += (state.start ? `#c=${state.card}&s=${state.start}` : `#${state.card}`);
+    history.replaceState(null, '', url);
+  } catch {}
+}
+
 /* ---------- boot ---------- */
 var TEMPLATES = null;
 var CARD_SLUG = null;
+var CARD_RESTORED = false;
 
 async function loadTemplates() {
   if (!TEMPLATES) TEMPLATES = await (await fetch('templates.json', { cache: 'no-store' })).json();
@@ -510,9 +562,25 @@ async function loadTemplates() {
 }
 
 async function loadProtocol() {
-  const { card, start: pinned } = readCard();
+  let { card, start: pinned } = readCard();
   const templates = await loadTemplates();
   CARD_SLUG = readSlug();
+  let legacy = isLegacyCard();
+  CARD_RESTORED = false;
+
+  // Nothing in the address, and launched from the home screen: fall back to
+  // what this device was opened with, rather than showing a dead portal.
+  if (!card && !CARD_SLUG && !legacy && isHomeScreenApp()) {
+    const mem = recallCard();
+    if (mem) {
+      card = mem.card || null;
+      CARD_SLUG = mem.slug || null;
+      legacy = !!mem.legacy;
+      pinned = mem.start || null;
+      CARD_RESTORED = true;
+      restoreAddress(mem);
+    }
+  }
 
   if (card) {
     // Cards written before the service existed carry their own protocol.
@@ -521,7 +589,7 @@ async function loadProtocol() {
     const res = await fetch(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
     CFG = hydrateRecord(await res.json(), templates);
-  } else if (isLegacyCard()) {
+  } else if (legacy) {
     // The one card written before any of this existed. It is reached only
     // through its own marked address, never by landing on the bare root.
     CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
@@ -536,6 +604,10 @@ async function loadProtocol() {
   applyAdded(templates);
   applySetups();
   _supplyCache.clear();
+
+  // Only a card that actually resolved is worth remembering.
+  if (PENS.length) rememberCard({ card, slug: CARD_SLUG, legacy, start: pinned });
+
   return CFG;
 }
 
