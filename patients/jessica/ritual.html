@@ -1254,6 +1254,19 @@ async function boot() {
   }
 
   PENS = CFG.protocol.pens || [];
+
+  // Same rule as the portal: no protocol is not a rest day.
+  if (!PENS.length) {
+    document.getElementById('todaySummary').textContent =
+      'This card has no protocol on it yet.';
+    document.getElementById('todayStack').innerHTML = `<div class="rest">
+      <div class="rest-title">Nothing to show</div>
+      <div class="rest-sub">Show this screen to the atelier and we will put it
+      right — your dosing has not changed.</div></div>`;
+    document.getElementById('protocolName').textContent = CFG.protocol.name || 'Protocol';
+    return;
+  }
+
   TRACKING = CFG.protocol.tracking !== false;
   const saved = loadStart();
   START = parse(saved || CFG.protocol.startDate);

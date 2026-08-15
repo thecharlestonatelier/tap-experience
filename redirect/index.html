@@ -16,7 +16,7 @@
 <script>
   /* Only reached if the redirect rule did not fire. Carries the card
      payload across by hand so the tap still lands on the right protocol. */
-  location.replace('https://ca-tap.netlify.app/' + location.search + location.hash);
+  location.replace('https://ca-tap.netlify.app/?card=legacy' + location.hash);
 </script>
 </body>
 </html>

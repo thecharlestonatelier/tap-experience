@@ -66,6 +66,12 @@
     font-family:'Jost',sans-serif; font-size:12px; font-weight:600;
     letter-spacing:.1em; text-transform:uppercase;
   }
+  .not-ready-note {
+    margin: 0 0 12px; padding: 10px 13px; border-radius: 10px;
+    background: rgba(164,85,63,.10); border-left: 3px solid #A4553F;
+    font-size: 13px; color: #A4553F;
+  }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
   .btn-primary { background: var(--ink); color:#F6F0E7; }
   .btn-ghost { background:transparent; border:1px solid var(--line); color:var(--ink-2); }
   .btn-sm { padding:8px 12px; font-size:11px; }
@@ -161,6 +167,7 @@
   <div class="panel">
     <h2>The card</h2>
     <p class="hint">Copy this into your NFC writer as a URL / link record.</p>
+    <p class="not-ready-note" id="notReady">Add the patient’s first name.</p>
     <textarea class="url" id="url" readonly spellcheck="false"></textarea>
     <div class="meter">
       <span><b id="len">0</b> characters</span>
@@ -168,7 +175,7 @@
       <span id="doses"></span>
     </div>
     <div class="actions">
-      <button class="btn btn-primary" id="copy">Copy URL</button>
+      <button class="btn btn-primary" id="copy" disabled>Copy URL</button>
       <a class="btn btn-ghost" id="preview" target="_blank" rel="noopener">Preview card</a>
       <button class="btn btn-ghost" id="reset">Start over</button>
     </div>
@@ -250,7 +257,14 @@ function wireCombo(input, box, search, choose) {
     if (!items.length) return;
     if (e.key === 'ArrowDown') { active = Math.min(active + 1, items.length - 1); render(); e.preventDefault(); }
     if (e.key === 'ArrowUp')   { active = Math.max(active - 1, 0); render(); e.preventDefault(); }
-    if (e.key === 'Enter' && active >= 0) { choose(items[active].value); box.classList.remove('open'); e.preventDefault(); }
+    // Enter takes the highlighted option, or the first one if the clinician
+    // just typed a name and hit return — which is what everyone does.
+    if (e.key === 'Enter') {
+      choose(items[Math.max(active, 0)].value);
+      box.classList.remove('open');
+      e.preventDefault();
+    }
+    if (e.key === 'Tab' && items.length === 1) { choose(items[0].value); box.classList.remove('open'); }
   });
 }
 
@@ -339,6 +353,7 @@ function build() {
   if (!name || !chosen.length) {
     $('url').value = '';
     $('len').textContent = '0';
+    setReady(false, !name ? 'Add the patient\u2019s first name.' : 'Add at least one peptide.');
     $('supplyNote').textContent = '';
     $('preview').removeAttribute('href');
     return;
@@ -357,6 +372,7 @@ function build() {
     : `${base}#${payload}`;
   $('url').value = url;
   $('preview').href = url;
+  setReady(true, '');
 
   // A tag stores the URL minus the https:// prefix, plus ~8 bytes of NDEF
   // overhead. That, not the visible length, is what has to fit.
@@ -385,6 +401,25 @@ function build() {
   });
   $('doses').textContent = '';
   $('supplyNote').innerHTML = '<strong>Projected supply.</strong> ' + notes.join(' ');
+}
+
+/* Nothing may be copied or written to a tag until the card is real. The
+   first version let an empty box be copied, and an empty box written to a
+   tag is a patient holding a card that opens nothing. */
+function setReady(ready, why) {
+  const copy = $('copy');
+  const preview = $('preview');
+  const warn = $('notReady');
+  if (copy) copy.disabled = !ready;
+  if (preview) {
+    preview.style.pointerEvents = ready ? '' : 'none';
+    preview.style.opacity = ready ? '' : '.4';
+  }
+  if (warn) {
+    warn.textContent = ready ? '' : why;
+    warn.hidden = ready;
+  }
+  document.body.classList.toggle('not-ready', !ready);
 }
 
 /* ---------- boot ---------- */

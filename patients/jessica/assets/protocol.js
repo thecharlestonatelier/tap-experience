@@ -458,6 +458,13 @@ function removePen(pen) {
    is whatever the atelier last saved. The slug arrives either from the
    server, which stamps it into the page it serves, or on the query string
    as the patient moves between pages. */
+/* Jessica's tag was written before cards had addresses, and it cannot be
+   rewritten. Her forwarding site marks the hop so her protocol still loads —
+   and so that nobody else's card can land on it by accident. */
+function isLegacyCard() {
+  return new URLSearchParams(location.search).get('card') === 'legacy';
+}
+
 function readSlug() {
   const q = new URLSearchParams(location.search).get('c');
   if (q && /^[a-z0-9][a-z0-9.\-]{0,38}[a-z0-9]$/i.test(q)) return q.toLowerCase();
@@ -514,8 +521,14 @@ async function loadProtocol() {
     const res = await fetch(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
     CFG = hydrateRecord(await res.json(), templates);
-  } else {
+  } else if (isLegacyCard()) {
+    // The one card written before any of this existed. It is reached only
+    // through its own marked address, never by landing on the bare root.
     CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+  } else {
+    // No card in the address at all. Refusing here is the whole point: a
+    // portal that guesses shows one patient another patient's doses.
+    throw Object.assign(new Error('no_card'), { noCard: true });
   }
 
   PENS = CFG.protocol.pens || [];

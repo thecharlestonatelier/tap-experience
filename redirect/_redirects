@@ -3,4 +3,8 @@
 # held permanently and forwards to wherever the portal lives.
 # The fragment (#Name~pen) is re-applied by the browser after the redirect;
 # it never reaches a server, so it survives this hop untouched.
-/*  https://ca-tap.netlify.app/:splat  301!
+#
+# ?card=legacy is what tells the portal to load her stored protocol. Without
+# it the portal now refuses to show anyone, which is deliberate: the bare
+# root used to serve her protocol to whoever landed on it.
+/*  https://ca-tap.netlify.app/?card=legacy  301!

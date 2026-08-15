@@ -559,17 +559,6 @@ function setupHomeScreen() {
   document.getElementById("a2hsClose").addEventListener("click", () => { scrim.hidden = true; });
   scrim.addEventListener("click", e => { if (e.target === scrim) scrim.hidden = true; });
 
-  /* A saved card has to reopen on the right patient. iOS uses whatever URL
-     is on screen, but Chrome takes start_url from the manifest — so the
-     manifest is rebuilt here with this card's address in it. */
-  const link = document.getElementById("manifestLink");
-  if (link && (location.pathname !== "/" || location.hash || location.search)) {
-    fetch(link.href).then(r => r.json()).then(m => {
-      m.start_url = location.href;
-      const blob = new Blob([JSON.stringify(m)], { type: "application/manifest+json" });
-      link.href = URL.createObjectURL(blob);
-    }).catch(() => {});
-  }
 }
 
 /* Two kinds of card reach this page. One carries its patient and protocol
@@ -579,6 +568,12 @@ function setupHomeScreen() {
 (async function start() {
   try {
     const cfg = await loadProtocol();
+    // A card can resolve and still carry nothing — a blank tag, or a pen code
+    // the portal does not know. That must not look like a working portal with
+    // an empty schedule behind it.
+    if (cfg && (!cfg.protocol || !(cfg.protocol.pens || []).length)) {
+      throw Object.assign(new Error('no_protocol'), { noProtocol: true });
+    }
     if (cfg && cfg.patient) {
       // An unassigned tag has a record but no name yet.
       PORTAL.patientName = cfg.patient.name || PORTAL.patientName;
@@ -589,14 +584,18 @@ function setupHomeScreen() {
       document.title = PORTAL.patientName + ' — Patient Portal';
     }
   } catch (e) {
-    // A tag written before it was assigned to anyone. It still opens, and
-    // says plainly that it is waiting rather than greeting a stranger.
-    if (readSlug()) {
-      PORTAL.greeting = 'This card is';
-      PORTAL.patientName = 'Not Yet Set Up';
-      PORTAL.unassigned = true;
-    }
+    // Either the tag has not been assigned yet, or its address carried
+    // nothing we could resolve. Say so. Never fall through to a name.
+    PORTAL.greeting = "This card is";
+    PORTAL.patientName = (e && (e.noCard || e.noProtocol)) ? "Not Set Up" : "Not Ready";
+    PORTAL.unassigned = true;
+    PORTAL.reason = e && e.noCard
+      ? "This link does not carry a protocol yet."
+      : e && e.noProtocol
+        ? "This card has no protocol on it yet."
+        : "We could not load this protocol.";
   }
+
   renderName();
   renderButtons();
   renderNav();
@@ -609,8 +608,11 @@ function setupHomeScreen() {
     const menu = document.getElementById("menu");
     menu.innerHTML =
       '<p style="text-align:center;font-size:14px;color:#8A7C6A;line-height:1.6;padding:0 12px">' +
-      'Hand this card to the atelier and we will set up your protocol on it.' +
-      '</p>';
+      (PORTAL.reason || '') +
+      '<br><br>Show this screen to the atelier and we will put it right — ' +
+      'your dosing has not changed.</p>';
+    const btn = document.getElementById("addHome");
+    if (btn) btn.hidden = true;
   }
 })();
 </script>
