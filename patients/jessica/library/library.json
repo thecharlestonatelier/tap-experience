@@ -1,956 +1,892 @@
 {
- "_source": "Parsed from the Atelier printed peptide card set (atelierpeptidecardsprint.html).",
- "brand": {
-  "house": "The Charleston Atelier · Concierge Medicine",
-  "physician": "Kendall Phelps-Polirer, MD · 83 Cannon St, Charleston, SC",
-  "contact": "thecharlestonatelier.com · (843) 377-3713",
-  "disclaimer": "Compounded preparation. Not FDA-approved. The FDA does not verify the safety, effectiveness, or quality of compounded drugs.",
-  "consult": "Always consult your physician"
- },
- "cards": [
-  {
-   "name": "Tirzepatide",
-   "category": "Metabolic Optimization",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
-     "label": "Appetite Control"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
-     "label": "Glucose Balance"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
-     "label": "Fat Loss"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
-     "label": "Energy"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
-     "label": "Metabolic Health"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "Tirzepatide is a dual GIP and GLP-1 receptor agonist designed to support meaningful fat loss, improve insulin sensitivity, and promote metabolic health."
-    },
-    {
-     "k": "How It Works",
-     "v": "Activates GIP and GLP-1 pathways to regulate appetite, improve glucose control, and enhance energy expenditure."
-    }
-   ],
-   "combinedWith": [
-    "MOTS-C",
-    "AOD-9604",
-    "CJC-1295"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "1x Weekly"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "NAD+, AOD-9604, CJC-1295"
-    }
-   ]
+  "_source": "Parsed from the Atelier printed peptide card set (atelierpeptidecardsprint.html).",
+  "brand": {
+    "house": "The Charleston Atelier · Concierge Medicine",
+    "physician": "Kendall Phelps-Polirer, MD · 83 Cannon St, Charleston, SC",
+    "contact": "thecharlestonatelier.com · (843) 377-3713",
+    "disclaimer": "Compounded preparation. Not FDA-approved. The FDA does not verify the safety, effectiveness, or quality of compounded drugs.",
+    "consult": "Always consult your physician"
   },
-  {
-   "name": "Retatrutide",
-   "category": "Advanced Metabolic Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
+  "cards": [
     {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
-     "label": "Weight Support"
+      "name": "Tirzepatide",
+      "category": "Metabolic Optimization",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
+          "label": "Appetite Control"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
+          "label": "Glucose Balance"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
+          "label": "Fat Loss"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
+          "label": "Energy"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
+          "label": "Metabolic Health"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "Tirzepatide is a dual GIP and GLP-1 receptor agonist designed to support meaningful fat loss, improve insulin sensitivity, and promote metabolic health."
+        },
+        {
+          "k": "How It Works",
+          "v": "Activates GIP and GLP-1 pathways to regulate appetite, improve glucose control, and enhance energy expenditure."
+        }
+      ],
+      "combinedWith": [
+        "MOTS-C",
+        "AOD-9604",
+        "CJC-1295"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "1x Weekly"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "NAD+, AOD-9604, CJC-1295"
+        }
+      ]
     },
     {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
-     "label": "Glucose Control"
+      "name": "CJC-1295 / Ipamorelin",
+      "category": "Growth & Recovery Support",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20V7\"/><path d=\"M6.5 12.5 12 7l5.5 5.5\"/></svg>",
+          "label": "Growth Hormone Support"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 20c0-8 6-14 16-14 0 10-6 15-16 14z\"/><path d=\"M4 20c4-4 7-6 11-8\"/></svg>",
+          "label": "Recovery"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M20 14a8 8 0 1 1-9-11 6.5 6.5 0 0 0 9 11z\"/></svg>",
+          "label": "Sleep Quality"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
+          "label": "Anti-Aging"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "This combination stimulates growth hormone production to support lean muscle growth, fat loss, tissue repair, and overall recovery."
+        },
+        {
+          "k": "How It Works",
+          "v": "Increases natural growth hormone secretion to support cellular repair, recovery, and body composition."
+        }
+      ],
+      "combinedWith": [
+        "GHK-Cu",
+        "Tesamorelin",
+        "TB-500"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "Daily or 5x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "GHK-Cu, CJC-1295, AOD-9604"
+        }
+      ]
     },
     {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
-     "label": "Lipid Balance"
+      "name": "BPC-157",
+      "category": "Recovery & Tissue Repair",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
+          "label": "Tissue Repair"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
+          "label": "Inflammation"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M6 9a5 5 0 0 1 10 0c0 3-3 3-3 5a2 2 0 0 0 4 0\"/><path d=\"M6 9c0 3 3 3 3 5\"/></svg>",
+          "label": "Gut Health"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M10 8h1a4 4 0 0 1 0 8h-1\"/><path d=\"M14 16h-1a4 4 0 0 1 0-8h1\"/></svg>",
+          "label": "Joint Support"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
+          "label": "Pain Relief"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "BPC-157 is a peptide known for its regenerative properties, supporting tissue repair, reducing inflammation, and promoting gut health."
+        },
+        {
+          "k": "How It Works",
+          "v": "Enhances angiogenesis and cellular repair while modulating inflammatory pathways."
+        }
+      ],
+      "combinedWith": [
+        "TB-500",
+        "GHK-Cu",
+        "KPV"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "Daily"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "TB-500, GHK-Cu, KPV"
+        }
+      ]
     },
     {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
-     "label": "Appetite Control"
+      "name": "TB-500",
+      "category": "Mobility & Connective Tissue",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"14\" cy=\"5\" r=\"1.8\"/><path d=\"M12.5 8.5 9 12l2.5 2 .5 5M12 11l3.5 1.5 2-1M8 12l-2 1\"/></svg>",
+          "label": "Mobility"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
+          "label": "Tissue Repair"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0\"/></svg>",
+          "label": "Flexibility"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 20c0-8 6-14 16-14 0 10-6 15-16 14z\"/><path d=\"M4 20c4-4 7-6 11-8\"/></svg>",
+          "label": "Recovery"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
+          "label": "Performance"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "TB-500 supports cell migration and angiogenesis, promoting tissue repair, flexibility, and overall physical performance."
+        },
+        {
+          "k": "How It Works",
+          "v": "Encourages actin stabilization and new blood vessel formation to accelerate recovery."
+        }
+      ],
+      "combinedWith": [
+        "BPC-157",
+        "GHK-Cu",
+        "TA-1"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "BPC-157, GHK-Cu, TA-1"
+        }
+      ]
     },
     {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
-     "label": "Metabolic Support"
+      "name": "GHK-Cu",
+      "category": "Skin & Rejuvenation",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
+          "label": "Collagen Support"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
+          "label": "Skin Elasticity"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
+          "label": "Wound Healing"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
+          "label": "Anti-Aging"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "GHK-Cu is a copper peptide known for its ability to support skin regeneration, collagen production, and overall skin rejuvenation."
+        },
+        {
+          "k": "How It Works",
+          "v": "Stimulates collagen, elastin, and glycosaminoglycan production while reducing inflammation."
+        }
+      ],
+      "combinedWith": [
+        "BPC-157",
+        "Glow Blend",
+        "TA-1"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous or Topical"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "BPC-157, Glow Blend, TA-1"
+        }
+      ]
+    },
+    {
+      "name": "MOTS-C",
+      "category": "Mitochondrial Energy Support",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
+          "label": "Energy Production"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
+          "label": "Metabolic Health"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
+          "label": "Endurance"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"1.8\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(60 12 12)\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(120 12 12)\"/></svg>",
+          "label": "Cellular Health"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
+          "label": "Fat Metabolism"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "MOTS-C is a mitochondrial-derived peptide that supports energy metabolism, insulin sensitivity, and overall metabolic health."
+        },
+        {
+          "k": "How It Works",
+          "v": "Enhances mitochondrial function and improves metabolic efficiency."
+        }
+      ],
+      "combinedWith": [
+        "AICAR",
+        "AOD-9604",
+        "MK-677"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "AICAR, NAD+, MK-677"
+        }
+      ]
+    },
+    {
+      "name": "NAD+",
+      "category": "Cellular Renewal & Anti-Aging",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
+          "label": "Cellular Energy"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 3c0 5 10 5 10 10S7 18 7 23\"/><path d=\"M17 3c0 5-10 5-10 10s10 5 10 10\"/><path d=\"M8.2 6h7.6M8.2 18h7.6M9.6 9h4.8M9.6 15h4.8\"/></svg>",
+          "label": "DNA Repair"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
+          "label": "Anti-Aging"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 5a3 3 0 0 0-6 .5A3 3 0 0 0 5 11a3 3 0 0 0 2 4 3 3 0 0 0 5 .8zM12 5a3 3 0 0 1 6 .5A3 3 0 0 1 19 11a3 3 0 0 1-2 4 3 3 0 0 1-5 .8z\"/></svg>",
+          "label": "Brain Health"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
+          "label": "Immune Support"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "NAD+ is a vital coenzyme that supports cellular energy production, DNA repair, and healthy aging at the cellular level."
+        },
+        {
+          "k": "How It Works",
+          "v": "Restores NAD+ levels to enhance mitochondrial function and cellular repair pathways."
+        }
+      ],
+      "combinedWith": [
+        "TA-1",
+        "NMN",
+        "Resveratrol"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "IV Infusion or Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "Weekly or Bi-Weekly"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "TA-1, NMN, Resveratrol"
+        }
+      ]
+    },
+    {
+      "name": "AOD-9604",
+      "category": "Fat Metabolism Support",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
+          "label": "Fat Burning"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
+          "label": "Metabolic Boost"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
+          "label": "Energy"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
+          "label": "Weight"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
+          "label": "Performance"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "AOD-9604 is a peptide fragment that supports fat metabolism and provides a natural boost to energy and endurance."
+        },
+        {
+          "k": "How It Works",
+          "v": "Enhances lipolysis (fat breakdown) and improves metabolic efficiency."
+        }
+      ],
+      "combinedWith": [
+        "Wolverine",
+        "KPV",
+        "NAD+"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "Wolverine, KPV, NAD+"
+        }
+      ]
+    },
+    {
+      "name": "Wolverine Blend",
+      "category": "Recovery & Repair Synergy",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
+          "label": "Tissue Repair"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
+          "label": "Inflammation Support"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"14\" cy=\"5\" r=\"1.8\"/><path d=\"M12.5 8.5 9 12l2.5 2 .5 5M12 11l3.5 1.5 2-1M8 12l-2 1\"/></svg>",
+          "label": "Mobility"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 20c0-8 6-14 16-14 0 10-6 15-16 14z\"/><path d=\"M4 20c4-4 7-6 11-8\"/></svg>",
+          "label": "Recovery"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
+          "label": "Performance"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "This blend combines BPC-157 and TB-500 to enhance tissue repair, reduce inflammation, and accelerate recovery."
+        },
+        {
+          "k": "How It Works",
+          "v": "BPC-157 supports cellular repair while TB-500 enhances angiogenesis and tissue flexibility."
+        }
+      ],
+      "combinedWith": [
+        "CJC-1295",
+        "MOTS-C",
+        "NAD+"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "CJC-1295, MOTS-C, NAD+"
+        }
+      ]
+    },
+    {
+      "name": "Glow Blend",
+      "category": "Skin & Tissue Rejuvenation",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
+          "label": "Skin Renewal"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
+          "label": "Collagen Support"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
+          "label": "Tissue Repair"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-1.7z\"/></svg>",
+          "label": "Radiance"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
+          "label": "Anti-Aging"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "A synergistic blend designed to support skin regeneration, collagen production, and overall tissue repair for a radiant glow."
+        },
+        {
+          "k": "How It Works",
+          "v": "Combines regenerative peptides to support collagen synthesis, reduce inflammation, and improve skin quality."
+        }
+      ],
+      "combinedWith": [
+        "MOTS-C",
+        "KPV",
+        "AOD-9604"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous or Topical"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "MOTS-C, KPV, AOD-9604"
+        }
+      ]
+    },
+    {
+      "name": "KPV",
+      "category": "Inflammation & Immune Support",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
+          "label": "Inflammation Support"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M6 9a5 5 0 0 1 10 0c0 3-3 3-3 5a2 2 0 0 0 4 0\"/><path d=\"M6 9c0 3 3 3 3 5\"/></svg>",
+          "label": "Gut Health"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
+          "label": "Immune Balance"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
+          "label": "Skin Recovery"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "KPV is a peptide with powerful anti-inflammatory properties that supports immune regulation and gut health."
+        },
+        {
+          "k": "How It Works",
+          "v": "Modulates inflammatory cytokines and supports immune homeostasis."
+        }
+      ],
+      "combinedWith": [
+        "BPC-157",
+        "AOD-9604",
+        "GHK-Cu"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "BPC-157, AOD-9604, GHK-Cu"
+        }
+      ]
+    },
+    {
+      "name": "AICAR",
+      "category": "Energy & Endurance Support",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
+          "label": "Energy Boost"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
+          "label": "Endurance"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
+          "label": "Metabolic Health"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
+          "label": "AMPK Activation"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "AICAR activates AMPK in the body, supporting cellular energy, endurance, and metabolic efficiency."
+        },
+        {
+          "k": "How It Works",
+          "v": "Activates the AMPK pathway to increase mitochondrial biogenesis and fat oxidation."
+        }
+      ],
+      "combinedWith": [
+        "MOTS-C",
+        "AOD-9604",
+        "MK-677"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "2–3x Per Week"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "MOTS-C, NAD+, MK-677"
+        }
+      ]
+    },
+    {
+      "name": "Epitalon",
+      "category": "Cellular Longevity Support",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 3c0 5 10 5 10 10S7 18 7 23\"/><path d=\"M17 3c0 5-10 5-10 10s10 5 10 10\"/><path d=\"M8.2 6h7.6M8.2 18h7.6M9.6 9h4.8M9.6 15h4.8\"/></svg>",
+          "label": "Telomere Support"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
+          "label": "Anti-Aging"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M20 14a8 8 0 1 1-9-11 6.5 6.5 0 0 0 9 11z\"/></svg>",
+          "label": "Sleep Quality"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"1.8\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(60 12 12)\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(120 12 12)\"/></svg>",
+          "label": "Cellular Health"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3v18M7 21h10M4 8h16M8 8l-3 6a3 3 0 0 0 6 0zM16 8l3 6a3 3 0 0 0-6 0z\"/></svg>",
+          "label": "Hormone Balance"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "Epitalon is a peptide known for its potential to support telomere length, cellular longevity, and healthy aging."
+        },
+        {
+          "k": "How It Works",
+          "v": "May activate telomerase and support cellular repair mechanisms."
+        }
+      ],
+      "combinedWith": [
+        "TA-1",
+        "NAD+",
+        "Resveratrol"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Subcutaneous Injection"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "Daily or Cycle Use"
+        },
+        {
+          "k": "Storage",
+          "v": "Refrigerate 2–8°C"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "TA-1, NAD+, Resveratrol"
+        }
+      ]
+    },
+    {
+      "name": "MK-677",
+      "category": "Growth Hormone Support",
+      "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
+      "benefits": [
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20V7\"/><path d=\"M6.5 12.5 12 7l5.5 5.5\"/></svg>",
+          "label": "GH Release"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 9v6M6.5 7v10M17.5 7v10M20 9v6M6.5 12h11\"/></svg>",
+          "label": "Muscle Growth"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M20 14a8 8 0 1 1-9-11 6.5 6.5 0 0 0 9 11z\"/></svg>",
+          "label": "Sleep Quality"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7.5 8.5A2.2 2.2 0 1 0 5 11.5l7 7a2.2 2.2 0 1 0 3 2 2.2 2.2 0 1 0 2-3l-7-7a2.2 2.2 0 1 0-2.5-2z\"/></svg>",
+          "label": "Bone Density"
+        },
+        {
+          "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
+          "label": "Appetite Support"
+        }
+      ],
+      "sections": [
+        {
+          "k": "What It Is",
+          "v": "MK-677 is an oral growth hormone secretagogue that supports increased GH levels, lean muscle growth, and improved recovery."
+        },
+        {
+          "k": "How It Works",
+          "v": "Stimulates natural growth hormone release without injections."
+        }
+      ],
+      "combinedWith": [
+        "CJC-1295",
+        "Tesamorelin",
+        "AOD-9604"
+      ],
+      "snapshot": [
+        {
+          "k": "Administration",
+          "v": "Oral"
+        },
+        {
+          "k": "Typical Frequency",
+          "v": "Daily"
+        },
+        {
+          "k": "Storage",
+          "v": "Room Temperature"
+        },
+        {
+          "k": "Physician Supervision",
+          "v": "Required"
+        },
+        {
+          "k": "Pairing Suggestions",
+          "v": "CJC-1295, Tesamorelin, AOD-9604"
+        }
+      ]
     }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "Retatrutide is a triple hormone agonist (GLP-1, GIP, and Glucagon) that supports significant weight reduction and metabolic improvement."
-    },
-    {
-     "k": "How It Works",
-     "v": "Targets three metabolic pathways to enhance fat loss, improve glucose control, and increase energy expenditure."
-    }
-   ],
-   "combinedWith": [
-    "MOTS-C",
-    "CJC-1295",
-    "AOD-9604"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "1x Weekly"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "NAD+, CJC-1295, AOD-9604"
-    }
-   ]
-  },
-  {
-   "name": "CJC-1295 / Ipamorelin",
-   "category": "Growth & Recovery Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20V7\"/><path d=\"M6.5 12.5 12 7l5.5 5.5\"/></svg>",
-     "label": "Growth Hormone Support"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 20c0-8 6-14 16-14 0 10-6 15-16 14z\"/><path d=\"M4 20c4-4 7-6 11-8\"/></svg>",
-     "label": "Recovery"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M20 14a8 8 0 1 1-9-11 6.5 6.5 0 0 0 9 11z\"/></svg>",
-     "label": "Sleep Quality"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
-     "label": "Anti-Aging"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "This combination stimulates growth hormone production to support lean muscle growth, fat loss, tissue repair, and overall recovery."
-    },
-    {
-     "k": "How It Works",
-     "v": "Increases natural growth hormone secretion to support cellular repair, recovery, and body composition."
-    }
-   ],
-   "combinedWith": [
-    "GHK-Cu",
-    "Tesamorelin",
-    "TB-500"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "Daily or 5x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "GHK-Cu, CJC-1295, AOD-9604"
-    }
-   ]
-  },
-  {
-   "name": "BPC-157",
-   "category": "Recovery & Tissue Repair",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
-     "label": "Tissue Repair"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
-     "label": "Inflammation"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M6 9a5 5 0 0 1 10 0c0 3-3 3-3 5a2 2 0 0 0 4 0\"/><path d=\"M6 9c0 3 3 3 3 5\"/></svg>",
-     "label": "Gut Health"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M10 8h1a4 4 0 0 1 0 8h-1\"/><path d=\"M14 16h-1a4 4 0 0 1 0-8h1\"/></svg>",
-     "label": "Joint Support"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
-     "label": "Pain Relief"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "BPC-157 is a peptide known for its regenerative properties, supporting tissue repair, reducing inflammation, and promoting gut health."
-    },
-    {
-     "k": "How It Works",
-     "v": "Enhances angiogenesis and cellular repair while modulating inflammatory pathways."
-    }
-   ],
-   "combinedWith": [
-    "TB-500",
-    "GHK-Cu",
-    "KPV"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "Daily"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "TB-500, GHK-Cu, KPV"
-    }
-   ]
-  },
-  {
-   "name": "TB-500",
-   "category": "Mobility & Connective Tissue",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"14\" cy=\"5\" r=\"1.8\"/><path d=\"M12.5 8.5 9 12l2.5 2 .5 5M12 11l3.5 1.5 2-1M8 12l-2 1\"/></svg>",
-     "label": "Mobility"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
-     "label": "Tissue Repair"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M3 12c2-4 4-4 6 0s4 4 6 0 4-4 6 0\"/></svg>",
-     "label": "Flexibility"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 20c0-8 6-14 16-14 0 10-6 15-16 14z\"/><path d=\"M4 20c4-4 7-6 11-8\"/></svg>",
-     "label": "Recovery"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
-     "label": "Performance"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "TB-500 supports cell migration and angiogenesis, promoting tissue repair, flexibility, and overall physical performance."
-    },
-    {
-     "k": "How It Works",
-     "v": "Encourages actin stabilization and new blood vessel formation to accelerate recovery."
-    }
-   ],
-   "combinedWith": [
-    "BPC-157",
-    "GHK-Cu",
-    "TA-1"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "BPC-157, GHK-Cu, TA-1"
-    }
-   ]
-  },
-  {
-   "name": "GHK-Cu",
-   "category": "Skin & Rejuvenation",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
-     "label": "Collagen Support"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
-     "label": "Skin Elasticity"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
-     "label": "Wound Healing"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
-     "label": "Anti-Aging"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "GHK-Cu is a copper peptide known for its ability to support skin regeneration, collagen production, and overall skin rejuvenation."
-    },
-    {
-     "k": "How It Works",
-     "v": "Stimulates collagen, elastin, and glycosaminoglycan production while reducing inflammation."
-    }
-   ],
-   "combinedWith": [
-    "BPC-157",
-    "Glow Blend",
-    "TA-1"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous or Topical"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "BPC-157, Glow Blend, TA-1"
-    }
-   ]
-  },
-  {
-   "name": "MOTS-C",
-   "category": "Mitochondrial Energy Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
-     "label": "Energy Production"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
-     "label": "Metabolic Health"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
-     "label": "Endurance"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"1.8\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(60 12 12)\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(120 12 12)\"/></svg>",
-     "label": "Cellular Health"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
-     "label": "Fat Metabolism"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "MOTS-C is a mitochondrial-derived peptide that supports energy metabolism, insulin sensitivity, and overall metabolic health."
-    },
-    {
-     "k": "How It Works",
-     "v": "Enhances mitochondrial function and improves metabolic efficiency."
-    }
-   ],
-   "combinedWith": [
-    "AICAR",
-    "AOD-9604",
-    "MK-677"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "AICAR, NAD+, MK-677"
-    }
-   ]
-  },
-  {
-   "name": "NAD+",
-   "category": "Cellular Renewal & Anti-Aging",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
-     "label": "Cellular Energy"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 3c0 5 10 5 10 10S7 18 7 23\"/><path d=\"M17 3c0 5-10 5-10 10s10 5 10 10\"/><path d=\"M8.2 6h7.6M8.2 18h7.6M9.6 9h4.8M9.6 15h4.8\"/></svg>",
-     "label": "DNA Repair"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
-     "label": "Anti-Aging"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 5a3 3 0 0 0-6 .5A3 3 0 0 0 5 11a3 3 0 0 0 2 4 3 3 0 0 0 5 .8zM12 5a3 3 0 0 1 6 .5A3 3 0 0 1 19 11a3 3 0 0 1-2 4 3 3 0 0 1-5 .8z\"/></svg>",
-     "label": "Brain Health"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
-     "label": "Immune Support"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "NAD+ is a vital coenzyme that supports cellular energy production, DNA repair, and healthy aging at the cellular level."
-    },
-    {
-     "k": "How It Works",
-     "v": "Restores NAD+ levels to enhance mitochondrial function and cellular repair pathways."
-    }
-   ],
-   "combinedWith": [
-    "TA-1",
-    "NMN",
-    "Resveratrol"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "IV Infusion or Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "Weekly or Bi-Weekly"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "TA-1, NMN, Resveratrol"
-    }
-   ]
-  },
-  {
-   "name": "AOD-9604",
-   "category": "Fat Metabolism Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
-     "label": "Fat Burning"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
-     "label": "Metabolic Boost"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
-     "label": "Energy"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 4v13\"/><path d=\"M6.5 11.5 12 17l5.5-5.5\"/></svg>",
-     "label": "Weight"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
-     "label": "Performance"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "AOD-9604 is a peptide fragment that supports fat metabolism and provides a natural boost to energy and endurance."
-    },
-    {
-     "k": "How It Works",
-     "v": "Enhances lipolysis (fat breakdown) and improves metabolic efficiency."
-    }
-   ],
-   "combinedWith": [
-    "Wolverine",
-    "KPV",
-    "NAD+"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "Wolverine, KPV, NAD+"
-    }
-   ]
-  },
-  {
-   "name": "Wolverine Blend",
-   "category": "Recovery & Repair Synergy",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
-     "label": "Tissue Repair"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
-     "label": "Inflammation Support"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"14\" cy=\"5\" r=\"1.8\"/><path d=\"M12.5 8.5 9 12l2.5 2 .5 5M12 11l3.5 1.5 2-1M8 12l-2 1\"/></svg>",
-     "label": "Mobility"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 20c0-8 6-14 16-14 0 10-6 15-16 14z\"/><path d=\"M4 20c4-4 7-6 11-8\"/></svg>",
-     "label": "Recovery"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
-     "label": "Performance"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "This blend combines BPC-157 and TB-500 to enhance tissue repair, reduce inflammation, and accelerate recovery."
-    },
-    {
-     "k": "How It Works",
-     "v": "BPC-157 supports cellular repair while TB-500 enhances angiogenesis and tissue flexibility."
-    }
-   ],
-   "combinedWith": [
-    "CJC-1295",
-    "MOTS-C",
-    "NAD+"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "CJC-1295, MOTS-C, NAD+"
-    }
-   ]
-  },
-  {
-   "name": "Glow Blend",
-   "category": "Skin & Tissue Rejuvenation",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
-     "label": "Skin Renewal"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
-     "label": "Collagen Support"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 8v8M8 12h8\"/></svg>",
-     "label": "Tissue Repair"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-1.7z\"/></svg>",
-     "label": "Radiance"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
-     "label": "Anti-Aging"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "A synergistic blend designed to support skin regeneration, collagen production, and overall tissue repair for a radiant glow."
-    },
-    {
-     "k": "How It Works",
-     "v": "Combines regenerative peptides to support collagen synthesis, reduce inflammation, and improve skin quality."
-    }
-   ],
-   "combinedWith": [
-    "MOTS-C",
-    "KPV",
-    "AOD-9604"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous or Topical"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "MOTS-C, KPV, AOD-9604"
-    }
-   ]
-  },
-  {
-   "name": "KPV",
-   "category": "Inflammation & Immune Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
-     "label": "Inflammation Support"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M6 9a5 5 0 0 1 10 0c0 3-3 3-3 5a2 2 0 0 0 4 0\"/><path d=\"M6 9c0 3 3 3 3 5\"/></svg>",
-     "label": "Gut Health"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V6z\"/></svg>",
-     "label": "Immune Balance"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M8 4h8l4 8-4 8H8l-4-8z\"/></svg>",
-     "label": "Skin Recovery"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "KPV is a peptide with powerful anti-inflammatory properties that supports immune regulation and gut health."
-    },
-    {
-     "k": "How It Works",
-     "v": "Modulates inflammatory cytokines and supports immune homeostasis."
-    }
-   ],
-   "combinedWith": [
-    "BPC-157",
-    "AOD-9604",
-    "GHK-Cu"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "BPC-157, AOD-9604, GHK-Cu"
-    }
-   ]
-  },
-  {
-   "name": "AICAR",
-   "category": "Energy & Endurance Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
-     "label": "Energy Boost"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20S4 14.5 4 9a3.5 3.5 0 0 1 8-2 3.5 3.5 0 0 1 8 2c0 5.5-8 11-8 11z\"/></svg>",
-     "label": "Endurance"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 2c1.5 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1.5.8-2.6 1.6-3.4C10 8 11 5 12 2z\"/></svg>",
-     "label": "Metabolic Health"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M13 3 5 13h5l-1 8 8-11h-5z\"/></svg>",
-     "label": "AMPK Activation"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "AICAR activates AMPK in the body, supporting cellular energy, endurance, and metabolic efficiency."
-    },
-    {
-     "k": "How It Works",
-     "v": "Activates the AMPK pathway to increase mitochondrial biogenesis and fat oxidation."
-    }
-   ],
-   "combinedWith": [
-    "MOTS-C",
-    "AOD-9604",
-    "MK-677"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "2–3x Per Week"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "MOTS-C, NAD+, MK-677"
-    }
-   ]
-  },
-  {
-   "name": "Epitalon",
-   "category": "Cellular Longevity Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 3c0 5 10 5 10 10S7 18 7 23\"/><path d=\"M17 3c0 5-10 5-10 10s10 5 10 10\"/><path d=\"M8.2 6h7.6M8.2 18h7.6M9.6 9h4.8M9.6 15h4.8\"/></svg>",
-     "label": "Telomere Support"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7 4h10M7 20h10\"/><path d=\"M7 4c0 5 10 5 10 0M7 20c0-5 10-5 10 0\"/></svg>",
-     "label": "Anti-Aging"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M20 14a8 8 0 1 1-9-11 6.5 6.5 0 0 0 9 11z\"/></svg>",
-     "label": "Sleep Quality"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"1.8\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(60 12 12)\"/><ellipse cx=\"12\" cy=\"12\" rx=\"9\" ry=\"3.6\" transform=\"rotate(120 12 12)\"/></svg>",
-     "label": "Cellular Health"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3v18M7 21h10M4 8h16M8 8l-3 6a3 3 0 0 0 6 0zM16 8l3 6a3 3 0 0 0-6 0z\"/></svg>",
-     "label": "Hormone Balance"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "Epitalon is a peptide known for its potential to support telomere length, cellular longevity, and healthy aging."
-    },
-    {
-     "k": "How It Works",
-     "v": "May activate telomerase and support cellular repair mechanisms."
-    }
-   ],
-   "combinedWith": [
-    "TA-1",
-    "NAD+",
-    "Resveratrol"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Subcutaneous Injection"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "Daily or Cycle Use"
-    },
-    {
-     "k": "Storage",
-     "v": "Refrigerate 2–8°C"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "TA-1, NAD+, Resveratrol"
-    }
-   ]
-  },
-  {
-   "name": "MK-677",
-   "category": "Growth Hormone Support",
-   "molecule": "<svg class=\"mol\" viewBox=\"0 0 90 120\"><g stroke=\"#b4a58f\" stroke-width=\"1\" fill=\"none\"><path d=\"M45 22 30 40 40 62 62 60 70 38 55 22zM30 40 14 46M40 62 30 86M62 60 78 72M70 38 84 28M55 22 52 8\"/></g><g fill=\"#cbbb9d\"><circle cx=\"45\" cy=\"22\" r=\"3\"/><circle cx=\"30\" cy=\"40\" r=\"3\"/><circle cx=\"40\" cy=\"62\" r=\"3\"/><circle cx=\"62\" cy=\"60\" r=\"3\"/><circle cx=\"70\" cy=\"38\" r=\"3\"/><circle cx=\"55\" cy=\"22\" r=\"3\"/><circle cx=\"14\" cy=\"46\" r=\"2.3\"/><circle cx=\"30\" cy=\"86\" r=\"2.3\"/><circle cx=\"78\" cy=\"72\" r=\"2.3\"/><circle cx=\"84\" cy=\"28\" r=\"2.3\"/><circle cx=\"52\" cy=\"8\" r=\"2.3\"/></g></svg>",
-   "benefits": [
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 20V7\"/><path d=\"M6.5 12.5 12 7l5.5 5.5\"/></svg>",
-     "label": "GH Release"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M4 9v6M6.5 7v10M17.5 7v10M20 9v6M6.5 12h11\"/></svg>",
-     "label": "Muscle Growth"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M20 14a8 8 0 1 1-9-11 6.5 6.5 0 0 0 9 11z\"/></svg>",
-     "label": "Sleep Quality"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M7.5 8.5A2.2 2.2 0 1 0 5 11.5l7 7a2.2 2.2 0 1 0 3 2 2.2 2.2 0 1 0 2-3l-7-7a2.2 2.2 0 1 0-2.5-2z\"/></svg>",
-     "label": "Bone Density"
-    },
-    {
-     "icon": "<svg class=\"i\" viewBox=\"0 0 24 24\"><path d=\"M12 3c3 4 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5 5-9z\"/></svg>",
-     "label": "Appetite Support"
-    }
-   ],
-   "sections": [
-    {
-     "k": "What It Is",
-     "v": "MK-677 is an oral growth hormone secretagogue that supports increased GH levels, lean muscle growth, and improved recovery."
-    },
-    {
-     "k": "How It Works",
-     "v": "Stimulates natural growth hormone release without injections."
-    }
-   ],
-   "combinedWith": [
-    "CJC-1295",
-    "Tesamorelin",
-    "AOD-9604"
-   ],
-   "snapshot": [
-    {
-     "k": "Administration",
-     "v": "Oral"
-    },
-    {
-     "k": "Typical Frequency",
-     "v": "Daily"
-    },
-    {
-     "k": "Storage",
-     "v": "Room Temperature"
-    },
-    {
-     "k": "Physician Supervision",
-     "v": "Required"
-    },
-    {
-     "k": "Pairing Suggestions",
-     "v": "CJC-1295, Tesamorelin, AOD-9604"
-    }
-   ]
-  }
- ]
+  ]
 }
