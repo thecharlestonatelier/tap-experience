@@ -288,6 +288,43 @@ function refillHref(pen) {
 }
 
 /* ---------- start day (device-only) ---------- */
+/* ---------- the hour she takes it ----------
+   The template says Morning or Evening; only the patient knows what that
+   means for her. Her answer lives beside her start day and is what the
+   calendar reminders are set to. */
+function timesKey() { return `tca.times.${CFG.patient.id}`; }
+
+function loadTimes() {
+  try { return JSON.parse(localStorage.getItem(timesKey())) || {}; } catch { return {}; }
+}
+
+function saveTimes(map) {
+  try { localStorage.setItem(timesKey(), JSON.stringify(map || {})); } catch {}
+}
+
+/* The clock time for a pen: hers if she set one, otherwise the band default. */
+function timeFor(pen) {
+  const mine = loadTimes();
+  return mine[pen.time] || TIME_AT[pen.time] || '09:00';
+}
+
+/* Which bands this protocol actually uses — a morning pair and an evening
+   pair means two questions, not four. */
+function timeBands() {
+  const seen = [];
+  PENS.forEach(p => { if (p.time && !seen.includes(p.time)) seen.push(p.time); });
+  return seen;
+}
+
+/* "07:30" -> "7:30 am", for reading back on the page. */
+function prettyTime(hhmm) {
+  const [h, m] = String(hhmm || '').split(':').map(Number);
+  if (isNaN(h)) return '';
+  const ampm = h < 12 ? 'am' : 'pm';
+  const hr = h % 12 === 0 ? 12 : h % 12;
+  return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 function startKey() { return `tca.start.${CFG.patient.id}`; }
 function loadStart() { try { return localStorage.getItem(startKey()); } catch { return null; } }
 function saveStart(s) { try { localStorage.setItem(startKey(), s); } catch {} }

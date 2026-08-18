@@ -372,6 +372,22 @@
   }
   .site[aria-pressed="true"] { background: var(--espresso); border-color: var(--espresso); color: #F6F0E7; }
 
+  .time-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0; border-top: 1px solid var(--hairline);
+  }
+  .time-row span {
+    font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  }
+  .time-field {
+    margin-left: auto; width: auto; padding: 9px 12px;
+    border: 1px solid var(--hairline); border-radius: 10px;
+    background: var(--card); color: var(--espresso);
+    font-family: 'Jost', sans-serif; font-size: 15px;
+    font-feature-settings: 'lnum' 1;
+  }
+  .time-field:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+
   .toast {
     position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom));
     transform: translate(-50%, 12px); padding: 13px 20px;
@@ -510,9 +526,10 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
     <p class="modal-eyebrow">Your schedule</p>
     <h2 class="modal-title" id="startTitle">Which day did you start?</h2>
-    <p class="modal-body">Your dosing days, phases, reminders and refill dates are all counted from this day.</p>
+    <p class="modal-body">Your dosing days, phases, reminders and refill dates are all counted from this day — and your reminders are set for the times you choose.</p>
     <input class="date-field" type="date" id="startInput">
     <div class="quick" id="startQuick"></div>
+    <div id="startTimes"></div>
     <div class="btn-row">
       <button class="btn btn-ghost" id="startCancel">Cancel</button>
       <button class="btn btn-primary" id="startSave">Set my schedule</button>
@@ -571,6 +588,16 @@ function openStartPicker() {
       document.querySelectorAll('#startQuick .site').forEach(x => x.setAttribute('aria-pressed', x === b));
     }));
 
+  // One field per band this protocol actually uses. A morning pair and an
+  // evening pair is two questions, not four.
+  const mine = loadTimes();
+  document.getElementById('startTimes').innerHTML = timeBands().map(band => `
+    <label class="time-row">
+      <span>${band}</span>
+      <input class="time-field" type="time" data-band="${band}"
+             value="${mine[band] || TIME_AT[band] || '09:00'}">
+    </label>`).join('');
+
   document.getElementById('startScrim').classList.add('open');
 }
 
@@ -579,12 +606,20 @@ const closeStartPicker = () => document.getElementById('startScrim').classList.r
 function commitStart() {
   const v = document.getElementById('startInput').value;
   if (v) setStart(v);
+
+  const picked = {};
+  document.querySelectorAll('#startTimes .time-field').forEach(inp => {
+    if (inp.value) picked[inp.dataset.band] = inp.value;
+  });
+  saveTimes(picked);
+
   closeStartPicker();
   calCursor = today();
   selectedDay = today();
   renderAll();
   applyCardLinks();
-  showToast(`Schedule set from ${fmtShort(START)}.`);
+  const bands = timeBands().map(b => `${b.toLowerCase()} at ${prettyTime(timeFor({ time: b }))}`);
+  showToast(`Set from ${fmtShort(START)}${bands.length ? ' · ' + bands.join(', ') : ''}.`);
 }
 
 function renderAll() {
@@ -889,7 +924,7 @@ function renderToday() {
         <div style="flex:1">
           <div class="dose-name">${pen.name}</div>
           <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
-          <div class="dose-meta">${pen.time} · ${pen.route}</div>
+          <div class="dose-meta">${pen.time} · ${prettyTime(timeFor(pen))} · ${pen.route}</div>
           <span class="phase-pill">${dose.phase.name}</span>
         </div>
       </div>
@@ -1199,7 +1234,8 @@ function buildICS() {
 
   PENS.forEach(pen => {
     // Weekly injections are calendared at 9am on the day she chose.
-    const [hh, mm] = (pen.schedule.weekly ? '09:00' : (TIME_AT[pen.time] || '09:00')).split(':');
+    // Her chosen hour, not the band's default.
+    const [hh, mm] = timeFor(pen).split(':');
     occurrences(pen).forEach((d, i) => {
       const dose = doseOn(pen, d);
       if (!dose) return;
