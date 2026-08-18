@@ -140,6 +140,26 @@ for s in studio-passphrase practice-better-key; do
 done
 ```
 
+And permission to build. On projects created from 2024 on, the default compute
+account no longer comes with Editor, so without these the deploy in step 5
+stops at "Uploading sources…failed" with a 403 on `storage.objects.get`:
+
+```bash
+for role in \
+  roles/cloudbuild.builds.builder \
+  roles/storage.objectViewer \
+  roles/artifactregistry.writer \
+  roles/logging.logWriter
+do
+  gcloud projects add-iam-policy-binding atelier-tap \
+    --member="serviceAccount:${SA}" \
+    --role="$role" --condition=None
+done
+```
+
+IAM takes a few seconds to propagate. If the deploy still 403s, wait a minute
+and run it again — nothing is left half-made.
+
 ---
 
 ## 5. Deploy

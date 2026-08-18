@@ -140,6 +140,27 @@ for s in studio-passphrase practice-better-key; do
 done
 echo "done."
 
+# Projects created from 2024 on no longer hand the default compute account
+# Editor, so a source deploy cannot read its own uploaded zip, run the build,
+# push the image, or write build logs until these are granted by hand.
+step "Letting the builder do its job"
+for role in \
+  roles/cloudbuild.builds.builder \
+  roles/storage.objectViewer \
+  roles/artifactregistry.writer \
+  roles/logging.logWriter
+do
+  gcloud projects add-iam-policy-binding "$PROJECT" \
+    --member="serviceAccount:${SA}" \
+    --role="$role" --condition=None --quiet >/dev/null
+  echo "  $role"
+done
+
+# IAM is eventually consistent; a deploy fired the instant after the grant can
+# still see the old policy.
+echo "Waiting a few seconds for those permissions to take effect."
+sleep 15
+
 # ---------------------------------------------------------------- deploy
 step "Building and deploying — three or four minutes the first time"
 gcloud run deploy "$SERVICE" \
