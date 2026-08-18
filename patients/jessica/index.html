@@ -213,6 +213,22 @@
   }
   .add-home:hover, .add-home:focus-visible { color: var(--espresso); outline: none; }
 
+  /* ---------- Reminders ---------- */
+  .remind { display: none; margin: 14px auto 0; text-align: center; }
+  .remind.on { display: block; }
+  .remind button {
+    background: none; border: 1px solid var(--hairline); border-radius: 999px;
+    padding: 9px 18px; font-family: 'Jost', sans-serif; font-size: 12px;
+    font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--brass); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .remind button:hover, .remind button:focus-visible { color: var(--espresso); outline: none; }
+  .remind button[data-state="on"] { border-color: var(--brass); color: var(--espresso); }
+  .remind p {
+    margin: 9px auto 0; max-width: 280px; font-family: 'Jost', sans-serif;
+    font-size: 11.5px; line-height: 1.6; color: #8A7C6A;
+  }
+
   .sheet-scrim {
     position: fixed; inset: 0; background: rgba(59,46,32,.45);
     display: flex; align-items: flex-end; justify-content: center; z-index: 120;
@@ -295,6 +311,11 @@
   <nav class="menu" id="menu" aria-label="Patient portal"></nav>
 
   <button class="add-home" id="addHome" hidden>Add to Home Screen</button>
+
+  <div class="remind" id="remind">
+    <button id="remindBtn" type="button" data-state="off">Remind Me</button>
+    <p id="remindNote"></p>
+  </div>
 
   <div class="nav" id="bottomNav"></div>
 
@@ -561,6 +582,68 @@ function setupHomeScreen() {
 
 }
 
+/* ---------- Reminders ----------
+   A quiet switch, not a banner. It appears only when this device can
+   actually deliver one — on iPhone that means the card has been added to
+   the Home Screen first, which Apple requires and which is worth saying
+   rather than leaving her tapping a switch that does nothing. */
+async function setupReminders() {
+  const wrap = document.getElementById("remind");
+  const btn  = document.getElementById("remindBtn");
+  const note = document.getElementById("remindNote");
+  if (!wrap || !btn || PORTAL.unassigned) return;
+
+  const meta = await fetch('/api/push/key').then(r => r.json()).catch(() => null);
+  if (!meta || !meta.available) return;      // not configured on the server yet
+
+  const can = pushCapability();
+  if (!can.ok) {
+    if (can.reason === 'ios_needs_home_screen') {
+      wrap.classList.add('on');
+      btn.hidden = true;
+      note.textContent = 'Add this card to your Home Screen and reminders become available.';
+    }
+    return;
+  }
+
+  wrap.classList.add('on');
+
+  const paint = on => {
+    btn.dataset.state = on ? 'on' : 'off';
+    btn.textContent = on ? 'Reminders On' : 'Remind Me';
+    note.textContent = on
+      ? 'We will nudge you when a dose is due. Nothing about your protocol is in the message.'
+      : 'A quiet nudge when a dose is due.';
+  };
+
+  const existing = await currentPushSub().catch(() => null);
+  paint(!!existing);
+
+  // Already on: send the server a fresh schedule, in case a dose changed.
+  if (existing) refreshReminders();
+
+  btn.addEventListener('click', async () => {
+    const on = btn.dataset.state === 'on';
+    btn.disabled = true;
+    note.textContent = on ? 'Turning off…' : 'Turning on…';
+    try {
+      if (on) { await disableReminders(); paint(false); }
+      else {
+        const out = await enableReminders();
+        if (out.ok) paint(true);
+        else {
+          paint(false);
+          note.textContent =
+            out.reason === 'denied'      ? 'Your phone declined. Turn notifications on for this app in Settings, then try again.' :
+            out.reason === 'no_card'     ? 'This card cannot set reminders.' :
+            out.reason === 'not_configured' ? 'Reminders are not switched on yet at the atelier.' :
+                                           'We could not turn reminders on. Try again in a moment.';
+        }
+      }
+    } finally { btn.disabled = false; }
+  });
+}
+
 /* Two kinds of card reach this page. One carries its patient and protocol
    in the URL fragment. The other is an address — /phil.h — whose record is
    fetched and can be re-edited without the tag ever being rewritten.
@@ -601,6 +684,7 @@ function setupHomeScreen() {
   renderNav();
   applyCardLinks(document);
   setupHomeScreen();
+  setupReminders();
   document.body.classList.add("resolved");
 
   if (PORTAL.unassigned) {

@@ -26,8 +26,10 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const { openStore, sanitize, publicView, assertSlug } = require('./store');
+const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
+const push = require('./lib/push');
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -50,7 +52,55 @@ const SESSION_SECRET = process.env.SESSION_SECRET
         ? crypto.createHash('sha256').update(`tca.session.${STUDIO_PASSPHRASE}`).digest('hex')
         : crypto.randomBytes(32).toString('hex'));
 
+/* Cloud Scheduler proves itself with this rather than a session cookie. */
+const PUSH_RUN_SECRET = process.env.PUSH_RUN_SECRET || '';
+
 const store = openStore();
+const subs = openSubs();
+
+/* ---------- the reminder sweep ----------
+   Called by Cloud Scheduler every quarter hour. For each phone, ask
+   whether one of the instants it posted has just come round; if so, send
+   the one notification and remember that we did.
+
+   Nothing here reads the protocol. The card is consulted only to check it
+   still exists and is still active, so a retired patient stops hearing
+   from us the moment the card is retired. */
+async function runReminders(now = Date.now()) {
+  const all = await subs.listAll();
+  const out = { phones: all.length, sent: 0, skipped: 0, dropped: 0, failed: 0 };
+  const cards = new Map();
+
+  for (const rec of all) {
+    const at = dueNow(rec, now);
+    if (!at) { out.skipped++; continue; }
+
+    if (!cards.has(rec.slug)) cards.set(rec.slug, await store.get(rec.slug).catch(() => null));
+    const card = cards.get(rec.slug);
+    if (!card || card.status === 'retired') {
+      await subs.remove(rec.id);
+      out.dropped++;
+      continue;
+    }
+
+    try {
+      const result = await push.sendPush(rec.sub, {
+        title: 'The Charleston Atelier',
+        body: 'Time for your injection.',
+        url: `/${rec.slug}`,
+        tag: 'dose'
+      });
+      if (result.gone) { await subs.remove(rec.id); out.dropped++; continue; }
+      // Mark sent even on a soft failure, so one unreachable phone is not
+      // retried every quarter hour for the rest of the day.
+      await subs.markSent(rec.id, at);
+      result.ok ? out.sent++ : out.failed++;
+    } catch {
+      out.failed++;
+    }
+  }
+  return out;
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -274,6 +324,76 @@ async function route(req, res) {
       'Content-Disposition': `attachment; filename="${slug}.pkpass"`,
       'Cache-Control': 'no-store'
     });
+  }
+
+  /* --- reminders ---
+     A patient turns these on from her own card. The device works out when
+     her doses fall and posts the instants; nothing clinical is stored here
+     and nothing clinical goes in a notification. See portal/lib/push.js. */
+
+  if (p === '/api/push/key') {
+    return json(res, 200, { available: push.configured(), key: push.publicKey() });
+  }
+
+  if (p === '/api/push/subscribe' && req.method === 'POST') {
+    if (!push.configured()) return json(res, 503, { error: 'push_not_configured' });
+    const body = await readBody(req);
+    const slug = assertSlug(body.slug || '');
+    const card = await store.get(slug);
+    // Refuse to remind for a card that does not exist or has been retired.
+    if (!card || card.status === 'retired') return json(res, 404, { error: 'not_found' });
+
+    const rec = sanitizeSub(body, slug);
+    if (!rec) return json(res, 400, { error: 'bad_subscription' });
+    const saved = await subs.put(rec);
+    return json(res, 201, { ok: true, id: saved.id, due: saved.due.length });
+  }
+
+  if (p === '/api/push/unsubscribe' && req.method === 'POST') {
+    const body = await readBody(req);
+    if (!body.endpoint) return json(res, 400, { error: 'no_endpoint' });
+    await subs.remove(subIdFor(body.endpoint));
+    return json(res, 200, { ok: true });
+  }
+
+  /* Cloud Scheduler knocks here. Guarded by a shared secret rather than the
+     studio session — a cron job has no cookie. */
+  if (p === '/api/push/run' && req.method === 'POST') {
+    if (!PUSH_RUN_SECRET || req.headers['x-push-secret'] !== PUSH_RUN_SECRET) {
+      return json(res, 401, { error: 'unauthorized' });
+    }
+    return json(res, 200, await runReminders());
+  }
+
+  /* How many phones are listening for this card — so the dashboard only
+     offers a test where there is something to send to. */
+  if (p.startsWith('/api/push/phones/')) {
+    if (!requireClinician(req, res)) return;
+    const slug = assertSlug(p.slice('/api/push/phones/'.length));
+    const found = await subs.forSlug(slug);
+    return json(res, 200, { phones: found.length });
+  }
+
+  /* Send one to a card's phones now, so the atelier can prove it works
+     without waiting for a dose to come round. */
+  if (p === '/api/push/test' && req.method === 'POST') {
+    if (!requireClinician(req, res)) return;
+    if (!push.configured()) return json(res, 503, { error: 'push_not_configured' });
+    const body = await readBody(req);
+    const slug = assertSlug(body.slug || '');
+    const targets = await subs.forSlug(slug);
+    let sent = 0, dropped = 0;
+    for (const rec of targets) {
+      const out = await push.sendPush(rec.sub, {
+        title: 'The Charleston Atelier',
+        body: 'Reminders are working. You will hear from us when a dose is due.',
+        url: `/${slug}`,
+        tag: 'test'
+      }).catch(() => ({ ok: false, gone: false }));
+      if (out.ok) sent++;
+      if (out.gone) { await subs.remove(rec.id); dropped++; }
+    }
+    return json(res, 200, { phones: targets.length, sent, dropped });
   }
 
   /* --- batch of blank tags, for writing a tray ahead of a clinic day --- */

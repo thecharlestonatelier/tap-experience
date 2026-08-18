@@ -119,6 +119,35 @@ done
 put_secret studio-passphrase "$PASS"
 unset PASS
 
+step "Reminder keys"
+# VAPID identifies this service to Apple and Google. The pair must survive
+# every redeploy: generating a new one turns off reminders for every
+# patient who has them on, silently, until each turns them back on.
+if gcloud secrets describe vapid-private-key >/dev/null 2>&1; then
+  echo "  Already have a key pair — keeping it."
+  echo "  (Replacing it would turn every patient's reminders off.)"
+else
+  KEYS="$(node portal/scripts/push-keys.js 2>/dev/null | awk '/VAPID_PUBLIC_KEY/{p=$2} /VAPID_PRIVATE_KEY/{v=$2} END{print p" "v}')"
+  VP="$(echo "$KEYS" | cut -d' ' -f1)"
+  VK="$(echo "$KEYS" | cut -d' ' -f2)"
+  if [ -n "$VP" ] && [ -n "$VK" ]; then
+    put_secret vapid-public-key "$VP"
+    put_secret vapid-private-key "$VK"
+    echo "  Generated. Reminders are available."
+  else
+    warn "  Could not generate the pair (is node here?). Reminders stay off;
+     the rest of the service is unaffected. Fix later with:
+       node portal/scripts/push-keys.js"
+  fi
+  unset KEYS VP VK
+fi
+
+# The shared secret Cloud Scheduler proves itself with when it asks the
+# service to sweep for due reminders.
+if ! gcloud secrets describe push-run-secret >/dev/null 2>&1; then
+  put_secret push-run-secret "$(head -c 32 /dev/urandom | base64 | tr -d '=+/' | cut -c1-32)"
+fi
+
 step "Practice Better key"
 echo "Optional. Press return to skip — Card Studio takes typed names either way."
 read -r -s -p "Practice Better API key (hidden, or return to skip): " PB; echo
@@ -133,7 +162,7 @@ unset PB
 step "Letting the service read those secrets"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
 SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-for s in studio-passphrase practice-better-key; do
+for s in studio-passphrase practice-better-key vapid-public-key vapid-private-key push-run-secret; do
   gcloud secrets add-iam-policy-binding "$s" \
     --member="serviceAccount:${SA}" \
     --role="roles/secretmanager.secretAccessor" --quiet >/dev/null
@@ -169,10 +198,41 @@ gcloud run deploy "$SERVICE" \
   --region "$REGION" \
   --allow-unauthenticated \
   --set-env-vars CARD_STORE=firestore,NODE_ENV=production \
-  --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,PRACTICE_BETTER_API_KEY=practice-better-key:latest \
+  --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,PRACTICE_BETTER_API_KEY=practice-better-key:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,PUSH_RUN_SECRET=push-run-secret:latest \
   --quiet
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
+
+# ---------------------------------------------------------------- reminders
+# Cloud Run scales to zero, so nothing inside it can keep time. Cloud
+# Scheduler knocks every quarter hour and the service works out whose dose
+# has just come round.
+#
+# A quarter hour is the resolution of a reminder: a dose set for 7:30
+# arrives somewhere in 7:30–7:45. Finer means more wake-ups for no real
+# gain — nobody injects to the minute.
+if gcloud secrets describe push-run-secret >/dev/null 2>&1; then
+  step "The clock that fires reminders"
+  gcloud services enable cloudscheduler.googleapis.com --quiet >/dev/null 2>&1 || true
+  RUN_SECRET="$(gcloud secrets versions access latest --secret=push-run-secret 2>/dev/null || true)"
+  if [ -n "$RUN_SECRET" ]; then
+    if gcloud scheduler jobs describe atelier-reminders --location "$REGION" >/dev/null 2>&1; then
+      gcloud scheduler jobs update http atelier-reminders \
+        --location "$REGION" --schedule "*/15 * * * *" \
+        --uri "$URL/api/push/run" --http-method POST \
+        --update-headers "x-push-secret=$RUN_SECRET" --quiet >/dev/null && \
+        echo "  Updated — every 15 minutes."
+    else
+      gcloud scheduler jobs create http atelier-reminders \
+        --location "$REGION" --schedule "*/15 * * * *" \
+        --uri "$URL/api/push/run" --http-method POST \
+        --headers "x-push-secret=$RUN_SECRET" \
+        --attempt-deadline 120s --quiet >/dev/null && \
+        echo "  Created — every 15 minutes."
+    fi
+  fi
+  unset RUN_SECRET
+fi
 
 # ---------------------------------------------------------------- public
 # Patients tap a card; they do not sign in to Google. But an organization

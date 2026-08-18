@@ -236,6 +236,7 @@
 
     <div class="dlg-foot">
       <button type="button" class="danger sm" id="deleteCard">Delete</button>
+      <button type="button" class="ghost sm" id="testPush" hidden>Send test</button>
       <span style="flex:1"></span>
       <button type="button" class="ghost" id="cancelEdit">Cancel</button>
       <button type="button" class="primary" id="saveCard">Save</button>
@@ -440,8 +441,29 @@ function openEditor(slug) {
   $('editStatus').value = editing.status || 'active';
   $('editNote').value = editing.note || '';
   renderPens();
+  $('testPush').hidden = true;
+  // Only offer it where there is a phone to send to.
+  api(`/api/push/phones/${editing.slug}`).then(r => {
+    $('testPush').hidden = !(r && r.phones > 0);
+    $('testPush').textContent = r && r.phones > 1 ? `Send test (${r.phones} phones)` : 'Send test';
+  }).catch(() => {});
   $('editor').showModal();
 }
+
+$('testPush').addEventListener('click', async () => {
+  if (!editing) return;
+  $('testPush').disabled = true;
+  try {
+    const out = await api('/api/push/test', {
+      method: 'POST', body: JSON.stringify({ slug: editing.slug })
+    });
+    toast(out.sent
+      ? `Sent to ${out.sent} phone${out.sent > 1 ? 's' : ''}.`
+      : 'No phone accepted it — she may have turned reminders off.');
+  } catch (e) {
+    toast(reason('Could not send', e));
+  } finally { $('testPush').disabled = false; }
+});
 
 /* What the dial number comes to in milligrams, for every phase on a pen.
    Pulled out of the render so typing can refresh it in place. */

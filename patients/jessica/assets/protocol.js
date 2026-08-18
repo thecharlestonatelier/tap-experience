@@ -683,3 +683,151 @@ function applyCardLinks(root) {
     if (href && !/^(https?:|sms:|tel:|mailto:|#)/i.test(href)) a.setAttribute('href', linkWithCard(href));
   });
 }
+
+/* ==================================================================
+   REMINDERS
+   ------------------------------------------------------------------
+   The device works out when this patient's doses fall and hands the
+   server a plain list of instants. The server stores those and a push
+   endpoint, and nothing else — no drug, no dial number, no name — so
+   what travels through Apple's and Google's push services, and what
+   lands on a lock screen, says only that a dose is due.
+
+   Computing it here rather than on the server means the schedule that
+   fires a reminder is the same schedule the patient is reading. There is
+   one copy of this arithmetic and there should stay one.
+   ================================================================== */
+
+/* Every dose still ahead of us, as UTC instants, soonest first.
+   `days` bounds how far out to look; the list is refreshed every time she
+   opens the card, so it does not need to reach the end of the protocol. */
+function upcomingDoses(days = 120) {
+  const now = new Date();
+  const horizon = addDays(now, days);
+  const out = [];
+
+  PENS.forEach(pen => {
+    const [hh, mm] = String(timeFor(pen)).split(':').map(Number);
+    occurrences(pen).forEach(day => {
+      // occurrences() gives a local calendar day; put her chosen clock time
+      // on it, in her own timezone, and let Date work out the instant.
+      const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                          isNaN(hh) ? 9 : hh, isNaN(mm) ? 0 : mm, 0, 0);
+      if (at > now && at <= horizon) out.push(at.toISOString());
+    });
+  });
+
+  return Array.from(new Set(out)).sort();
+}
+
+/* Is this browser able to do reminders at all?
+
+   On iOS the answer is no until the card has been added to the Home
+   Screen — Apple only grants push to an installed web app. Saying so
+   plainly is better than showing a switch that cannot work. */
+function pushCapability() {
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
+  if (!supported) {
+    return { ok: false, reason: ios && !isHomeScreenApp() ? 'ios_needs_home_screen' : 'unsupported' };
+  }
+  if (ios && !isHomeScreenApp()) return { ok: false, reason: 'ios_needs_home_screen' };
+  return { ok: true, reason: '' };
+}
+
+function pushEndpointOf(sub) {
+  try { return sub && sub.endpoint ? sub.endpoint : ''; } catch { return ''; }
+}
+
+async function pushRegistration() {
+  // Scope is this card's folder, which is also where sw.js is served from.
+  return navigator.serviceWorker.register('sw.js');
+}
+
+async function currentPushSub() {
+  if (!('serviceWorker' in navigator)) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return null;
+  return reg.pushManager.getSubscription();
+}
+
+/* Turn reminders on. Returns { ok, reason } — the caller says it nicely. */
+async function enableReminders() {
+  const can = pushCapability();
+  if (!can.ok) return { ok: false, reason: can.reason };
+
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return { ok: false, reason: 'no_card' };
+
+  const meta = await fetch('/api/push/key').then(r => r.json()).catch(() => null);
+  if (!meta || !meta.available || !meta.key) return { ok: false, reason: 'not_configured' };
+
+  // Must be called from a user gesture, which is why this hangs off the tap.
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return { ok: false, reason: 'denied' };
+
+  const reg = await pushRegistration();
+  await navigator.serviceWorker.ready;
+
+  const sub = await reg.pushManager.getSubscription()
+    || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(meta.key)
+    });
+
+  const res = await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      slug,
+      sub: sub.toJSON(),
+      due: upcomingDoses(),
+      tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '')
+    })
+  });
+  if (!res.ok) return { ok: false, reason: 'server' };
+  return { ok: true, reason: '' };
+}
+
+async function disableReminders() {
+  const sub = await currentPushSub();
+  if (!sub) return { ok: true };
+  const endpoint = pushEndpointOf(sub);
+  await sub.unsubscribe().catch(() => {});
+  await fetch('/api/push/unsubscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint })
+  }).catch(() => {});
+  return { ok: true };
+}
+
+/* Every time she opens the card, hand the server a fresh schedule. A dose
+   moved in Card Studio, a pen that ran out, a time she changed — all of it
+   reaches her reminders on the next open, with nothing for her to do. */
+async function refreshReminders() {
+  try {
+    const sub = await currentPushSub();
+    if (!sub) return;
+    const slug = CARD_SLUG || readSlug();
+    if (!slug) return;
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug, sub: sub.toJSON(), due: upcomingDoses(),
+        tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '')
+      })
+    });
+  } catch {}
+}
+
+/* The VAPID key arrives base64url; subscribe() wants bytes. */
+function urlBase64ToUint8Array(base64) {
+  const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4))
+    .replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
