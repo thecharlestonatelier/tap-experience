@@ -62,23 +62,28 @@ YAML
 
   # Scoped to this project by that name line. The organization's own policy
   # is untouched, so nothing else you own becomes reachable.
-  if ! gcloud org-policies set-policy "$POLICY" --quiet >/dev/null 2>&1; then
+  #
+  # Show whatever Google says. Guessing at the reason and hiding the real
+  # message sends you fixing the wrong thing.
+  ERRLOG="$(mktemp)"
+  if ! gcloud org-policies set-policy "$POLICY" --quiet >/dev/null 2>"$ERRLOG"; then
     rm -f "$POLICY"
-    die "Could not change the policy — you are missing Organization Policy Administrator.
+    printf '\033[31m%s\033[0m\n' "Could not change the policy. Google said:" >&2
+    sed 's/^/   /' "$ERRLOG" >&2
+    rm -f "$ERRLOG"
+    die "
+   If that mentions permission or orgpolicy.policy.set, you need
+   Organization Policy Administrator at the organization — the project
+   IAM page is a different resource, so switch the picker at the top of
+   Console -> IAM & Admin -> IAM to thecharlestonatelier.com before
+   looking for your own row.
 
-   You hold it at the organization, not the project. As a Workspace super
-   admin you can give it to yourself:
+   Anything else, send me the message above.
 
-     Console -> IAM & Admin -> IAM
-     -> switch the resource picker at the top from the project to
-        thecharlestonatelier.com (the organization)
-     -> find your own row, edit it, Add another role
-     -> Organization Policy Administrator -> Save
-
-   Then run this script again. Nothing here is half-done — the service is
-   deployed and running, it is only unreachable."
+   Nothing here is half-done — the service is deployed and running, it
+   is only unreachable."
   fi
-  rm -f "$POLICY"
+  rm -f "$POLICY" "$ERRLOG"
   echo "Policy set for $PROJECT only."
 
   # Org policy changes are eventually consistent.
