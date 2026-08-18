@@ -36,9 +36,22 @@ command -v gcloud >/dev/null || die \
   "gcloud is not installed. Easiest fix: run this in Google Cloud Shell, where it already is.
    Open https://console.cloud.google.com and click the terminal icon, top right."
 
+# Cloud Shell knows which project the console is on even when gcloud's own
+# config has not been set, so take that rather than stopping for it.
 PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
+if [ -z "$PROJECT" ] || [ "$PROJECT" = "(unset)" ]; then
+  PROJECT="${DEVSHELL_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-}}"
+  if [ -n "$PROJECT" ]; then
+    gcloud config set project "$PROJECT" --quiet >/dev/null 2>&1 || true
+    echo "Using the project this console is on: $PROJECT"
+  fi
+fi
 [ -n "$PROJECT" ] && [ "$PROJECT" != "(unset)" ] || die \
-  "No project selected. Run:  gcloud config set project YOUR-PROJECT-ID"
+  "No project selected. Run:
+
+     gcloud config set project atelier-tap
+
+   then run this again. (gcloud projects list shows what you have.)"
 
 bold "Project : $PROJECT"
 bold "Region  : $REGION"
