@@ -4,6 +4,40 @@ What this gets you: a card address that never changes — `tap.thecharlestonatel
 with the protocol behind it editable from Card Studio for as long as the card exists.
 Write the tag once, edit forever.
 
+## The short way
+
+You do not need to install anything, and you do not need a terminal on your Mac.
+
+1. Open <https://console.cloud.google.com> and create a project (call it
+   `atelier-tap`). Attach a billing account — this service stays inside the
+   free tier, but Google requires one.
+2. Click the **terminal icon** in the top-right of the console. That is Cloud
+   Shell: a Linux machine in the browser with `gcloud` and `git` already on it,
+   already signed in as you.
+3. Paste these three lines:
+
+```bash
+git clone -b claude/jessica-nfc-patient-portal-4nxcmj \
+  https://github.com/thecharlestonatelier/tap-experience.git
+cd tap-experience
+bash portal/setup.sh
+```
+
+The branch matters. `main` does not have the service on it yet — a plain
+clone gets the old static site and none of this.
+
+It asks you to accept the BAA, asks for a Studio passphrase, then does the
+rest — services, database, secrets, permissions, build, deploy — and prints
+your two URLs at the end. Ten minutes, most of it waiting on the build.
+
+It is safe to run twice. Everything it creates, it re-uses if it already
+exists.
+
+The rest of this document is what that script does, step by step, for when
+something needs doing by hand.
+
+---
+
 Everything below is copy-paste. Budget about forty minutes the first time.
 
 ---
