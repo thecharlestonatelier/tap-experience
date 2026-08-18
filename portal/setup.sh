@@ -173,19 +173,57 @@ gcloud run deploy "$SERVICE" \
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
 
+# ---------------------------------------------------------------- public
+# Patients tap a card; they do not sign in to Google. But an organization
+# turns on Domain restricted sharing by default, and that forbids allUsers,
+# so --allow-unauthenticated above may have been quietly refused. Ask again
+# on its own so the failure is legible instead of buried in deploy output.
+step "Letting patients reach it without signing in"
+if gcloud run services add-iam-policy-binding "$SERVICE" \
+     --region="$REGION" --member=allUsers --role=roles/run.invoker \
+     --quiet >/dev/null 2>&1; then
+  echo "done — the service is publicly reachable."
+  PUBLIC=yes
+else
+  PUBLIC=no
+  warn "Could not open the service to the public.
+
+  Almost always this is your organization's Domain restricted sharing policy,
+  which forbids granting anything to allUsers. Except this one project:
+
+    Console -> IAM & Admin -> Organization policies
+    -> search \"Domain restricted sharing\"
+    -> project picker set to $PROJECT
+    -> Manage policy -> Override parent's policy
+    -> Add a rule -> Allow all -> Save
+
+  Scope that override to the $PROJECT project only, never the organization.
+  Then run this one command — you do not need the whole script again:
+
+    gcloud run services add-iam-policy-binding $SERVICE \\
+      --region=$REGION --member=allUsers --role=roles/run.invoker
+
+  Until then the service is up but private, and the checks below will all
+  read 403. That is the lock, not a fault in the service."
+fi
+
 # ---------------------------------------------------------------- check
 step "Checking it answered"
 HEALTH="$(curl -fsS "$URL/health" || true)"
 GATE="$(curl -s -o /dev/null -w '%{http_code}' "$URL/api/cards" || true)"
 
-echo "  /health     $HEALTH"
+echo "  /health     ${HEALTH:-(no answer)}"
 echo "  /api/cards  $GATE  (401 means the dashboard is locked, which is right)"
 
-case "$HEALTH" in
-  *'"store":"firestore"'*) ;;
-  *) warn "Health did not report the Firestore store. Check: gcloud run services logs read $SERVICE --region $REGION" ;;
-esac
-[ "$GATE" = "401" ] || warn "Expected 401 on /api/cards. If it is 200 the passphrase did not take."
+if [ "$PUBLIC" = "no" ] && [ "$GATE" = "403" ]; then
+  warn "Both 403s are the access policy above, not the service. Fix that first."
+else
+  case "$HEALTH" in
+    *'"store":"firestore"'*) ;;
+    *) warn "Health did not report the Firestore store. Check: gcloud run services logs read $SERVICE --region $REGION" ;;
+  esac
+  [ "$GATE" = "401" ] || warn "Expected 401 on /api/cards. If it is 200 the passphrase did not take."
+fi
 
 # ---------------------------------------------------------------- done
 step "Live"

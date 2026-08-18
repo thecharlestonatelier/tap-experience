@@ -183,6 +183,24 @@ First run takes three or four minutes; later ones are under a minute.
 `--allow-unauthenticated` is right here: patients tap a card, they do not sign
 in to Google. Card Studio is protected separately by the passphrase.
 
+If the deploy prints **"Setting IAM policy failed"** and then everything you
+curl comes back 403, the service is up but private. A Google Cloud
+*organization* turns on **Domain restricted sharing** by default, and that
+policy forbids granting anything to `allUsers`. Except this one project:
+
+> Console → **IAM & Admin → Organization policies** → search **Domain
+> restricted sharing** → project picker on `atelier-tap` → **Manage policy** →
+> **Override parent's policy** → **Add a rule → Allow all** → Save.
+
+Scope the override to the project, never the organization. Then:
+
+```bash
+gcloud run services add-iam-policy-binding atelier-tap \
+  --region=us-east1 --member=allUsers --role=roles/run.invoker
+```
+
+You do not need to redeploy — the container is already running.
+
 The deploy prints a URL like `https://atelier-tap-xxxxx-ue.a.run.app`.
 Open `/health` on it — you should see `{"ok":true,"store":"firestore"}`. Then
 open `/studio`, sign in with the passphrase, and make one test card.
