@@ -273,6 +273,14 @@ async function api(path, options = {}) {
   return body;
 }
 
+/* Say what actually went wrong. "Could not create that card" sends whoever
+   is standing at the dashboard hunting, when the server already said why. */
+function reason(lead, e) {
+  const detail = (e && (e.body && e.body.error || e.message) || '').toString().trim();
+  if (!detail || detail === 'server_error') return `${lead}.`;
+  return `${lead} — ${detail.slice(0, 160)}`;
+}
+
 let toastTimer;
 function toast(msg) {
   const t = $('toast');
@@ -406,7 +414,7 @@ $('create').addEventListener('click', async () => {
     toast(`/${rec.slug} created — address copied.`);
     openEditor(rec.slug);
   } catch (e) {
-    toast(e.status === 409 ? 'That address is already taken.' : 'Could not create that card.');
+    toast(e.status === 409 ? 'That address is already taken.' : reason('Could not create that card', e));
   }
 });
 
