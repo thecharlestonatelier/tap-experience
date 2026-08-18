@@ -164,7 +164,21 @@ async function route(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const p = url.pathname;
 
-  if (p === '/health') return json(res, 200, { ok: true, store: store.kind });
+  // Actually touch the store. Reporting which one is configured proves
+  // nothing — a service account that cannot reach Firestore still answers
+  // "firestore", and the first sign of trouble is a clinician unable to
+  // save a card. Better the check fails than the dashboard does.
+  if (p === '/health') {
+    try {
+      if (store.ping) await store.ping();
+      return json(res, 200, { ok: true, store: store.kind, reachable: true });
+    } catch (err) {
+      return json(res, 503, {
+        ok: false, store: store.kind, reachable: false,
+        error: String(err && err.message || err).slice(0, 300)
+      });
+    }
+  }
 
   /* --- the card a tag points at --- */
   if (p.startsWith('/api/card/')) {

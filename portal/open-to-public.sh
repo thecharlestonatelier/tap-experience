@@ -110,8 +110,18 @@ echo "  /api/cards  $GATE"
 
 OK=yes
 case "$HEALTH" in
-  *'"store":"firestore"'*) echo "  store       firestore — records will persist." ;;
-  *) OK=no; warn "  Health did not report the Firestore store.
+  *'"reachable":true'*) echo "  store       reachable — records will persist." ;;
+  *'"reachable":false'*)
+    OK=no
+    PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
+    warn "  The service is up but cannot reach its database. Grant it access:
+
+     gcloud projects add-iam-policy-binding $PROJECT \\
+       --member=serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com \\
+       --role=roles/datastore.user
+
+   Then run this script again." ;;
+  *) OK=no; warn "  Health did not answer as expected.
      Check: gcloud run services logs read $SERVICE --region $REGION --limit 50" ;;
 esac
 if [ "$GATE" = "401" ]; then

@@ -103,6 +103,11 @@ function firestoreStore() {
 
   return {
     kind: 'firestore',
+    // Cheapest question that still proves the credential works. Naming the
+    // store is not the same as being able to reach it — a service account
+    // without roles/datastore.user reports "firestore" and denies every
+    // write, which looks like a broken dashboard rather than an IAM gap.
+    async ping() { await col.limit(1).get(); },
     async get(slug) {
       const snap = await col.doc(normalizeSlug(slug)).get();
       return snap.exists ? snap.data() : null;
@@ -139,6 +144,7 @@ function fileStore(file) {
   return {
     kind: 'file',
     file: target,
+    async ping() { writeAll(readAll()); },
     async get(slug) { return readAll()[normalizeSlug(slug)] || null; },
     async list() {
       return Object.values(readAll())

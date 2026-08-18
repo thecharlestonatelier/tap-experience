@@ -143,12 +143,13 @@ echo "done."
 # Projects created from 2024 on no longer hand the default compute account
 # Editor, so a source deploy cannot read its own uploaded zip, run the build,
 # push the image, or write build logs until these are granted by hand.
-step "Letting the builder do its job"
+step "Letting the builder do its job, and the service reach its database"
 for role in \
   roles/cloudbuild.builds.builder \
   roles/storage.objectViewer \
   roles/artifactregistry.writer \
-  roles/logging.logWriter
+  roles/logging.logWriter \
+  roles/datastore.user
 do
   gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:${SA}" \
@@ -219,8 +220,11 @@ if [ "$PUBLIC" = "no" ] && [ "$GATE" = "403" ]; then
   warn "Both 403s are the access policy above, not the service. Fix that first."
 else
   case "$HEALTH" in
-    *'"store":"firestore"'*) ;;
-    *) warn "Health did not report the Firestore store. Check: gcloud run services logs read $SERVICE --region $REGION" ;;
+    *'"reachable":true'*) ;;
+    *'"reachable":false'*) warn "The service is up but cannot reach Firestore. The message above says why.
+     Usually: gcloud projects add-iam-policy-binding $PROJECT \\
+       --member=serviceAccount:${SA} --role=roles/datastore.user" ;;
+    *) warn "Health did not answer as expected. Check: gcloud run services logs read $SERVICE --region $REGION" ;;
   esac
   [ "$GATE" = "401" ] || warn "Expected 401 on /api/cards. If it is 200 the passphrase did not take."
 fi
