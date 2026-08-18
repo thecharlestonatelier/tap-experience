@@ -175,6 +175,38 @@
       "notes": "Rotate injection sites as needed."
     },
     {
+      "id": "nadvial",
+      "name": "NAD+",
+      "short": "ndv",
+      "color": "brass",
+      "_source": "Physician-specified for this patient: 2200 mg in a 10 mL vial = 220 mg/mL, drawn with a BD insulin syringe rather than a pen. 30 units = 0.30 mL = 66 mg. Distinct from the 500 mg 3 mL PEN template (id 'nad'), which stays as it is for the cards already issued against it.",
+      "delivery": "syringe",
+      "stepsKey": "injectionStepsVial",
+      "concentrationMgPerMl": 220,
+      "volumeMl": 10,
+      "route": "Subcutaneous",
+      "time": "Morning",
+      "components": [
+        {
+          "name": "NAD+",
+          "mg": 2200
+        }
+      ],
+      "schedule": {
+        "on": 5,
+        "off": 2
+      },
+      "phases": [
+        {
+          "name": "Maintenance",
+          "units": 30,
+          "days": 30
+        }
+      ],
+      "storage": "Keep the vial refrigerated.",
+      "notes": "Draw with a BD insulin syringe — 30 units. Rotate injection sites as needed."
+    },
+    {
       "id": "bpc",
       "name": "BPC-157",
       "short": "bpc",
@@ -418,6 +450,14 @@
   ],
   "injectionStepsSyringe": [
     "Take the vial out of the freezer and let it thaw ~5 minutes",
+    "Wipe the top of the vial with alcohol",
+    "Draw up to {units} units — the dashes on the syringe are units",
+    "Wipe the skin on your lower stomach with alcohol",
+    "Pinch an inch, insert at 90° and push the plunger",
+    "Remove the needle and place it in a sharps container"
+  ],
+  "injectionStepsVial": [
+    "Take the vial out of the fridge and let it come to room temperature",
     "Wipe the top of the vial with alcohol",
     "Draw up to {units} units — the dashes on the syringe are units",
     "Wipe the skin on your lower stomach with alcohol",

@@ -264,10 +264,12 @@ function vessel(pen) { return isSyringe(pen) ? 'vial' : 'pen'; }
 
 function stepsFor(pen) {
   const p = CFG.protocol;
-  const steps = isSyringe(pen)
+  // A template may name its own step list — a fridge item must not tell the
+  // patient to thaw it, which the freezer wording of the default would.
+  if (pen.stepsKey && p[pen.stepsKey]) return p[pen.stepsKey];
+  return isSyringe(pen)
     ? (p.injectionStepsSyringe || p.injectionSteps || [])
     : (p.injectionSteps || []);
-  return steps;
 }
 
 /* ---------- messaging ---------- */
@@ -416,6 +418,7 @@ function buildConfig(name, pens, templates, startDate) {
       tracking: false,
       injectionSteps: templates.injectionSteps,
       injectionStepsSyringe: templates.injectionStepsSyringe,
+      injectionStepsVial: templates.injectionStepsVial,
       sites: templates.sites,
       concierge: templates.concierge,
       pens
