@@ -411,6 +411,7 @@ function render() {
   } catch {
     document.getElementById('lede').textContent =
       'Could not load your protocol. Please contact the atelier.';
+    applyCardLinks(document);
     return;
   }
   document.title = `My Protocol — ${CFG.patient.name}`;

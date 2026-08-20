@@ -1293,6 +1293,7 @@ async function boot() {
   } catch {
     document.getElementById('todaySummary').textContent =
       'Could not load your protocol. Please contact the atelier.';
+    applyCardLinks(document);   // she must still be able to get back
     return;
   }
 
@@ -1307,6 +1308,7 @@ async function boot() {
       <div class="rest-sub">Show this screen to the atelier and we will put it
       right — your dosing has not changed.</div></div>`;
     document.getElementById('protocolName').textContent = CFG.protocol.name || 'Protocol';
+    applyCardLinks(document);
     return;
   }
 
@@ -1324,6 +1326,11 @@ async function boot() {
     `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.`;
 
   renderAll();
+
+  // Carry the card on every link out of this page. Without this the back
+  // arrow is a bare "./", which lands on the root with no card on it and
+  // tells the patient her card is not set up.
+  applyCardLinks(document);
 
   // First visit on this device: ask which day she actually started, so the
   // whole schedule is anchored to her, not to a date typed in the chart.

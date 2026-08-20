@@ -275,7 +275,24 @@ function renderFilters() {
     b.addEventListener('click', () => { ACTIVE = b.dataset.cat; renderFilters(); render(); }));
 }
 
+/* The library needs no protocol, but it must not drop the card on the way
+   back. A link out of here without the card lands on the bare root, which
+   tells the patient her card is not set up. Small and self-contained
+   rather than pulling in the whole dosing engine for one rewrite. */
+function carryCard(root) {
+  const hash = location.hash && location.hash.length > 1 ? location.hash : '';
+  const c = new URLSearchParams(location.search).get('c');
+  if (!hash && !c) return;
+  (root || document).querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (!href || /^(https?:|sms:|tel:|mailto:|#)/i.test(href)) return;
+    const base = href.split('#')[0].split('?')[0];
+    a.setAttribute('href', hash ? base + hash : `${base}?c=${encodeURIComponent(c)}`);
+  });
+}
+
 (async function boot() {
+  carryCard(document);
   try {
     DATA = await (await fetch('library/library.json', { cache: 'no-store' })).json();
   } catch {
