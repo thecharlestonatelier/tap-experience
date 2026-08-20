@@ -467,12 +467,20 @@ $('testPush').addEventListener('click', async () => {
 
 /* What the dial number comes to in milligrams, for every phase on a pen.
    Pulled out of the render so typing can refresh it in place. */
+/* A vial reconstituted with a stated diluent gives the concentration
+   outright; fall back to summing components only for a template written
+   before the vial and diluent were recorded. */
+function perMlOf(t) {
+  if (t.vialMg && t.diluentMl) return t.vialMg / t.diluentMl;
+  const total = (t.components || []).reduce((s, c) => s + c.mg, 0);
+  return total / (t.volumeMl || 1);
+}
+
 function mgLine(t, phases) {
-  const perMl = t.volumeMl || 1;
+  const c = perMlOf(t);
   return (phases || []).map(ph => {
     const units = Number(ph.units) || 0;
-    const mg = (t.components || []).reduce((s, c) => s + (c.mg / perMl) * (units * ML_PER_UNIT), 0);
-    return `${units}u ≈ ${mg.toFixed(2)} mg`;
+    return `${units}u ≈ ${(c * units * ML_PER_UNIT).toFixed(2)} mg`;
   }).join(' · ');
 }
 
@@ -485,7 +493,6 @@ function renderPens() {
   list.innerHTML = editing.pens.map((pen, pi) => {
     const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
     const phases = pen.phases || t.phases || [];
-    const perMl = t.volumeMl || 1;
 
     // A pen the patient sets up herself has no phases to show here.
     if (t.setup) {

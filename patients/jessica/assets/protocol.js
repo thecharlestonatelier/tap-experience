@@ -596,8 +596,51 @@ var TEMPLATES = null;
 var CARD_SLUG = null;
 var CARD_RESTORED = false;
 
+/* ------------------------------------------------------------------
+   A dose is prescribed in milligrams. The dial number is arithmetic:
+
+     units = mg / (mg per mL) / 0.01
+
+   So the template carries the vial and the diluent, and the units the
+   patient reads are derived every time. Change a reconstitution volume
+   and every dial number that depends on it moves with it, which is the
+   one thing that cannot be allowed to drift — a template that stored
+   units instead had GHK-Cu reading 1.67 mg where the dose card said 1.
+   ------------------------------------------------------------------ */
+function concentrationOf(t) {
+  if (t.vialMg && t.diluentMl) return t.vialMg / t.diluentMl;
+  const total = (t.components || []).reduce((s, c) => s + c.mg, 0);
+  return total / (t.volumeMl || 1);
+}
+
+function unitsForMg(t, mg) {
+  const c = concentrationOf(t);
+  if (!c || !isFinite(mg)) return 0;
+  return Math.round((mg / c / ML_PER_UNIT) * 10) / 10;
+}
+
+/* Fill in units on any phase that was prescribed in milligrams. Phases
+   that still carry only units are left alone, so a card written before
+   this went in keeps reading exactly as it did. */
+function resolveDoses(templates) {
+  (templates.templates || []).forEach(t => {
+    (t.phases || []).forEach(ph => {
+      if (ph.mg != null) ph.units = unitsForMg(t, ph.mg);
+      else if (ph.units != null && t.vialMg) ph.mg = mgForUnits(t, ph.units);
+    });
+  });
+  return templates;
+}
+
+function mgForUnits(t, units) {
+  return Math.round(concentrationOf(t) * units * ML_PER_UNIT * 1000) / 1000;
+}
+
 async function loadTemplates() {
-  if (!TEMPLATES) TEMPLATES = await (await fetch('templates.json', { cache: 'no-store' })).json();
+  if (!TEMPLATES) {
+    TEMPLATES = resolveDoses(
+      await (await fetch('templates.json', { cache: 'no-store' })).json());
+  }
   return TEMPLATES;
 }
 
