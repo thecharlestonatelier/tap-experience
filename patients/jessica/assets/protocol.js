@@ -70,11 +70,15 @@ var WEEKDAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturda
 /* How the rhythm reads on the page — a cycle, or the one day a week. */
 function freqText(pen) {
   if (pen.schedule.weekly) return `Once a week · ${WEEKDAY_NAMES[(pen.schedule.day || 1) - 1]}`;
+  // A cycle with no days off is every day, and should say so — "7 days on
+  // / 0 off" is arithmetic, not an instruction.
+  if (!pen.schedule.off) return 'Every day';
   return `${pen.schedule.on} days on / ${pen.schedule.off} off`;
 }
 
 function freqShort(pen) {
   if (pen.schedule.weekly) return `Weekly · ${DOW[(pen.schedule.day || 1) - 1]}`;
+  if (!pen.schedule.off) return 'Daily';
   return `${pen.schedule.on} on / ${pen.schedule.off} off`;
 }
 
