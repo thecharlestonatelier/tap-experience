@@ -655,7 +655,15 @@ async function setupReminders() {
     // the portal does not know. That must not look like a working portal with
     // an empty schedule behind it.
     if (cfg && (!cfg.protocol || !(cfg.protocol.pens || []).length)) {
-      throw Object.assign(new Error('no_protocol'), { noProtocol: true });
+      // Carry the name through. A card that resolved to a real record but
+      // has nothing on it yet is a different situation from an address
+      // that resolved to nobody, and the patient should be able to tell:
+      // seeing her own name is what says "this is your card, it isn't
+      // finished" rather than "this is broken, or somebody else's".
+      throw Object.assign(new Error('no_protocol'), {
+        noProtocol: true,
+        who: (cfg.patient && cfg.patient.named) ? cfg.patient.name : ''
+      });
     }
     if (cfg && cfg.patient) {
       // An unassigned tag has a record but no name yet.
@@ -669,14 +677,23 @@ async function setupReminders() {
   } catch (e) {
     // Either the tag has not been assigned yet, or its address carried
     // nothing we could resolve. Say so. Never fall through to a name.
-    PORTAL.greeting = "This card is";
-    PORTAL.patientName = (e && (e.noCard || e.noProtocol)) ? "Not Set Up" : "Not Ready";
     PORTAL.unassigned = true;
-    PORTAL.reason = e && e.noCard
-      ? "This link does not carry a protocol yet."
-      : e && e.noProtocol
-        ? "This card has no protocol on it yet."
-        : "We could not load this protocol.";
+    if (e && e.noProtocol && e.who) {
+      // Her card, waiting on us.
+      PORTAL.greeting = "Almost there,";
+      PORTAL.patientName = e.who;
+      PORTAL.reason = "Your protocol has not been added to this card yet. " +
+                      "Nothing about your dosing has changed.";
+      document.title = e.who + ' — Patient Portal';
+    } else {
+      PORTAL.greeting = "This card is";
+      PORTAL.patientName = (e && (e.noCard || e.noProtocol)) ? "Not Set Up" : "Not Ready";
+      PORTAL.reason = e && e.noCard
+        ? "This link does not carry a protocol yet."
+        : e && e.noProtocol
+          ? "This card has no protocol on it yet."
+          : "We could not load this protocol.";
+    }
   }
 
   renderName();
@@ -693,8 +710,10 @@ async function setupReminders() {
     menu.innerHTML =
       '<p style="text-align:center;font-size:14px;color:#8A7C6A;line-height:1.6;padding:0 12px">' +
       (PORTAL.reason || '') +
-      '<br><br>Show this screen to the atelier and we will put it right — ' +
-      'your dosing has not changed.</p>';
+      (PORTAL.patientName && PORTAL.greeting === 'Almost there,'
+        ? '<br><br>Message the atelier if you were expecting it today.'
+        : '<br><br>Show this screen to the atelier and we will put it right — ' +
+          'your dosing has not changed.') + '</p>';
     const btn = document.getElementById("addHome");
     if (btn) btn.hidden = true;
   }

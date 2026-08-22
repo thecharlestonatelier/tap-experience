@@ -71,6 +71,7 @@
   .pill.active { color:var(--ok); border-color:rgba(92,122,94,.45); }
   .pill.blank { color:var(--brass); }
   .pill.retired { color:var(--alert); border-color:rgba(164,85,63,.35); }
+  .pill.warn { color:var(--alert); border-color:rgba(164,85,63,.45); background:rgba(164,85,63,.06); }
 
   .url { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--sunk);
          border:1px solid var(--line); border-radius:9px; padding:9px 11px;
@@ -359,7 +360,13 @@ async function refresh() {
       <td class="slug">/${c.slug}</td>
       <td class="who">${c.name || '<span style="color:var(--muted);font-weight:400">unassigned</span>'}</td>
       <td class="pens">${pens || '—'}</td>
-      <td><span class="pill ${c.status}">${c.status}</span></td>
+      <td><span class="pill ${c.status}">${c.status}</span>${
+        // A named card with nothing on it opens to "your protocol has not
+        // been added yet". Say so here, so it is caught before the card is
+        // handed over rather than by the patient.
+        (c.name && !(c.pens || []).length)
+          ? ' <span class="pill warn" title="This card opens with no protocol on it">no protocol</span>'
+          : ''}</td>
       <td style="text-align:right"><button class="ghost sm" data-copy="${c.slug}">Copy URL</button></td>
     </tr>`;
   }).join('');
@@ -373,7 +380,12 @@ async function refresh() {
     b.addEventListener('click', async e => {
       e.stopPropagation();
       await navigator.clipboard.writeText(cardUrl(b.dataset.copy));
-      toast('Address copied — paste it into NFC Tools.');
+      // Copying is usually the last step before the address goes on a tag,
+      // so it is the right moment to say the card is not finished.
+      const card = CARDS.find(c => c.slug === b.dataset.copy);
+      toast(card && card.name && !(card.pens || []).length
+        ? 'Address copied — but this card has no protocol on it yet.'
+        : 'Address copied — paste it into NFC Tools.');
     }));
 }
 

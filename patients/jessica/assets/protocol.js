@@ -371,6 +371,7 @@ function decodeCard(payload, templates, startOverride) {
 
   const parts = decodeURIComponent(payload.replace(/\+/g, ' ')).split('~');
   const name = parts.shift() || 'Patient';
+  const wasNamed = !!name && name !== 'Patient';
   const byKey = {};
   (templates.templates || []).forEach(t => { byKey[t.short] = t; byKey[t.id] = t; });
 
@@ -388,7 +389,9 @@ function decodeCard(payload, templates, startOverride) {
     return Object.assign(JSON.parse(JSON.stringify(base)), { phases });
   }).filter(Boolean);
 
-  return buildConfig(name, pens, templates, startOverride);
+  const built = buildConfig(name, pens, templates, startOverride);
+  built.patient.named = wasNamed;
+  return built;
 }
 
 function decodeLegacyCard(payload, templates) {
@@ -534,6 +537,8 @@ function hydrateRecord(rec, templates) {
   }).filter(Boolean);
 
   const cfg = buildConfig(rec.name || 'Patient', pens, templates, rec.startDate);
+  // A record with no name is an unassigned tag, whatever we choose to draw.
+  cfg.patient.named = !!(rec.name && rec.name.trim());
   cfg.patient.id = rec.slug || cfg.patient.id;
   cfg.slug = rec.slug || null;
   cfg.status = rec.status || 'active';
