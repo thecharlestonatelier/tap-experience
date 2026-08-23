@@ -40,8 +40,8 @@
         }
       ],
       "schedule": {
-        "on": 7,
-        "off": 0
+        "on": 5,
+        "off": 2
       },
       "phases": [
         {
@@ -60,8 +60,7 @@
           "days": 28
         }
       ],
-      "notes": "Rotate injection sites as needed.",
-      "doseSource": "Glow Blend dose card \u2014 daily; DIAL NUMBERS UNCONFIRMED"
+      "notes": "Rotate injection sites as needed."
     },
     {
       "id": "wolverine",
@@ -230,8 +229,8 @@
         }
       ],
       "schedule": {
-        "on": 7,
-        "off": 0
+        "on": 5,
+        "off": 2
       },
       "phases": [
         {
@@ -270,8 +269,8 @@
         }
       ],
       "schedule": {
-        "on": 7,
-        "off": 0
+        "on": 5,
+        "off": 2
       },
       "phases": [
         {
@@ -383,8 +382,8 @@
         }
       ],
       "schedule": {
-        "on": 7,
-        "off": 0
+        "on": 5,
+        "off": 2
       },
       "phases": [
         {
@@ -480,7 +479,8 @@
           "days": 14
         }
       ],
-      "notes": "Inject on the same day each week. If nausea follows a dose increase, take one Zofran every 6\u20138 hours as needed. Weigh yourself weekly and tell the atelier if you are losing more than 3\u20134 lb a week. Increase protein so you lose fat rather than muscle."
+      "notes": "Inject on the same day each week. If nausea follows a dose increase, take one Zofran every 6\u20138 hours as needed. Weigh yourself weekly and tell the atelier if you are losing more than 3\u20134 lb a week. Increase protein so you lose fat rather than muscle.",
+      "stepsKey": "injectionStepsVial"
     },
     {
       "id": "custom",
@@ -524,8 +524,8 @@
         }
       ],
       "schedule": {
-        "on": 7,
-        "off": 0
+        "on": 5,
+        "off": 2
       },
       "phases": [
         {
@@ -563,8 +563,8 @@
         }
       ],
       "schedule": {
-        "on": 7,
-        "off": 0
+        "on": 5,
+        "off": 2
       },
       "phases": [
         {
