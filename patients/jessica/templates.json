@@ -280,17 +280,17 @@
       "name": "CJC / Ipamorelin",
       "short": "cjc",
       "color": "plum",
-      "volumeMl": 5,
+      "volumeMl": 3,
       "route": "Subcutaneous",
       "time": "Evening",
       "components": [
         {
           "name": "CJC-1295 No DAC",
-          "mg": 5
+          "mg": 10
         },
         {
           "name": "Ipamorelin",
-          "mg": 5
+          "mg": 10
         }
       ],
       "schedule": {
@@ -299,26 +299,16 @@
       },
       "phases": [
         {
-          "name": "Starting",
-          "mg": 0.4,
-          "days": 14
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 0.5,
-          "days": 14
-        },
-        {
-          "name": "Maintenance",
-          "mg": 0.6,
-          "days": 28
+          "name": "Standard",
+          "mg": 0.2,
+          "days": 30
         }
       ],
       "notes": "Rotate injection sites as needed.",
       "ratioNote": "10 / 10 mg blend",
-      "vialMg": 10,
-      "diluentMl": 5,
-      "doseSource": "CJC/Ipa 5 mg + 5 mg + 5 mL \u2014 5x weekly at bedtime (200/200 to 300/300 mcg)"
+      "vialMg": 20,
+      "diluentMl": 3,
+      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 0.2 mg x 5/week, pen ~20 weeks"
     },
     {
       "id": "tesa",
