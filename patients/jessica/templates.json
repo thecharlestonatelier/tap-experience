@@ -45,25 +45,15 @@
       },
       "phases": [
         {
-          "name": "Starting",
-          "mg": 0.933,
-          "days": 14
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 1.4,
-          "days": 14
-        },
-        {
-          "name": "Maintenance",
-          "mg": 1.867,
-          "days": 28
+          "name": "Standard",
+          "mg": 2.4,
+          "days": 41
         }
       ],
       "notes": "Rotate injection sites as needed.",
       "vialMg": 70,
       "diluentMl": 3,
-      "doseSource": "Confirmed by Dr Kendall \u2014 70 mg / 3 mL, total peptide, 4/6/8 units"
+      "doseSource": "Precision Auto Pen Summary \u2014 70 mg / 3 mL / 300 clicks, 2.4 mg x 5/week, pen ~5.83 weeks"
     },
     {
       "id": "wolverine",
