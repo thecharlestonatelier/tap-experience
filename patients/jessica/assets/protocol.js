@@ -622,10 +622,19 @@ function concentrationOf(t) {
   return total / (t.volumeMl || 1);
 }
 
+/* A pen dials in whole clicks. A prescription of 2.4 mg on a 0.2333 mg
+   pen is 10.29 clicks, which nobody can set — so round DOWN to the click
+   she can actually dial. Never up: erring under the intended dose is the
+   safe direction, and "turn your pen to 10.3" is an instruction that
+   invites a guess.
+
+   The milligrams shown to her are then computed back from the whole
+   click, so the number on her screen is what she actually receives
+   rather than what was prescribed. */
 function unitsForMg(t, mg) {
   const c = concentrationOf(t);
   if (!c || !isFinite(mg)) return 0;
-  return Math.round((mg / c / ML_PER_UNIT) * 10) / 10;
+  return Math.floor(mg / c / ML_PER_UNIT);
 }
 
 /* Fill in units on any phase that was prescribed in milligrams. Phases

@@ -245,7 +245,7 @@
       "name": "GHK-Cu",
       "short": "ghk",
       "color": "clay",
-      "volumeMl": 5,
+      "volumeMl": 3,
       "route": "Subcutaneous",
       "time": "Evening",
       "components": [
@@ -262,23 +262,18 @@
         {
           "name": "Starting",
           "mg": 1.0,
-          "days": 14
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 2.0,
-          "days": 14
+          "days": 15
         },
         {
           "name": "Maintenance",
-          "mg": 3.0,
-          "days": 28
+          "mg": 2.0,
+          "days": 15
         }
       ],
       "notes": "Rotate injection sites as needed.",
       "vialMg": 50,
-      "diluentMl": 5,
-      "doseSource": "GHK-Cu 50 mg vial + 5 mL \u2014 daily"
+      "diluentMl": 3,
+      "doseSource": "Dr Kendall pen calc \u2014 50 mg / 3 mL / 300 clicks; 1 mg then 2 mg. FREQUENCY UNRESOLVED"
     },
     {
       "id": "cjcipa",
@@ -364,7 +359,7 @@
       "components": [
         {
           "name": "Semax",
-          "mg": 10
+          "mg": 20
         }
       ],
       "schedule": {
@@ -373,30 +368,15 @@
       },
       "phases": [
         {
-          "name": "Starting",
-          "mg": 0.3,
-          "days": 14
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 0.5,
-          "days": 14
-        },
-        {
-          "name": "Bridge",
-          "mg": 0.6,
-          "days": 14
-        },
-        {
-          "name": "Maintenance",
-          "mg": 0.8,
-          "days": 14
+          "name": "Standard",
+          "mg": 1.0,
+          "days": 28
         }
       ],
       "notes": "Rotate injection sites as needed.",
-      "vialMg": 10,
+      "vialMg": 20,
       "diluentMl": 3,
-      "doseSource": "Semax 10 mg vial + 3 mL \u2014 once daily, 8-week cycle"
+      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week"
     },
     {
       "id": "tirz",

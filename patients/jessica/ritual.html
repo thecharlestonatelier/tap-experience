@@ -933,7 +933,7 @@ function renderToday() {
         <span class="dial-lead">${dialLead(pen)}</span>
         <span class="dial-num">${dose.units}</span>
       </div>
-      <div class="dial-sub">${round(dose.ml, 2)} mL per dose</div>
+      <div class="dial-sub">${round(dose.totalMg, 2)} mg &middot; ${round(dose.ml, 2)} mL per dose</div>
 
       <ol class="steps">
         ${stepsFor(pen).map(s =>
