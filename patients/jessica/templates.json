@@ -255,8 +255,8 @@
         }
       ],
       "schedule": {
-        "on": 5,
-        "off": 2
+        "on": 7,
+        "off": 0
       },
       "phases": [
         {
@@ -273,7 +273,7 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 50,
       "diluentMl": 3,
-      "doseSource": "Dr Kendall pen calc \u2014 50 mg / 3 mL / 300 clicks; 1 mg then 2 mg. FREQUENCY UNRESOLVED"
+      "doseSource": "Dr Kendall pen calc \u2014 50 mg / 3 mL / 300 clicks; 1 mg d1-15, 2 mg d16-30; DAILY (the one exception to 5 on / 2 off)"
     },
     {
       "id": "cjcipa",
