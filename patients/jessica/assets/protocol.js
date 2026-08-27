@@ -707,7 +707,26 @@ async function loadTemplates() {
 }
 
 async function loadProtocol() {
+  // Every page gets the guard, whatever else happens below.
+  installCardLinkGuard();
+
   let { card, start: pinned } = readCard();
+
+  // A link that dropped the card, followed from inside the portal: put it
+  // back rather than telling her the card is not set up.
+  if (!card && !readSlug()) {
+    const mem = recoverTabCard();
+    if (mem && mem.frag) {
+      try { history.replaceState(null, '', location.pathname + location.search + mem.frag); } catch {}
+      location.hash = mem.frag;
+      card = readCard().card;
+    } else if (mem && mem.slug) {
+      const q = new URLSearchParams(location.search);
+      q.set('c', mem.slug);
+      try { history.replaceState(null, '', `${location.pathname}?${q}`); } catch {}
+    }
+  }
+
   const templates = await loadTemplates();
   CARD_SLUG = readSlug();
   let legacy = isLegacyCard();
@@ -777,6 +796,74 @@ function linkWithCard(href) {
   if (!query) return href;
   const [base, hash] = href.split('#');
   return base.split('?')[0] + query + (hash ? '#' + hash : '');
+}
+
+/* ------------------------------------------------------------------
+   KEEPING THE CARD WHILE SHE CLICKS AROUND
+
+   Rewriting links at render time only covers the links that exist at
+   render time. Anything added afterwards — a dose card, a sheet, a
+   button drawn once the protocol loads — is written without the card,
+   and following it lands on the bare root, where the portal correctly
+   refuses and says the card is not set up.
+
+   So catch it at the click instead. One listener, in the capture phase,
+   on every page: any same-origin link that has no card gets one. Nothing
+   can be added later that escapes it.
+   ------------------------------------------------------------------ */
+function installCardLinkGuard() {
+  if (window.__cardGuard) return;
+  window.__cardGuard = true;
+
+  document.addEventListener('click', ev => {
+    const a = ev.target && ev.target.closest && ev.target.closest('a[href]');
+    if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+
+    const href = a.getAttribute('href');
+    if (!href || /^(https?:|sms:|tel:|mailto:|#)/i.test(href)) return;
+
+    const withCard = linkWithCard(href);
+    if (withCard && withCard !== href) a.setAttribute('href', withCard);
+  }, true);
+
+  // Keep the card in the address bar too, so a refresh or a bookmark
+  // taken mid-visit still resolves. Never touches a slug address like
+  // /phil.h, which already identifies the card on its own.
+  try {
+    if (!CARD_RESTORED && history.replaceState) {
+      const slug = readSlug();
+      const q = new URLSearchParams(location.search);
+      if (slug && !q.get('c') && !window.__CARD_SLUG__) {
+        q.set('c', slug);
+        history.replaceState(null, '', `${location.pathname}?${q}${location.hash}`);
+      }
+    }
+  } catch {}
+
+  // Within one tab, remember which card she is on. A page reached by
+  // clicking from inside the portal can recover it; a page opened cold
+  // cannot, which is what keeps one patient's card off another's screen.
+  try {
+    const slug = readSlug(), frag = cardSuffix();
+    if (slug || frag) sessionStorage.setItem('tca.tab.card', JSON.stringify({ slug, frag }));
+  } catch {}
+}
+
+/* Did she arrive here by clicking a link inside the portal? Only then is
+   it safe to put back a card the link dropped. */
+function cameFromPortal() {
+  try {
+    return !!document.referrer && new URL(document.referrer).origin === location.origin;
+  } catch { return false; }
+}
+
+function recoverTabCard() {
+  if (readSlug() || cardSuffix()) return null;
+  if (!cameFromPortal()) return null;
+  try {
+    const mem = JSON.parse(sessionStorage.getItem('tca.tab.card') || 'null');
+    return mem && (mem.slug || mem.frag) ? mem : null;
+  } catch { return null; }
 }
 
 /* Rewrite every in-portal link so a tapped card keeps its protocol as the

@@ -130,7 +130,7 @@
     },
     {
       "id": "nadvial",
-      "name": "NAD+",
+      "name": "NAD+ (vial)",
       "short": "ndv",
       "color": "brass",
       "_source": "Physician-specified for this patient: 2200 mg in a 10 mL vial = 220 mg/mL, drawn with a BD insulin syringe rather than a pen. 30 units = 0.30 mL = 66 mg. Distinct from the 500 mg 3 mL PEN template (id 'nad'), which stays as it is for the cards already issued against it.",
@@ -147,18 +147,23 @@
         }
       ],
       "schedule": {
-        "on": 5,
-        "off": 2
+        "on": 7,
+        "off": 0
       },
       "phases": [
         {
-          "name": "Maintenance",
-          "units": 30,
+          "name": "Standard",
+          "mg": 50.0,
           "days": 30
         }
       ],
       "storage": "Keep the vial refrigerated.",
-      "notes": "Draw with a BD insulin syringe \u2014 30 units. Rotate injection sites as needed."
+      "notes": "Draw with a BD insulin syringe \u2014 30 units. Rotate injection sites as needed.",
+      "vialMg": 2200,
+      "diluentMl": 10,
+      "timing": "In the morning",
+      "doseSource": "Dr Kendall \u2014 2200 mg / 10 mL vial, 50 mg daily. Brandon only.",
+      "restricted": "Dispensed to one patient only \u2014 not a stocked pen."
     },
     {
       "id": "bpc",
@@ -181,8 +186,9 @@
       "phases": [
         {
           "name": "Starting",
-          "mg": 0.25,
-          "days": 14
+          "mg": 0.2667,
+          "days": 14,
+          "units": 8
         },
         {
           "name": "Maintenance",
@@ -193,7 +199,7 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 10,
       "diluentMl": 3,
-      "doseSource": "Dr Kendall \u2014 10 mg / 3 mL pen; 250 mcg starting, 500 mcg maintenance, 5 on / 2 off",
+      "doseSource": "Dr Kendall \u2014 10 mg / 3 mL pen; start 8 clicks (267 mcg), maintenance 500 mcg = 15 clicks, 5 on / 2 off",
       "timing": "Before bedtime, at least 2 hours after your last meal",
       "cycle": "One month \u2014 20 injections. Up to 3 cycles back to back, then a 2-month break.",
       "sideEffects": [

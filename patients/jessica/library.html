@@ -291,6 +291,20 @@ function carryCard(root) {
   });
 }
 
+/* Same guard as the rest of the portal, in miniature: catch the click, so
+   a link added after boot cannot drop the card either. */
+document.addEventListener('click', ev => {
+  const a = ev.target && ev.target.closest && ev.target.closest('a[href]');
+  if (!a || a.target === '_blank') return;
+  const href = a.getAttribute('href');
+  if (!href || /^(https?:|sms:|tel:|mailto:|#)/i.test(href)) return;
+  const hash = location.hash && location.hash.length > 1 ? location.hash : '';
+  const c = new URLSearchParams(location.search).get('c');
+  if (!hash && !c) return;
+  const base = href.split('#')[0].split('?')[0];
+  a.setAttribute('href', hash ? base + hash : `${base}?c=${encodeURIComponent(c)}`);
+}, true);
+
 (async function boot() {
   carryCard(document);
   try {
