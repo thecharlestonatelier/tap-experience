@@ -119,6 +119,22 @@
   }
   .dial-sub { font-size: 12.5px; color: var(--muted); margin-top: 9px; }
 
+  /* The vial is spent after today. Offer the next one here rather than
+     letting the schedule simply stop with no explanation. */
+  .last-vial {
+    margin-top: 16px; padding: 14px 16px; border-radius: 14px;
+    background: rgba(138,115,80,.07); border: 1px solid var(--hairline);
+    text-align: center;
+  }
+  .last-vial-head { font-weight: 600; color: var(--espresso); font-size: 14px; }
+  .last-vial p { margin: 6px 0 12px; font-size: 13px; color: var(--espresso-soft); }
+  .last-vial-go {
+    background: var(--espresso); color: #F6F0E7; border: 0; border-radius: 999px;
+    padding: 10px 20px; font-family: 'Jost', sans-serif; font-size: 13px;
+    font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+  }
+  .last-vial small { display: block; margin-top: 9px; font-size: 11.5px; color: var(--muted); }
+
   /* Dial → inject → press down, in the patient's own order of operations. */
   .steps { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: step; }
   .steps li {
@@ -693,6 +709,9 @@ function wizSteps() {
     if (wizPen.vialOptions) steps.push('vial');
     if (wizPen.guide) steps.push('mode');
     if (wizData.mode === 'own' || (!wizPen.guide && wizPen.maxUnits)) steps.push('units');
+    // Only a patient carrying her own number is asked about climbing; the
+    // guide already has its own steps built in.
+    if (wizData.mode === 'own' && wizPen.stepUpOptions) steps.push('stepUp');
     if (wizPen.schedule && wizPen.schedule.weekly) steps.push('day');
   }
   return steps;
@@ -762,6 +781,21 @@ function renderWizard() {
     showUnitsNote();
   }
 
+  if (step === 'stepUp') {
+    document.getElementById('wizTitle').textContent = 'Are you climbing each week?';
+    document.getElementById('wizBody').textContent =
+      'How many units you add every week. Choose none if you hold the same dose.';
+    const max = wizPen.maxUnits || 50;
+    choices.innerHTML = wizPen.stepUpOptions.map(n => {
+      const label = n === 0 ? 'No increase' : `+${n} unit${n > 1 ? 's' : ''} a week`;
+      const detail = n === 0
+        ? `Stay at ${wizData.units} units`
+        : `${wizData.units} → ${Math.min(wizData.units + n, max)} → ${Math.min(wizData.units + 2 * n, max)} … up to ${max}`;
+      return `<button class="choice" data-s="${n}" aria-pressed="${wizData.stepUp === n}">
+        <b>${label}</b><small>${detail}</small></button>`;
+    }).join('');
+  }
+
   if (step === 'day') {
     document.getElementById('wizTitle').textContent = 'Which day do you inject?';
     document.getElementById('wizBody').textContent = 'Once a week, the same day each week.';
@@ -778,6 +812,7 @@ function renderWizard() {
       }
       if (b.dataset.v) wizData.vialMl = Number(b.dataset.v);
       if (b.dataset.m) wizData.mode = b.dataset.m;
+      if (b.dataset.s !== undefined) wizData.stepUp = Number(b.dataset.s);
       if (b.dataset.d) wizData.day = Number(b.dataset.d);
       renderWizard();
     }));
@@ -807,6 +842,7 @@ function wizAdvance() {
   if (step === 'pick' && !wizPen) return showToast('Choose a peptide.');
   if (step === 'vial' && !wizData.vialMl) return showToast('Choose a vial size.');
   if (step === 'mode' && !wizData.mode) return showToast('Choose one.');
+  if (step === 'stepUp' && wizData.stepUp === undefined) return showToast('Choose one.');
   if (step === 'units') {
     const v = Number(document.getElementById('wizInput').value);
     if (!v) return showToast('Enter your units.');
@@ -934,6 +970,14 @@ function renderToday() {
         <span class="dial-num">${dose.units}</span>
       </div>
       <div class="dial-sub">${round(dose.totalMg, 2)} mg &middot; ${round(dose.ml, 2)} mL per dose</div>
+      ${onLastDose(pen, selectedDay) && pen.setup ? `
+        <div class="last-vial">
+          <div class="last-vial-head">This is the last dose in your vial.</div>
+          <p>Would you like to start a new vial with these exact settings?</p>
+          <button type="button" class="last-vial-go" data-newvial="${pen.id}">
+            Start a new vial</button>
+          <small>Same dose, same day, same weekly increase — only the supply changes.</small>
+        </div>` : ''}
 
       <ol class="steps">
         ${stepsFor(pen).map(s =>
@@ -975,6 +1019,13 @@ function renderToday() {
     b.addEventListener('click', () => openLog(b.dataset.log)));
   stack.querySelectorAll('[data-setup]').forEach(b =>
     b.addEventListener('click', () => startWizard(PENS.find(p => p.id === b.dataset.setup))));
+  stack.querySelectorAll('[data-newvial]').forEach(b =>
+    b.addEventListener('click', () => {
+      const pen = PENS.find(p => p.id === b.dataset.newvial);
+      if (!pen || !addVial(pen)) return showToast('We could not open a new vial.');
+      renderAll();
+      showToast(`New vial — you are on vial ${pen.vials}. Nothing else has changed.`);
+    }));
 }
 
 function nextDueText() {

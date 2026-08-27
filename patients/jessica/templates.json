@@ -97,56 +97,6 @@
       ]
     },
     {
-      "id": "blend2x",
-      "name": "2x Blend",
-      "short": "2x",
-      "color": "plum",
-      "volumeMl": 1,
-      "route": "Subcutaneous",
-      "time": "Evening",
-      "ratioNote": "10 / 2 mg blend",
-      "components": [
-        {
-          "name": "Tesamorelin",
-          "mg": 5
-        },
-        {
-          "name": "Ipamorelin",
-          "mg": 5
-        }
-      ],
-      "schedule": {
-        "on": 5,
-        "off": 2
-      },
-      "doseRange": {
-        "minUnits": 30,
-        "maxUnits": 100,
-        "label": "Card range 1\u20133 mg (30\u2013100 units)"
-      },
-      "phases": [
-        {
-          "name": "Starting",
-          "mg": 1.5,
-          "days": 14
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 2.5,
-          "days": 14
-        },
-        {
-          "name": "Maintenance",
-          "mg": 4.5,
-          "days": 28
-        }
-      ],
-      "notes": "Administer once daily, preferably in a fasted state or prior to bedtime. Rotate injection sites as needed.",
-      "vialMg": 10,
-      "diluentMl": 1,
-      "doseSource": "2X Blend Tesa 5 / Ipa 5 = 10 mg + 1 mL \u2014 5 on / 2 off"
-    },
-    {
       "id": "nad",
       "name": "NAD+",
       "short": "nad",
@@ -397,20 +347,16 @@
       "name": "Tirzepatide",
       "short": "tir",
       "color": "clay",
-      "_source": "Atelier Tirzepatide Guide: 17 mg/mL. Drawn with an insulin syringe, not a pen \u2014 one unit is 0.01 mL, so a unit delivers 0.17 mg.",
+      "_source": "Atelier Tirzepatide Guide: 17 mg/mL, 1 mL vials. Drawn with an insulin syringe \u2014 one unit is 0.01 mL, so a unit delivers 0.17 mg.",
       "delivery": "syringe",
       "concentrationMgPerMl": 17,
-      "vialOptions": [
-        1,
-        2
-      ],
-      "volumeMl": 2,
+      "volumeMl": 1,
       "route": "Subcutaneous",
       "time": "Morning",
       "components": [
         {
           "name": "Tirzepatide",
-          "mg": 34
+          "mg": 17
         }
       ],
       "schedule": {
@@ -460,151 +406,14 @@
         }
       ],
       "notes": "Inject on the same day each week. If nausea follows a dose increase, take one Zofran every 6\u20138 hours as needed. Weigh yourself weekly and tell the atelier if you are losing more than 3\u20134 lb a week. Increase protein so you lose fat rather than muscle.",
-      "stepsKey": "injectionStepsVial"
-    },
-    {
-      "id": "custom",
-      "name": "Custom pen",
-      "short": "cus",
-      "color": "sage",
-      "volumeMl": 3,
-      "route": "Subcutaneous",
-      "time": "Evening",
-      "components": [
-        {
-          "name": "Peptide",
-          "mg": 10
-        }
-      ],
-      "schedule": {
-        "on": 5,
-        "off": 2
-      },
-      "phases": [
-        {
-          "name": "Starting",
-          "units": 10,
-          "days": 28
-        }
-      ],
-      "notes": ""
-    },
-    {
-      "id": "epithalon",
-      "name": "Epithalon",
-      "short": "epi",
-      "color": "sage",
-      "volumeMl": 5,
-      "route": "Subcutaneous",
-      "time": "Evening",
-      "components": [
-        {
-          "name": "Epithalon",
-          "mg": 50
-        }
-      ],
-      "schedule": {
-        "on": 5,
-        "off": 2
-      },
-      "phases": [
-        {
-          "name": "Starting",
-          "mg": 5.0,
-          "days": 10
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 7.5,
-          "days": 5
-        },
-        {
-          "name": "Maintenance",
-          "mg": 10.0,
-          "days": 5
-        }
-      ],
-      "vialMg": 50,
-      "diluentMl": 5,
-      "doseSource": "Epithalon 50 mg + 5 mL \u2014 10-20 day course, 2-3x yearly"
-    },
-    {
-      "id": "pinealon",
-      "name": "Pinealon",
-      "short": "pin",
-      "color": "sage",
-      "volumeMl": 3,
-      "route": "Subcutaneous",
-      "time": "Evening",
-      "components": [
-        {
-          "name": "Pinealon",
-          "mg": 50
-        }
-      ],
-      "schedule": {
-        "on": 5,
-        "off": 2
-      },
-      "phases": [
-        {
-          "name": "Starting",
-          "mg": 2.0,
-          "days": 5
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 2.5,
-          "days": 9
-        },
-        {
-          "name": "Maintenance",
-          "mg": 3.0,
-          "days": 6
-        }
-      ],
-      "vialMg": 50,
-      "diluentMl": 3,
-      "doseSource": "Pinealon 50 mg + 3 mL \u2014 daily, 20-day cycle, 2-3x yearly"
-    },
-    {
-      "id": "ipamorelin",
-      "name": "Ipamorelin",
-      "short": "ipa",
-      "color": "clay",
-      "volumeMl": 5,
-      "route": "Subcutaneous",
-      "time": "Evening",
-      "components": [
-        {
-          "name": "Ipamorelin",
-          "mg": 5
-        }
-      ],
-      "schedule": {
-        "on": 5,
-        "off": 2
-      },
-      "phases": [
-        {
-          "name": "Starting",
-          "mg": 0.2,
-          "days": 14
-        },
-        {
-          "name": "Ramp-Up",
-          "mg": 0.3,
-          "days": 14
-        },
-        {
-          "name": "Maintenance",
-          "mg": 0.3,
-          "days": 28
-        }
-      ],
-      "vialMg": 5,
-      "diluentMl": 5,
-      "doseSource": "Ipamorelin 5 mg + 5 mL \u2014 5 nights weekly"
+      "stepsKey": "injectionStepsVial",
+      "stepUpOptions": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
     }
   ],
   "injectionStepsSyringe": [

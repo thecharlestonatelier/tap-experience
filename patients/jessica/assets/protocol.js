@@ -101,16 +101,36 @@ function saveSetup(pen, data) {
 
 function needsSetup(pen) { return !!pen.setup && !loadSetup(pen); }
 
+/* She has reached the end of the vial and wants to carry on. Same dose,
+   same day, same climb — one more vial's worth of supply. */
+function addVial(pen) {
+  const data = loadSetup(pen);
+  if (!data) return false;
+  data.vials = Math.max(1, Number(data.vials) || 1) + 1;
+  saveSetup(pen, data);
+  return true;
+}
+
+/* Is today the last dose this supply can give? */
+function onLastDose(pen, date) {
+  const s = supply(pen);
+  return !!(s.lastDose && date && s.lastDose.getTime() === date.getTime());
+}
+
 /* Fold the patient's answers into the pen the rest of the engine sees. */
 function applySetup(pen, data) {
   if (!data) return;
 
-  if (data.vialMl) {
-    pen.volumeMl = data.vialMl;
-    // Components are stated for the whole vial, so rescale to the size she has.
-    if (pen.concentrationMgPerMl && pen.components.length === 1) {
-      pen.components[0].mg = pen.concentrationMgPerMl * data.vialMl;
-    }
+  // Vials are 1 mL. A patient who has finished one and opened another is
+  // still on the same protocol — only the supply resets, so count the
+  // vials rather than restarting her schedule.
+  const vials = Math.max(1, Number(data.vials) || 1);
+  const oneVial = data.vialMl || pen.volumeMl || 1;
+  pen.volumeMl = oneVial * vials;
+  pen.vialMl = oneVial;
+  pen.vials = vials;
+  if (pen.concentrationMgPerMl && pen.components.length === 1) {
+    pen.components[0].mg = pen.concentrationMgPerMl * pen.volumeMl;
   }
 
   if (data.day) pen.schedule = Object.assign({}, pen.schedule, { weekly: true, day: data.day });
@@ -118,8 +138,32 @@ function applySetup(pen, data) {
   if (data.mode === 'guide' && pen.guide) {
     pen.phases = JSON.parse(JSON.stringify(pen.guide));
   } else if (data.mode === 'own' && data.units) {
-    pen.phases = [{ name: 'Your dose', units: data.units, days: 364 }];
+    pen.phases = ownPhases(pen, data.units, Number(data.stepUp) || 0);
   }
+}
+
+/* A patient carrying her own number of units may also be climbing: she
+   picks a starting dose and how many units to add each week. Build that
+   as one phase per week, and hold at the ceiling rather than climbing
+   past it — the schedule should never walk her above the atelier's limit
+   on its own. */
+function ownPhases(pen, start, stepUp) {
+  const max = pen.maxUnits || 50;
+  if (!stepUp) return [{ name: 'Your dose', units: start, days: 364 }];
+
+  const out = [];
+  let units = start;
+  for (let week = 1; week <= 52; week++) {
+    if (units + stepUp > max) {
+      // The last climb would overshoot: hold here for good.
+      out.push({ name: week === 1 ? 'Your dose' : `Week ${week}+`, units, days: 364 });
+      return out;
+    }
+    out.push({ name: `Week ${week}`, units, days: 7 });
+    units += stepUp;
+  }
+  out.push({ name: 'Hold', units: Math.min(units, max), days: 364 });
+  return out;
 }
 
 function applySetups() {
