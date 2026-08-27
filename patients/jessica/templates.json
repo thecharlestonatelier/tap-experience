@@ -62,7 +62,7 @@
       "color": "sage",
       "_source": "UMS order S04593: PEN - BPC-157/TB-500 (Wolverine) 10mg/10mg 3mL Pen. BPC-157 and TB-500 sit at the same 3.33 mg/mL as the Glow Blend, so an identical dial number delivers an identical dose of each \u2014 the titration below mirrors Glow. Confirm before dispensing.",
       "volumeMl": 3,
-      "route": "Subcutaneous",
+      "route": "Subcutaneous, abdomen",
       "time": "Evening",
       "components": [
         {
@@ -88,7 +88,13 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 20,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week, 28 days"
+      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week, 28 days",
+      "timing": "Before bedtime, at least 2 hours after your last meal",
+      "cycle": "One month \u2014 20 injections. Up to 3 cycles back to back, then a 2-month break.",
+      "sideEffects": [
+        "BPC-157: nausea (rare), mild fatigue in the first week, minor injection-site redness",
+        "TB-500: mild lethargy in the first weeks, transient head rush just after injecting, injection-site discomfort"
+      ]
     },
     {
       "id": "blend2x",
@@ -156,17 +162,21 @@
         }
       ],
       "schedule": {
-        "on": 5,
-        "off": 2
+        "on": 7,
+        "off": 0
       },
       "phases": [
         {
-          "name": "Maintenance",
-          "units": 30,
-          "days": 28
+          "name": "Standard",
+          "mg": 50.0,
+          "days": 10
         }
       ],
-      "notes": "Rotate injection sites as needed."
+      "notes": "Rotate injection sites as needed.",
+      "vialMg": 500,
+      "diluentMl": 3,
+      "timing": "In the morning",
+      "doseSource": "Dr Kendall \u2014 500 mg / 3 mL pen, 50 mg daily in the AM. DAILY."
     },
     {
       "id": "nadvial",
@@ -225,20 +235,20 @@
           "days": 14
         },
         {
-          "name": "Ramp-Up",
-          "mg": 0.5,
-          "days": 14
-        },
-        {
           "name": "Maintenance",
           "mg": 0.5,
-          "days": 28
+          "days": 14
         }
       ],
       "notes": "Rotate injection sites as needed.",
       "vialMg": 10,
       "diluentMl": 5,
-      "doseSource": "BPC-157 10 mg vial + 5 mL \u2014 daily"
+      "doseSource": "Dr Kendall \u2014 250 mcg starting, 500 mcg maintenance, 5 on / 2 off. VIAL SIZE UNCONFIRMED.",
+      "timing": "Before bedtime, at least 2 hours after your last meal",
+      "cycle": "One month \u2014 20 injections. Up to 3 cycles back to back, then a 2-month break.",
+      "sideEffects": [
+        "Nausea (rare), mild fatigue in the first week, minor injection-site redness"
+      ]
     },
     {
       "id": "ghk",
@@ -273,7 +283,9 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 50,
       "diluentMl": 3,
-      "doseSource": "Dr Kendall pen calc \u2014 50 mg / 3 mL / 300 clicks; 1 mg d1-15, 2 mg d16-30; DAILY (the one exception to 5 on / 2 off)"
+      "doseSource": "Dr Kendall pen calc \u2014 50 mg / 3 mL / 300 clicks; 1 mg d1-15, 2 mg d16-30; DAILY (the one exception to 5 on / 2 off)",
+      "timing": "30-60 minutes before bed, at least 2 hours after eating",
+      "cycle": "30 days on, then a 30-day pause before repeating."
     },
     {
       "id": "cjcipa",
@@ -325,18 +337,28 @@
         }
       ],
       "schedule": {
-        "on": 5,
-        "off": 2
+        "on": 7,
+        "off": 0
       },
       "needsDose": true,
       "phases": [
         {
+          "name": "Weeks 1-2",
+          "mg": 1.0,
+          "days": 14
+        },
+        {
           "name": "Maintenance",
-          "units": 10,
-          "days": 28
+          "mg": 2.0,
+          "days": 84
         }
       ],
-      "notes": "Rotate injection sites as needed."
+      "notes": "Rotate injection sites as needed.",
+      "timing": "30-60 minutes before bed, at least 2 hours after eating",
+      "cycle": "12-16 weeks on, 2-4 weeks off.",
+      "monitoring": "IGF-1, fasting glucose, lipid panel. IGF-1 at week 8 \u2014 target high-normal; reduce the dose if IGF-1 is above 350-400 ng/mL.",
+      "escalation": "Increase to 2 mg only if tolerated \u2014 no joint aches, swelling or carpal-tunnel symptoms.",
+      "doseSource": "Dr Kendall \u2014 daily, 1 mg weeks 1-2 then 2 mg. VIAL SIZE UNCONFIRMED."
     },
     {
       "id": "semax",
