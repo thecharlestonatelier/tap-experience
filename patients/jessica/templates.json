@@ -215,7 +215,7 @@
       "name": "BPC-157",
       "short": "bpc",
       "color": "sage",
-      "volumeMl": 5,
+      "volumeMl": 3,
       "route": "Subcutaneous",
       "time": "Evening",
       "components": [
@@ -242,8 +242,8 @@
       ],
       "notes": "Rotate injection sites as needed.",
       "vialMg": 10,
-      "diluentMl": 5,
-      "doseSource": "Dr Kendall \u2014 250 mcg starting, 500 mcg maintenance, 5 on / 2 off. VIAL SIZE UNCONFIRMED.",
+      "diluentMl": 3,
+      "doseSource": "Dr Kendall \u2014 10 mg / 3 mL pen; 250 mcg starting, 500 mcg maintenance, 5 on / 2 off",
       "timing": "Before bedtime, at least 2 hours after your last meal",
       "cycle": "One month \u2014 20 injections. Up to 3 cycles back to back, then a 2-month break.",
       "sideEffects": [
@@ -358,7 +358,9 @@
       "cycle": "12-16 weeks on, 2-4 weeks off.",
       "monitoring": "IGF-1, fasting glucose, lipid panel. IGF-1 at week 8 \u2014 target high-normal; reduce the dose if IGF-1 is above 350-400 ng/mL.",
       "escalation": "Increase to 2 mg only if tolerated \u2014 no joint aches, swelling or carpal-tunnel symptoms.",
-      "doseSource": "Dr Kendall \u2014 daily, 1 mg weeks 1-2 then 2 mg. VIAL SIZE UNCONFIRMED."
+      "doseSource": "Dr Kendall \u2014 30 mg / 3 mL pen; 1 mg weeks 1-2 then 2 mg, daily",
+      "vialMg": 30,
+      "diluentMl": 3
     },
     {
       "id": "semax",
