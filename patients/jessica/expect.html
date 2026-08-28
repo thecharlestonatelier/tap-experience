@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<title>What to Expect</title>
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Atelier">
+<link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
+<style>
+  :root {
+    --bg:#F3EBE1; --card:#F8F2EA; --espresso:#3B2E20; --espresso-soft:#4A3B2C;
+    --brass:#8A7350; --muted:#8A7C6A; --hairline:rgba(138,115,80,.18);
+    --alert:#A4553F;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    background:var(--bg); color:var(--espresso-soft);
+    font-family:'Jost',-apple-system,BlinkMacSystemFont,sans-serif;
+    min-height:100dvh; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:430px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 22px calc(40px + env(safe-area-inset-bottom)); }
+
+  .topbar { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  .back {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:38px; height:38px; border-radius:50%; background:var(--card);
+    box-shadow:0 1px 3px rgba(59,46,32,.12); color:var(--brass);
+    text-decoration:none; flex:none;
+  }
+  .back svg { width:15px; height:15px; }
+  .eyebrow { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+
+  h1 {
+    font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+    font-size:38px; line-height:1.1; color:var(--espresso); margin-bottom:8px;
+  }
+  .lede { font-size:14px; line-height:1.6; color:var(--muted); margin-bottom:26px; }
+
+  .pen { background:var(--card); border-radius:16px; padding:20px; margin-bottom:16px;
+         box-shadow:0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045); }
+  .pen h2 {
+    font-family:'Cormorant Garamond',Georgia,serif; font-weight:600;
+    font-size:24px; color:var(--espresso); margin-bottom:3px;
+  }
+  .pen .sub { font-size:12px; color:var(--muted); margin-bottom:14px; }
+
+  .lab { font-size:10px; letter-spacing:.15em; text-transform:uppercase;
+         color:var(--brass); margin:16px 0 6px; }
+  .lab:first-of-type { margin-top:0; }
+  .body { font-size:13.5px; line-height:1.55; }
+  ul { list-style:none; }
+  ul li { position:relative; padding-left:16px; font-size:13.5px; line-height:1.55; margin-bottom:6px; }
+  ul li::before { content:'·'; position:absolute; left:4px; color:var(--brass); font-weight:700; }
+
+  .call {
+    margin-top:26px; padding:20px; border-radius:16px;
+    background:rgba(164,85,63,.06); border:1px solid rgba(164,85,63,.22);
+  }
+  .call h2 { font-family:'Cormorant Garamond',Georgia,serif; font-size:23px;
+             color:var(--alert); margin-bottom:8px; font-weight:600; }
+  .call .body { color:var(--espresso-soft); }
+  .call a.act {
+    display:block; text-align:center; margin-top:14px; padding:13px;
+    border-radius:999px; background:var(--espresso); color:#F6F0E7;
+    text-decoration:none; font-size:13px; font-weight:600;
+    letter-spacing:.07em; text-transform:uppercase;
+  }
+  .em { margin-top:12px; font-size:12.5px; line-height:1.55; color:var(--alert); font-weight:500; }
+  .foot { margin-top:26px; font-size:11.5px; line-height:1.6; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./" aria-label="Back to portal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </a>
+    <span class="eyebrow">What to Expect</span>
+  </div>
+
+  <h1 id="title">What to Expect</h1>
+  <p class="lede" id="lede">Loading your protocol…</p>
+
+  <div id="pens"></div>
+
+  <div class="call">
+    <h2>When to call us</h2>
+    <div class="body">
+      Anything that worries you is worth a message — you will never be a bother.
+      Reach out the same day for:
+      <ul style="margin-top:8px">
+        <li>Swelling of the face, lips or throat, or trouble breathing</li>
+        <li>Severe or persistent abdominal pain</li>
+        <li>Vomiting that stops you keeping fluids down</li>
+        <li>A reaction at the injection site that spreads, or is hot and painful</li>
+        <li>Losing more than 3–4 lb in a week</li>
+      </ul>
+      <p class="em">If you cannot breathe, your throat is closing, or you feel faint —
+      call 911 first. Tell us afterwards.</p>
+    </div>
+    <a class="act" id="msg" href="#">Message Dr. Kendall</a>
+  </div>
+
+  <p class="foot">
+    This page reflects what is on your card today. If the atelier changes your
+    protocol, it changes here too.
+  </p>
+</div>
+
+<script>
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+
+(async function boot() {
+  try {
+    await loadProtocol();
+  } catch {
+    document.getElementById('lede').textContent =
+      'Could not load your protocol. Please contact the atelier.';
+    applyCardLinks(document);
+    return;
+  }
+
+  PENS = CFG.protocol.pens || [];
+  document.title = `What to Expect — ${CFG.patient.name}`;
+  document.getElementById('lede').textContent = PENS.length
+    ? 'How each of these should feel, when to take it, and what is worth telling us about.'
+    : 'There is nothing on this card yet.';
+
+  document.getElementById('pens').innerHTML = PENS.map(pen => {
+    const bits = [];
+
+    if (pen.timing || pen.time) {
+      bits.push(`<div class="lab">When</div><div class="body">${
+        esc(pen.timing || `${pen.time} — ${freqText(pen)}`)}${
+        pen.timing ? `<br><span style="color:var(--muted)">${esc(freqText(pen))}</span>` : ''
+      }</div>`);
+    }
+    if (pen.route) bits.push(`<div class="lab">How</div><div class="body">${esc(pen.route)}</div>`);
+    if (pen.cycle) bits.push(`<div class="lab">Cycle</div><div class="body">${esc(pen.cycle)}</div>`);
+    if (pen.sideEffects && pen.sideEffects.length) {
+      bits.push(`<div class="lab">What you may notice</div><ul>${
+        pen.sideEffects.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`);
+    }
+    if (pen.escalation) bits.push(`<div class="lab">Before increasing</div><div class="body">${esc(pen.escalation)}</div>`);
+    if (pen.monitoring) bits.push(`<div class="lab">What we watch</div><div class="body">${esc(pen.monitoring)}</div>`);
+    if (pen.storage) bits.push(`<div class="lab">Storing it</div><div class="body">${esc(pen.storage)}</div>`);
+    if (pen.notes) bits.push(`<div class="lab">Notes</div><div class="body">${esc(pen.notes)}</div>`);
+
+    // A pen with nothing written about it should say so rather than
+    // render an empty card that looks like a mistake.
+    if (!bits.length) {
+      bits.push(`<div class="body" style="color:var(--muted)">
+        Nothing specific to flag. Message the atelier with any question.</div>`);
+    }
+
+    return `<div class="pen">
+      <h2>${esc(pen.name)}</h2>
+      <div class="sub">${esc(pen.components.map(c => `${c.name} ${c.mg} mg`).join(' / '))}</div>
+      ${bits.join('')}
+    </div>`;
+  }).join('');
+
+  document.getElementById('msg').href = smsHref
+    ? smsHref()
+    : `sms:${(CFG.protocol.concierge && CFG.protocol.concierge.phone) || '843-377-3713'}`;
+
+  applyCardLinks(document);
+})();
+
+/* The same message link the rest of the portal uses. */
+function smsHref() {
+  const c = (CFG && CFG.protocol && CFG.protocol.concierge) || {};
+  const phone = (c.phone || '843-377-3713').replace(/[^\d+]/g, '');
+  const opener = encodeURIComponent(c.messageOpener || 'Hi Dr. Phelps-Polirer — ');
+  return `sms:${phone}${/iP(hone|ad|od)/.test(navigator.userAgent) ? '&' : '?'}body=${opener}`;
+}
+</script>
+</body>
+</html>
