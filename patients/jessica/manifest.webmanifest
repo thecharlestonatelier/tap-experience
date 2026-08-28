@@ -15,13 +15,14 @@
     {
       "src": "assets/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "assets/icons/icon-512.png",
+      "src": "assets/icons/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "maskable"
     }
   ],
   "_note": "No start_url on purpose. Per the manifest spec it then defaults to the document URL, so a card added to the home screen reopens on that card. Setting it to \".\" saved the bare root instead and the icon opened somebody else."

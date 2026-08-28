@@ -1,0 +1,33 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&display=swap">
+<style>
+  html,body{margin:0;padding:0;background:transparent}
+  .icon{
+    position:relative;width:512px;height:512px;border-radius:0;overflow:hidden;
+    background:radial-gradient(125% 105% at 32% 10%, #9BA492 0%, #8E9885 45%, #838D7B 100%);
+  }
+  .icon::after{ /* soft vignette, no visible grain pattern */
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(105% 90% at 50% 42%, rgba(255,255,255,.05) 0%, rgba(40,48,36,.10) 78%, rgba(36,44,32,.20) 100%);
+  }
+  .rule{position:absolute;inset:16px;border-radius:84px;z-index:3;
+        border:1.6px solid rgba(230,201,133,.90);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.26), 0 1px 0 rgba(88,68,28,.20);}
+  .mono{position:absolute;inset:0;transform:scale(.68);z-index:2;font-family:'Bodoni Moda',Didot,Georgia,serif;
+        font-weight:400;line-height:1;}
+  .g{position:absolute;display:block;
+    background:linear-gradient(155deg,#FCF2CB 0%,#EAD08F 16%,#CBAA5E 40%,#F6E7B6 56%,#D0AF64 76%,#AE8C42 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:
+      drop-shadow(0 1.2px 0 rgba(255,255,255,.30))
+      drop-shadow(0 -1px 0 rgba(92,71,30,.30))
+      drop-shadow(0 4px 8px rgba(56,44,20,.22));
+  }
+  .c{font-size:392px;left:64px;top:52px}
+  .a{font-size:398px;left:172px;top:106px}
+</style></head><body>
+<div class="icon">
+  <div class="mono"><span class="g c">C</span><span class="g a">A</span></div>
+  
+</div>
+</body></html>
