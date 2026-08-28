@@ -11,6 +11,7 @@ Everything else is generated from it by `build-icons.mjs`:
 | `icon-512.png`, `icon-192.png` | rounded, transparent corners | `rel=icon`, manifest `purpose: any`, push notifications |
 | `icon-180.png`, `icon-120.png` | full-bleed square, opaque | `apple-touch-icon` |
 | `icon-512-maskable.png` | tile inside the safe circle | manifest `purpose: maskable` |
+| `monogram.png` | the bare mark, no ground | the portal header in `index.html` |
 
 Three shapes because the platforms disagree:
 
@@ -22,6 +23,11 @@ Three shapes because the platforms disagree:
   width. A square only fits a circle across its diagonal, so the tile is drawn
   at 80%/√2 ≈ 57% — that keeps the corners of the gold rule from being cut.
 - Browsers want the tile as drawn, with the corners actually transparent.
+
+`monogram.png` is the mark lifted off the sage. The key runs on **warmth**
+(red minus blue) rather than brightness: the gold runs from a near-white
+highlight down to a dark bevel, so it overlaps the ground's brightness range
+but never its hue.
 
 ## Regenerating
 

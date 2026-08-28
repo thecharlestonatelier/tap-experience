@@ -34,7 +34,7 @@
     --card-hover:    #FBF6F0;
     --espresso:      #3B2E20;   /* patient name */
     --espresso-soft: #4A3B2C;   /* greeting + button labels */
-    --brass:         #8A7350;   /* monogram, chevrons, nav icons */
+    --brass:         #8A7350;   /* chevrons, nav icons, rules */
     --brass-soft:    #A38C69;
     --hairline:      rgba(138, 115, 80, 0.18);
   }
@@ -69,10 +69,11 @@
   .monogram {
     text-align: center;
     line-height: 0;
-    color: var(--brass);
     margin-bottom: 30px;
     user-select: none;
   }
+  /* The mark is the artwork itself, gold and all — not a tinted glyph — so
+     it carries no colour from the theme. Height drives it; width follows. */
   .monogram .mark { height: 78px; width: auto; display: inline-block; }
 
   /* ---------- Greeting ---------- */
@@ -291,7 +292,7 @@
     .patient-name { font-size: 42px; }
     .greeting { font-size: 27px; }
     .menu-item { font-size: 14.5px; min-height: 70px; padding: 16px 40px; }
-    .monogram { font-size: 50px; }
+    .monogram .mark { height: 62px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -303,7 +304,7 @@
 
 <main class="portal">
 
-  <div class="monogram"><svg class="mark" viewBox="0 108 117 160" fill="currentColor" role="img" aria-label="The Charleston Atelier"><text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text><text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text></svg></div>
+  <div class="monogram"><img class="mark" src="assets/icons/monogram.png" alt="The Charleston Atelier" width="327" height="480"></div>
 
   <p class="greeting">Welcome Back,</p>
   <h1 class="patient-name" id="patientName"></h1>
