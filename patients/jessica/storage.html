@@ -103,6 +103,14 @@
          color:var(--brass); margin:18px 0 8px; }
   .lab:first-of-type { margin-top:0; }
 
+  /* Site rotation diagram. Its own marks are styled inside the SVG. */
+  .figwrap { margin-top:4px; }
+  .fig {
+    display:block; width:100%; max-width:240px; height:auto;
+    border-radius:12px; background:var(--bg);
+  }
+  .fig-rules { margin-top:11px; }
+
   .call {
     margin-top:26px; padding:20px; border-radius:16px;
     background:rgba(164,85,63,.06); border:1px solid rgba(164,85,63,.22);
@@ -243,10 +251,12 @@ function place(pen) {
       <h2>Giving it</h2>
       <div class="sub">Today's Ritual has your exact number for the day.</div>
       ${steps.join('')}
-      ${(CFG.protocol.sites || []).length ? `<div class="lab">Rotating sites</div>
-        <div class="body">Move to the next site each time rather than going back to
-        a favourite: ${esc(CFG.protocol.sites.join(', '))}. Keep two inches clear of
-        your navel.</div>` : ''}
+      <div class="lab">Rotating sites</div>
+      <div class="figwrap">${bellyFigure()}</div>
+      <ul class="fig-rules">
+        <li>Rotate sites with every injection</li>
+        <li>Keep two inches clear of your navel</li>
+      </ul>
     </div>`);
   }
 

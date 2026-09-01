@@ -302,6 +302,40 @@ function needsRefill(pen) {
    and the steps both change, and the dose number means the same thing. */
 function isSyringe(pen) { return pen.delivery === 'syringe'; }
 
+/* ---------- site rotation diagram ----------
+   Four spots around the navel, worked through in turn; the dashed ring is
+   the navel to stay clear of. Both What to Expect and Storage & Use show
+   it, so it lives here rather than in either page — two copies of a
+   clinical diagram is two things to keep in step.
+
+   It carries its own styles so a page only has to place it. The custom
+   properties it reads are ones every portal page already defines. */
+function bellyFigure() {
+  return `<svg class="fig" viewBox="0 0 200 150" role="img"
+     aria-label="Four injection spots around the navel, used in turn, keeping two inches clear of the navel itself">
+    <style>
+      .fig .f-skin  { fill:none; stroke:var(--hairline); stroke-width:1.5; }
+      .fig .f-clear { fill:none; stroke:var(--alert); stroke-width:1.5;
+                      stroke-dasharray:4 4; opacity:.65; }
+      .fig .f-navel { fill:var(--muted); }
+      .fig .f-spot circle { fill:var(--brass); opacity:.9; }
+      .fig .f-num text { fill:#F8F2EA; font-family:'Jost',sans-serif;
+                         font-size:13px; font-weight:600; text-anchor:middle; }
+    </style>
+    <rect x="14" y="10" width="172" height="130" rx="18" class="f-skin"/>
+    <circle cx="100" cy="75" r="30" class="f-clear"/>
+    <circle cx="100" cy="75" r="4"  class="f-navel"/>
+    <g class="f-spot">
+      <circle cx="52"  cy="42"  r="13"/><circle cx="148" cy="42"  r="13"/>
+      <circle cx="52"  cy="108" r="13"/><circle cx="148" cy="108" r="13"/>
+    </g>
+    <g class="f-num">
+      <text x="52"  y="47">1</text><text x="148" y="47">2</text>
+      <text x="52"  y="113">3</text><text x="148" y="113">4</text>
+    </g>
+  </svg>`;
+}
+
 function dialLead(pen) {
   return isSyringe(pen) ? 'Draw up to' : 'Turn your pen to';
 }
