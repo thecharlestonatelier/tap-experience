@@ -393,19 +393,24 @@
             ],
             [
               "Upper abdomen",
-              "Moderate, and better than lower"
+              "Moderate, and better than lower",
+              true
             ],
             [
               "Love handles",
-              "Usually the best tolerated"
+              "Usually the best tolerated",
+              true
             ],
             [
               "Outer thigh",
               "Varies \u2014 fine for some, worse for others"
             ]
           ],
-          "note": "Find your least reactive zone and rotate within it, rather than moving all over your body.",
-          "figure": "belly"
+          "figure": "belly",
+          "figureStars": [
+            1,
+            2
+          ]
         },
         {
           "h": "When a reaction is more than a reaction",

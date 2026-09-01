@@ -309,10 +309,24 @@ function isSyringe(pen) { return pen.delivery === 'syringe'; }
    clinical diagram is two things to keep in step.
 
    It carries its own styles so a page only has to place it. The custom
-   properties it reads are ones every portal page already defines. */
-function bellyFigure() {
-  return `<svg class="fig" viewBox="0 0 200 150" role="img"
-     aria-label="Four injection spots around the navel, used in turn, keeping two inches clear of the navel itself">
+   properties it reads are ones every portal page already defines.
+
+   `star` marks spots as preferred — tesamorelin's page stars the two the
+   site table calls best tolerated. Pass nothing and no spot is starred. */
+var BELLY_SPOTS = [
+  { n: 1, x: 52,  y: 42  }, { n: 2, x: 148, y: 42  },
+  { n: 3, x: 52,  y: 108 }, { n: 4, x: 148, y: 108 }
+];
+var STAR_PATH = 'M0,-6 1.41,-1.94 5.71,-1.85 2.28,0.74 3.53,4.85 ' +
+                '0,2.4 -3.53,4.85 -2.28,0.74 -5.71,-1.85 -1.41,-1.94Z';
+
+function bellyFigure(opts) {
+  const star = (opts && opts.star) || [];
+  const label = 'Four injection spots around the navel, used in turn, keeping ' +
+    'two inches clear of the navel itself' +
+    (star.length ? `. Spots ${star.join(' and ')} are the preferred sites` : '');
+
+  return `<svg class="fig" viewBox="0 0 200 150" role="img" aria-label="${label}">
     <style>
       .fig .f-skin  { fill:none; stroke:var(--hairline); stroke-width:1.5; }
       .fig .f-clear { fill:none; stroke:var(--alert); stroke-width:1.5;
@@ -321,18 +335,22 @@ function bellyFigure() {
       .fig .f-spot circle { fill:var(--brass); opacity:.9; }
       .fig .f-num text { fill:#F8F2EA; font-family:'Jost',sans-serif;
                          font-size:13px; font-weight:600; text-anchor:middle; }
+      .fig .f-star { fill:var(--espresso); }
     </style>
     <rect x="14" y="10" width="172" height="130" rx="18" class="f-skin"/>
     <circle cx="100" cy="75" r="30" class="f-clear"/>
     <circle cx="100" cy="75" r="4"  class="f-navel"/>
-    <g class="f-spot">
-      <circle cx="52"  cy="42"  r="13"/><circle cx="148" cy="42"  r="13"/>
-      <circle cx="52"  cy="108" r="13"/><circle cx="148" cy="108" r="13"/>
-    </g>
-    <g class="f-num">
-      <text x="52"  y="47">1</text><text x="148" y="47">2</text>
-      <text x="52"  y="113">3</text><text x="148" y="113">4</text>
-    </g>
+    <g class="f-spot">${
+      BELLY_SPOTS.map(s => `<circle cx="${s.x}" cy="${s.y}" r="13"/>`).join('')
+    }</g>
+    <g class="f-num">${
+      BELLY_SPOTS.map(s => `<text x="${s.x}" y="${s.y + 5}">${s.n}</text>`).join('')
+    }</g>
+    <g class="f-star">${
+      BELLY_SPOTS.filter(s => star.indexOf(s.n) !== -1)
+        .map(s => `<path transform="translate(${s.x + 11},${s.y - 11})" d="${STAR_PATH}"/>`)
+        .join('')
+    }</g>
   </svg>`;
 }
 

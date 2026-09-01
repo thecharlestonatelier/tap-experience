@@ -65,6 +65,11 @@
   .rows dt { font-size:12.5px; font-weight:600; color:var(--espresso); line-height:1.45; }
   .rows dd { font-size:13px; line-height:1.45; }
 
+  /* The sites to favour, marked in the table and starred in the diagram. */
+  .rows .pick { background:rgba(138,115,80,.11); }
+  .rows dt.pick { border-radius:6px 0 0 6px; padding:3px 0 3px 7px; margin-left:-7px; }
+  .rows dd.pick { border-radius:0 6px 6px 0; padding:3px 7px 3px 0; margin-right:-7px; }
+
   /* A closing line that carries the point of the block. */
   .body.note {
     margin-top:9px; padding-left:11px; border-left:2px solid var(--hairline);
@@ -77,7 +82,6 @@
     border-radius:12px; background:var(--bg);
   }
   /* The figure's own marks are styled inside the SVG, in protocol.js. */
-  .fig-cap { margin-top:7px; font-size:12px; line-height:1.5; color:var(--muted); }
 
   .call {
     margin-top:26px; padding:20px; border-radius:16px;
@@ -140,25 +144,27 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 }
 
-/* The diagram itself lives in protocol.js, shared with Storage & Use.
-   Only the caption is specific to this page. */
+/* The diagram lives in protocol.js, shared with the Injection Tutorial. */
 const FIGURES = {
-  belly: () => bellyFigure() +
-    `<div class="fig-cap">One spot per day, in order — back to 1 on the fifth day.
-      The dashed ring is your navel: keep two inches clear of it.</div>`
+  belly: stars => bellyFigure({ star: stars })
 };
 
 /* One block of the `expect` array: a heading, then whichever of prose, a
-   list, a two-column table and a diagram that block actually carries. */
+   list, a two-column table and a diagram that block actually carries.
+   A row's optional third element marks it as one to favour. */
 function section(s) {
   let out = `<div class="lab">${esc(s.h)}</div>`;
   if (s.p) out += `<div class="body">${esc(s.p)}</div>`;
   if (s.list) out += `<ul>${s.list.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
   if (s.rows) {
-    out += `<dl class="rows">${s.rows.map(([k, v]) =>
-      `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
+    out += `<dl class="rows">${s.rows.map(([k, v, pick]) => {
+      const c = pick ? ' class="pick"' : '';
+      return `<dt${c}>${esc(k)}</dt><dd${c}>${esc(v)}</dd>`;
+    }).join('')}</dl>`;
   }
-  if (s.figure && FIGURES[s.figure]) out += `<div class="figwrap">${FIGURES[s.figure]()}</div>`;
+  if (s.figure && FIGURES[s.figure]) {
+    out += `<div class="figwrap">${FIGURES[s.figure](s.figureStars)}</div>`;
+  }
   if (s.note) out += `<div class="body note">${esc(s.note)}</div>`;
   return out;
 }
