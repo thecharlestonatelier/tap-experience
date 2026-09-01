@@ -91,6 +91,14 @@
   .steps-note { margin-top:12px; font-size:12.5px; line-height:1.5; color:var(--muted);
                 padding-left:11px; border-left:2px solid var(--hairline); }
 
+  /* The one storage rule that runs against all the others. */
+  .starred {
+    margin-top:12px; padding:12px 14px; border-radius:12px;
+    background:rgba(90,115,135,.10); border:1px solid rgba(90,115,135,.26);
+    font-size:12.5px; line-height:1.55; color:var(--espresso-soft);
+  }
+  .starred .star { color:var(--cold); font-weight:700; margin-right:5px; }
+
   .lab { font-size:10px; letter-spacing:.15em; text-transform:uppercase;
          color:var(--brass); margin:18px 0 8px; }
   .lab:first-of-type { margin-top:0; }
@@ -189,6 +197,13 @@ function place(pen) {
         potency. Keep them out of the light and away from heat, and away from the
         back wall of the fridge, where things freeze. A pen that has frozen is
         finished, even once it thaws.</div>
+      ${
+        // The freezer exception is starred only when the card actually holds
+        // a freezer item, so nobody is warned about a pen they do not have.
+        H.storageNote && PENS.some(p => p.store === 'freezer')
+          ? `<div class="starred"><span class="star">**</span>${esc(H.storageNote)}</div>`
+          : ''
+      }
     </div>`);
   }
 
