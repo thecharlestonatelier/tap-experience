@@ -53,7 +53,9 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 70,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 70 mg / 3 mL / 300 clicks, 2.4 mg x 5/week, pen ~5.83 weeks"
+      "doseSource": "Precision Auto Pen Summary \u2014 70 mg / 3 mL / 300 clicks, 2.4 mg x 5/week, pen ~5.83 weeks",
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "wolverine",
@@ -94,7 +96,9 @@
       "sideEffects": [
         "BPC-157: nausea (rare), mild fatigue in the first week, minor injection-site redness",
         "TB-500: mild lethargy in the first weeks, transient head rush just after injecting, injection-site discomfort"
-      ]
+      ],
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "nad",
@@ -126,7 +130,9 @@
       "vialMg": 500,
       "diluentMl": 3,
       "timing": "In the morning",
-      "doseSource": "Dr Kendall \u2014 500 mg / 3 mL pen, 50 mg daily in the AM. DAILY."
+      "doseSource": "Dr Kendall \u2014 500 mg / 3 mL pen, 50 mg daily in the AM. DAILY.",
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "nadvial",
@@ -163,7 +169,8 @@
       "diluentMl": 10,
       "timing": "In the morning",
       "doseSource": "Dr Kendall \u2014 2200 mg / 10 mL vial, 50 mg daily. Brandon only.",
-      "restricted": "Dispensed to one patient only \u2014 not a stocked pen."
+      "restricted": "Dispensed to one patient only \u2014 not a stocked pen.",
+      "store": "fridge"
     },
     {
       "id": "bpc",
@@ -204,7 +211,9 @@
       "cycle": "One month \u2014 20 injections. Up to 3 cycles back to back, then a 2-month break.",
       "sideEffects": [
         "Nausea (rare), mild fatigue in the first week, minor injection-site redness"
-      ]
+      ],
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "ghk",
@@ -241,7 +250,9 @@
       "diluentMl": 3,
       "doseSource": "Dr Kendall pen calc \u2014 50 mg / 3 mL / 300 clicks; 1 mg d1-15, 2 mg d16-30; DAILY (the one exception to 5 on / 2 off)",
       "timing": "30-60 minutes before bed, at least 2 hours after eating",
-      "cycle": "30 days on, then a 30-day pause before repeating."
+      "cycle": "30 days on, then a 30-day pause before repeating.",
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "cjcipa",
@@ -276,7 +287,9 @@
       "ratioNote": "10 / 10 mg blend",
       "vialMg": 20,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 0.2 mg x 5/week, pen ~20 weeks"
+      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 0.2 mg x 5/week, pen ~20 weeks",
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "tesa",
@@ -405,7 +418,9 @@
           ],
           "note": "Facial swelling, throat tightness or trouble breathing is different \u2014 call 911 first, then tell us. If reactions do not settle with an antihistamine and better technique, some people are simply sensitive to tesamorelin, and we will move you to a different GHRH analog."
         }
-      ]
+      ],
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "semax",
@@ -435,7 +450,9 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 20,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week"
+      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week",
+      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "store": "fridge"
     },
     {
       "id": "tirz",
@@ -508,7 +525,8 @@
         2,
         3,
         4
-      ]
+      ],
+      "store": "freezer"
     }
   ],
   "injectionStepsSyringe": [
@@ -526,5 +544,27 @@
     "Wipe the skin on your lower stomach with alcohol",
     "Pinch an inch, insert at 90\u00b0 and push the plunger",
     "Remove the needle and place it in a sharps container"
-  ]
+  ],
+  "handling": {
+    "needles": [
+      "A fresh needle every single injection. Reusing one blunts it, which hurts more and damages the tissue.",
+      "Take the needle off as soon as you have injected. A pen stored with the needle on can leak, and it lets air into the cartridge.",
+      "Never share a pen, even with a new needle."
+    ],
+    "sharps": [
+      "Used needles go in a sharps container \u2014 never the household bin, never a bottle.",
+      "Bring the full container to the atelier and we will dispose of it for you."
+    ],
+    "travel": [
+      "Carry it on. Never check it \u2014 the hold gets cold enough to freeze a pen.",
+      "Use an insulated case with a cold pack, and keep a layer between the pack and the pen so it does not freeze against it.",
+      "TSA allows medication and cold packs through security. Message us before you fly and we will send a letter on practice letterhead."
+    ],
+    "wrong": [
+      "Left out of the fridge \u2014 do not guess. Message us with how long and how warm, and we will tell you whether it is still good.",
+      "Frozen when it should not have been \u2014 do not use it. Freezing breaks the peptide even after it thaws.",
+      "Cloudy, discoloured, or with anything floating in it \u2014 do not use it. It should be clear.",
+      "Dropped \u2014 check the cartridge for a crack before you use it. If in doubt, message us."
+    ]
+  }
 }

@@ -472,6 +472,7 @@ function buildConfig(name, pens, templates, startDate) {
       injectionStepsVial: templates.injectionStepsVial,
       sites: templates.sites,
       concierge: templates.concierge,
+      handling: templates.handling,
       pens
     }
   };
