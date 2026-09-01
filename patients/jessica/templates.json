@@ -309,14 +309,103 @@
           "days": 84
         }
       ],
-      "notes": "Rotate injection sites as needed.",
+      "notes": "Rotate within your least reactive zone \u2014 see below.",
       "timing": "30-60 minutes before bed, at least 2 hours after eating",
       "cycle": "12-16 weeks on, 2-4 weeks off.",
       "monitoring": "IGF-1, fasting glucose, lipid panel. IGF-1 at week 8 \u2014 target high-normal; reduce the dose if IGF-1 is above 350-400 ng/mL.",
       "escalation": "Increase to 2 mg only if tolerated \u2014 no joint aches, swelling or carpal-tunnel symptoms.",
       "doseSource": "Dr Kendall \u2014 30 mg / 3 mL pen; 1 mg weeks 1-2 then 2 mg, daily",
       "vialMg": 30,
-      "diluentMl": 3
+      "diluentMl": 3,
+      "expect": [
+        {
+          "h": "Injection site reactions",
+          "p": "These build over time rather than showing up straight away, which catches most people off guard. Tesamorelin does not sting from acidity the way NAD+ does \u2014 it activates mast cells in the tissue under your skin, and the histamine they release causes the reaction.",
+          "list": [
+            "Itchy, raised welts that look like mosquito bites",
+            "Redness and warmth at the site",
+            "Mild swelling around the site"
+          ],
+          "note": "This is an immune response, not an allergy. It depends on your dose and on where you inject."
+        },
+        {
+          "h": "What the first two months look like",
+          "rows": [
+            [
+              "Weeks 1\u20133",
+              "Little or nothing. It is easy to assume you are in the clear."
+            ],
+            [
+              "Weeks 4\u20135",
+              "The first welts appear, and are often mistaken for bad technique."
+            ],
+            [
+              "Weeks 6\u20138",
+              "Reactions become consistent, and some sites are clearly worse than others."
+            ],
+            [
+              "Week 8 on",
+              "The pattern settles. This is when the steps below start to matter."
+            ]
+          ],
+          "note": "This is why \u201crotate your sites\u201d on its own does not fix it. Rotating from day one does not stop the reactions appearing \u2014 the tissue is reacting to repeated tesamorelin, not to the needle."
+        },
+        {
+          "h": "An antihistamine before you inject",
+          "p": "Taken 30\u201360 minutes ahead, an H1 blocker blunts the histamine response.",
+          "list": [
+            "Cetirizine (Zyrtec) 10 mg \u2014 non-drowsy and long-acting",
+            "Loratadine (Claritin) 10 mg \u2014 if cetirizine makes you sleepy",
+            "Diphenhydramine (Benadryl) 25 mg \u2014 stronger but sedating, which suits a before-bed injection"
+          ],
+          "note": "Most people find this reduces the reaction substantially, and for some it stops the welts entirely."
+        },
+        {
+          "h": "Inject deeper",
+          "p": "A shallow injection leaves the tesamorelin against the mast-cell-rich layer just under the skin. Going deeper puts distance between them.",
+          "list": [
+            "Use a \u00bd-inch needle and go in at 90\u00b0",
+            "Pinch firmly to give yourself depth",
+            "Aim for the fat pad, not just the space under the skin"
+          ],
+          "note": "If the reactions persist even with good depth, message the atelier before changing anything else \u2014 there are other options and we would rather adjust it with you."
+        },
+        {
+          "h": "Where you inject",
+          "p": "Sites are not equal. From what patients and the wider peptide community report:",
+          "rows": [
+            [
+              "Lower abdomen",
+              "Worst \u2014 the densest population of mast cells"
+            ],
+            [
+              "Upper abdomen",
+              "Moderate, and better than lower"
+            ],
+            [
+              "Love handles",
+              "Usually the best tolerated"
+            ],
+            [
+              "Outer thigh",
+              "Varies \u2014 fine for some, worse for others"
+            ]
+          ],
+          "note": "Find your least reactive zone and rotate within it, rather than moving all over your body.",
+          "figure": "belly"
+        },
+        {
+          "h": "When a reaction is more than a reaction",
+          "p": "A typical tesamorelin reaction stays at the site and settles within an hour or two. Tell us the same day if you see:",
+          "list": [
+            "Welts spreading beyond the injection site",
+            "Hives somewhere else on your body",
+            "Reactions worsening week after week despite everything above",
+            "A site turning hard, hot, or producing pus \u2014 that is infection, not histamine"
+          ],
+          "note": "Facial swelling, throat tightness or trouble breathing is different \u2014 call 911 first, then tell us. If reactions do not settle with an antihistamine and better technique, some people are simply sensitive to tesamorelin, and we will move you to a different GHRH analog."
+        }
+      ]
     },
     {
       "id": "semax",

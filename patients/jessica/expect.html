@@ -60,6 +60,36 @@
   ul li { position:relative; padding-left:16px; font-size:13.5px; line-height:1.55; margin-bottom:6px; }
   ul li::before { content:'·'; position:absolute; left:4px; color:var(--brass); font-weight:700; }
 
+  /* A two-column key/value run — a timeline, a ranking of sites. */
+  .rows { display:grid; grid-template-columns:auto 1fr; gap:7px 14px; margin-top:2px; }
+  .rows dt { font-size:12.5px; font-weight:600; color:var(--espresso); line-height:1.45; }
+  .rows dd { font-size:13px; line-height:1.45; }
+
+  /* A closing line that carries the point of the block. */
+  .body.note {
+    margin-top:9px; padding-left:11px; border-left:2px solid var(--hairline);
+    color:var(--muted);
+  }
+
+  .figwrap { margin-top:13px; }
+  .fig {
+    display:block; width:100%; max-width:230px; height:auto;
+    border-radius:12px; background:var(--bg);
+  }
+  .f-skin  { fill:none; stroke:var(--hairline); stroke-width:1.5; }
+  .f-clear { fill:none; stroke:var(--alert); stroke-width:1.5; stroke-dasharray:4 4; opacity:.65; }
+  .f-navel { fill:var(--muted); }
+  .f-spot circle { fill:var(--brass); opacity:.9; }
+  .f-num text {
+    fill:#F8F2EA; font-family:'Jost',sans-serif; font-size:13px;
+    font-weight:600; text-anchor:middle;
+  }
+  .f-cap {
+    fill:var(--alert); font-family:'Jost',sans-serif; font-size:8.5px;
+    letter-spacing:.09em; text-anchor:middle; opacity:.85;
+  }
+  .fig-cap { margin-top:7px; font-size:12px; line-height:1.5; color:var(--muted); }
+
   .call {
     margin-top:26px; padding:20px; border-radius:16px;
     background:rgba(164,85,63,.06); border:1px solid rgba(164,85,63,.22);
@@ -121,6 +151,42 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
 }
 
+/* A rotation diagram, not a map of where to inject — the four spots are one
+   zone worked through in turn, and the ring is the navel to stay clear of. */
+const FIGURES = {
+  belly: `<svg class="fig" viewBox="0 0 200 150" role="img"
+       aria-label="Four injection spots around the navel, rotated in turn, keeping two inches clear of the navel itself">
+    <rect x="14" y="10" width="172" height="130" rx="18" class="f-skin"/>
+    <circle cx="100" cy="75" r="30" class="f-clear"/>
+    <circle cx="100" cy="75" r="4"  class="f-navel"/>
+    <g class="f-spot">
+      <circle cx="52"  cy="42"  r="13"/><circle cx="148" cy="42"  r="13"/>
+      <circle cx="52"  cy="108" r="13"/><circle cx="148" cy="108" r="13"/>
+    </g>
+    <g class="f-num">
+      <text x="52"  y="47">1</text><text x="148" y="47">2</text>
+      <text x="52"  y="113">3</text><text x="148" y="113">4</text>
+    </g>
+  </svg>
+  <div class="fig-cap">One spot per day, in order — back to 1 on the fifth day.
+    The dashed ring is your navel: keep two inches clear of it.</div>`
+};
+
+/* One block of the `expect` array: a heading, then whichever of prose, a
+   list, a two-column table and a diagram that block actually carries. */
+function section(s) {
+  let out = `<div class="lab">${esc(s.h)}</div>`;
+  if (s.p) out += `<div class="body">${esc(s.p)}</div>`;
+  if (s.list) out += `<ul>${s.list.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`;
+  if (s.rows) {
+    out += `<dl class="rows">${s.rows.map(([k, v]) =>
+      `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
+  }
+  if (s.figure && FIGURES[s.figure]) out += `<div class="figwrap">${FIGURES[s.figure]}</div>`;
+  if (s.note) out += `<div class="body note">${esc(s.note)}</div>`;
+  return out;
+}
+
 (async function boot() {
   try {
     await loadProtocol();
@@ -152,6 +218,9 @@ function esc(s) {
       bits.push(`<div class="lab">What you may notice</div><ul>${
         pen.sideEffects.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`);
     }
+    // Some pens need more than a label and a list — a timeline, a ranking of
+    // sites, a diagram. Those pens carry `expect` and it renders here.
+    if (pen.expect && pen.expect.length) bits.push(pen.expect.map(section).join(''));
     if (pen.escalation) bits.push(`<div class="lab">Before increasing</div><div class="body">${esc(pen.escalation)}</div>`);
     if (pen.monitoring) bits.push(`<div class="lab">What we watch</div><div class="body">${esc(pen.monitoring)}</div>`);
     if (pen.storage) bits.push(`<div class="lab">Storing it</div><div class="body">${esc(pen.storage)}</div>`);
