@@ -547,12 +547,13 @@
   ],
   "handling": {
     "needles": [
-      "A fresh needle every single injection. Reusing one blunts it, which hurts more and damages the tissue.",
-      "Take the needle off as soon as you have injected. A pen stored with the needle on can leak, and it lets air into the cartridge.",
-      "Never share a pen, even with a new needle."
+      "A new disposable pen tip before every single use. Never reuse one \u2014 it blunts, which hurts more and damages the tissue.",
+      "Take the tip off immediately after you inject. A pen stored with the tip on can leak, and it lets air into the cartridge.",
+      "Put the pen cap back on, and put the pen straight back where it lives.",
+      "Never share a pen, even with a new tip."
     ],
     "sharps": [
-      "Used needles go in a sharps container \u2014 never the household bin, never a bottle.",
+      "Used pen tips go in a sharps container, in line with local sharps disposal rules \u2014 never the household bin, never a bottle.",
       "Bring the full container to the atelier and we will dispose of it for you."
     ],
     "travel": [
@@ -565,6 +566,19 @@
       "Frozen when it should not have been \u2014 do not use it. Freezing breaks the peptide even after it thaws.",
       "Cloudy, discoloured, or with anything floating in it \u2014 do not use it. It should be clear.",
       "Dropped \u2014 check the cartridge for a crack before you use it. If in doubt, message us."
-    ]
+    ],
+    "priming": {
+      "why": "A new pen is primed once, before the very first dose. It clears the air out of the system, gets the medication flowing, and is what makes the dial accurate.",
+      "steps": [
+        "Take the pen cap off",
+        "Screw on a new disposable pen tip",
+        "Take the protective cover off the pen tip",
+        "Hold the pen upright, tip pointing at the ceiling",
+        "Turn the dial forward 3 clicks",
+        "Press the injection button all the way down"
+      ],
+      "check": "Look for a small bead of fluid at the tip. If nothing appears, repeat the same steps until it does. Once you see fluid, the pen is primed.",
+      "once": "Only before the first dose from a new pen \u2014 not before every injection."
+    }
   }
 }

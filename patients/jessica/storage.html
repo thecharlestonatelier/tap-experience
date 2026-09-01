@@ -185,9 +185,25 @@ function place(pen) {
           </div>
         </div>`).join('')}
       </div>
-      <div class="steps-note">Keep them out of the light and away from the back wall
-        of the fridge, where things freeze. A pen that has frozen is finished, even
-        once it thaws.</div>
+      <div class="steps-note">Refrigerated at all times — it is what preserves the
+        potency. Keep them out of the light and away from heat, and away from the
+        back wall of the fridge, where things freeze. A pen that has frozen is
+        finished, even once it thaws.</div>
+    </div>`);
+  }
+
+  // ---- Priming ---------------------------------------------------------
+  // Dial pens only. A drawn-up vial has nothing to prime, and showing the
+  // step to someone holding a syringe would just be confusing.
+  if (H.priming && PENS.some(p => !isSyringe(p))) {
+    out.push(`<div class="block">
+      <h2>Before the first dose</h2>
+      <div class="sub">Priming a new pen</div>
+      <div class="body">${esc(H.priming.why)}</div>
+      <div class="lab">Steps to prime</div>
+      <ol class="steps">${num(H.priming.steps)}</ol>
+      <div class="steps-note"><strong>${esc(H.priming.check)}</strong></div>
+      <div class="steps-note">${esc(H.priming.once)}</div>
     </div>`);
   }
 
@@ -222,7 +238,7 @@ function place(pen) {
   // ---- Needles, sharps, travel ----------------------------------------
   if (H.needles || H.sharps) {
     out.push(`<div class="block">
-      <h2>Needles</h2>
+      <h2>Pen tips and handling</h2>
       ${H.needles ? `<ul>${li(H.needles)}</ul>` : ''}
       ${H.sharps ? `<div class="lab">Throwing them away</div><ul>${li(H.sharps)}</ul>` : ''}
     </div>`);
