@@ -580,6 +580,7 @@
       "check": "Look for a small bead of fluid at the tip. If nothing appears, repeat the same steps until it does. Once you see fluid, the pen is primed.",
       "once": "Only before the first dose from a new pen \u2014 not before every injection."
     },
-    "storageNote": "Tirzepatide is the exception \u2014 it lives in the FREEZER, not the fridge, in a light-filtering zip lock. Everything else stays refrigerated and must never freeze."
+    "storageNote": "Tirzepatide is the exception \u2014 it lives in the FREEZER, not the fridge, in a light-filtering zip lock. Everything else stays refrigerated and must never freeze.",
+    "tutorialVideo": ""
   }
 }

@@ -103,14 +103,6 @@
          color:var(--brass); margin:18px 0 8px; }
   .lab:first-of-type { margin-top:0; }
 
-  /* Site rotation diagram. Its own marks are styled inside the SVG. */
-  .figwrap { margin-top:4px; }
-  .fig {
-    display:block; width:100%; max-width:240px; height:auto;
-    border-radius:12px; background:var(--bg);
-  }
-  .fig-rules { margin-top:11px; }
-
   .call {
     margin-top:26px; padding:20px; border-radius:16px;
     background:rgba(164,85,63,.06); border:1px solid rgba(164,85,63,.22);
@@ -230,35 +222,7 @@ function place(pen) {
     </div>`);
   }
 
-  // ---- Giving it -------------------------------------------------------
-  // A card can hold both a dial pen and a draw-up vial. Show only the
-  // steps that apply to what she actually has.
-  const hasPen  = PENS.some(p => !isSyringe(p));
-  const hasVial = PENS.some(p =>  isSyringe(p));
-  const steps = [];
-  if (hasPen && CFG.protocol.injectionSteps) {
-    steps.push(`<div class="lab">With a pen</div>
-      <ol class="steps">${num(CFG.protocol.injectionSteps.map(
-        s => s.replace('{units}', 'your number')))}</ol>`);
-  }
-  if (hasVial && CFG.protocol.injectionStepsVial) {
-    steps.push(`<div class="lab">Drawing from a vial</div>
-      <ol class="steps">${num(CFG.protocol.injectionStepsVial.map(
-        s => s.replace('{units}', 'your number')))}</ol>`);
-  }
-  if (steps.length) {
-    out.push(`<div class="block">
-      <h2>Giving it</h2>
-      <div class="sub">Today's Ritual has your exact number for the day.</div>
-      ${steps.join('')}
-      <div class="lab">Rotating sites</div>
-      <div class="figwrap">${bellyFigure()}</div>
-      <ul class="fig-rules">
-        <li>Rotate sites with every injection</li>
-        <li>Keep two inches clear of your navel</li>
-      </ul>
-    </div>`);
-  }
+  // How to actually give it lives on the Injection Tutorial page.
 
   // ---- Needles, sharps, travel ----------------------------------------
   if (H.needles || H.sharps) {
