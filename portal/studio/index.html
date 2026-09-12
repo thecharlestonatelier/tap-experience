@@ -95,6 +95,10 @@
   .phase-head { font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
   .phase-head span { padding-left:2px; }
   .phase input { padding:7px 9px; font-size:13.5px; }
+  /* Days comes from the peptide, so it is shown rather than asked for. */
+  .phase .derived { font-size:13px; color:var(--muted); padding:7px 2px; text-align:center; }
+  .life { font-size:12px; color:var(--muted); margin-top:4px; }
+  .life strong { color:var(--alert, #A4553F); font-weight:600; }
   .x { background:transparent; border:0; color:var(--muted); font-size:19px; line-height:1; padding:2px 7px; }
   .mg { font-size:12px; color:var(--muted); margin-top:6px; }
   .setup-note { font-size:12.5px; color:var(--brass); margin-top:8px; }
@@ -332,7 +336,8 @@ $('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').
 
 async function start() {
   $('app').hidden = false;
-  TEMPLATES = await (await fetch('/templates.json', { cache: 'no-store' })).json();
+  TEMPLATES = resolveDoses(
+    await (await fetch('/templates.json', { cache: 'no-store' })).json());
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
     TEMPLATES.templates.filter(t => t.id !== 'custom')
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -488,6 +493,56 @@ function perMlOf(t) {
   return total / (t.volumeMl || 1);
 }
 
+/* Templates carry the dose in milligrams; the dial is in units. The portal
+   resolves one to the other on load and so must this page — without it every
+   Units box opens blank, the milligram line reads 0.00, and a phase saved
+   from here is dropped on the way to the store for having no units. */
+function resolveDoses(templates) {
+  (templates.templates || []).forEach(t => {
+    const c = perMlOf(t);
+    (t.phases || []).forEach(ph => {
+      if (ph.mg != null && c) ph.units = Math.floor(ph.mg / c / ML_PER_UNIT);
+      else if (ph.units != null && c) ph.mg = Math.round(c * ph.units * ML_PER_UNIT * 1000) / 1000;
+    });
+  });
+  return templates;
+}
+
+/* How far one pen actually goes: every scheduled dose drawn in turn until
+   either the phases run out or the next dose will not fit. This mirrors the
+   engine in protocol.js rather than guessing, so the number here is the
+   number the patient's card will behave like. `left` is what is still in the
+   pen when it is retired — a large figure means the protocol ends long
+   before the pen does. */
+function penLife(t, phases) {
+  const vol = t.volumeMl || 3;
+  const sc = t.schedule || { on: 7, off: 0 };
+  const cyc = sc.weekly ? 7 : (sc.on + sc.off);
+  const on = sc.weekly ? 1 : sc.on;
+  let bound = 0;
+  const ends = (phases || []).map(ph => (bound += (ph.days == null ? 3650 : ph.days)));
+  let ml = vol, doses = 0, last = 0, spent = false;
+  for (let i = 0; i < bound; i++) {
+    if (i % cyc >= on) continue;
+    const pi = ends.findIndex(e => i < e);
+    if (pi === -1) break;
+    const u = Number(phases[pi].units) || 0;
+    if (!u) break;
+    if (u * ML_PER_UNIT > ml + 1e-9) { spent = true; break; }
+    ml -= u * ML_PER_UNIT; doses++; last = i + 1;
+  }
+  return { days: last, doses, left: ml, spent };
+}
+
+function lifeLine(t, phases) {
+  if (!phases || !phases.length) return '';
+  const L = penLife(t, phases);
+  if (!L.doses) return '';
+  const wasted = L.left > 0.05
+    ? ` · <strong>${L.left.toFixed(2)} mL left in the pen</strong>` : '';
+  return `Lasts ${L.days} days — ${L.doses} injection${L.doses > 1 ? 's' : ''}${wasted}`;
+}
+
 function mgLine(t, phases) {
   const c = perMlOf(t);
   return (phases || []).map(ph => {
@@ -530,10 +585,12 @@ function renderPens() {
         <div class="phase">
           <input data-p="${pi}" data-f="${fi}" data-k="name" value="${ph.name || ''}" placeholder="Phase">
           <input data-p="${pi}" data-f="${fi}" data-k="units" type="number" min="1" value="${ph.units || ''}" placeholder="units">
-          <input data-p="${pi}" data-f="${fi}" data-k="days" type="number" min="1" value="${ph.days == null ? '' : ph.days}" placeholder="days">
+          <span class="derived" title="Set by the peptide, not per patient">${
+            ph.days == null ? 'till empty' : ph.days + ' d'}</span>
           <button type="button" class="x" data-dropphase="${pi}:${fi}" title="Remove phase">×</button>
         </div>`).join('')}
       <div class="mg" data-mg="${pi}">${mgLine(t, phases)}</div>
+      <div class="life" data-life="${pi}">${lifeLine(t, phases)}</div>
       <button type="button" class="ghost sm" data-addphase="${pi}" style="margin-top:10px">Add phase</button>
     </div>`;
   }).join('');
@@ -545,13 +602,15 @@ function renderPens() {
       const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
       pen.phases = pen.phases || JSON.parse(JSON.stringify(t.phases || []));
       pen.phases[f][k] = k === 'name' ? inp.value
-        : (inp.value === '' ? (k === 'days' ? null : 0) : Number(inp.value));
+        : (inp.value === '' ? 0 : Number(inp.value));
 
       // Redraw only the milligram line. Re-rendering the whole pen would
       // take the caret out of the box being typed in, which is why this
       // used to sit stale showing the dose before the change.
       const mgEl = list.querySelector(`[data-mg="${p}"]`);
       if (mgEl) mgEl.textContent = mgLine(t, pen.phases);
+      const lifeEl = list.querySelector(`[data-life="${p}"]`);
+      if (lifeEl) lifeEl.innerHTML = lifeLine(t, pen.phases);
     }));
 
   list.querySelectorAll('[data-drop]').forEach(b =>
