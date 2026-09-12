@@ -33,15 +33,26 @@ function sanitizeDose(input) {
     units: Number.isFinite(units) && units > 0 ? Math.round(units) : 0,
     mg: Number.isFinite(Number(input.mg)) ? Number(input.mg) : null,
     at: /^\d{4}-\d{2}-\d{2}T/.test(input.at || '') ? input.at : nowIso(),
+    // The calendar day as the PHONE saw it. An 8pm injection in Charleston
+    // is already tomorrow in UTC, and a green mark that lands on the wrong
+    // square is worse than no mark, so the date is not derived from `at`.
+    day: /^\d{4}-\d{2}-\d{2}$/.test(input.day || '')
+      ? input.day
+      : (input.at || nowIso()).slice(0, 10),
     recordedAt: nowIso()
   };
 }
 
-/* A dose is identified by patient, vial and day. Tapping the same vial
-   twice in a minute is one dose, not two — a patient checking the page
-   after injecting should not double the record. */
+/* A dose is identified by patient, pen and day: one square on the calendar
+   is one dose. Tapping the sticker again — later the same evening, or
+   because she wasn't sure the first tap took — is the same dose, not a
+   second one.
+
+   A pen taken morning AND evening would need the time band in this key.
+   No template is twice daily today, and inventing a key for a protocol
+   that doesn't exist would only make a double tap count as two. */
 function doseId(d) {
-  return `${d.slug}.${d.template || 'pen'}.${d.at.slice(0, 13)}`;
+  return `${d.slug}.${d.template || 'pen'}.${d.day}`;
 }
 
 function firestoreDoses(db) {

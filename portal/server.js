@@ -293,6 +293,24 @@ async function route(req, res) {
     return json(res, 200, { ok: true, duplicate });
   }
 
+  /* --- which days are green, for the patient's own calendar ---
+     Her card address is what opens this, the same as the protocol behind
+     it, so it carries no more than she can already see. Days and pen ids
+     only: no lot, no dose, nothing that would matter if it were read
+     aloud. The dashboard's /api/doses below is the full record and stays
+     behind the passphrase. */
+  if (p.startsWith('/api/logged/')) {
+    const slug = assertSlug(p.slice('/api/logged/'.length));
+    if (!await store.get(slug)) return json(res, 404, { error: 'not_found' });
+    const days = {};
+    for (const d of await doses.forSlug(slug, 400)) {
+      const day = d.day || String(d.at || '').slice(0, 10);
+      if (!day) continue;
+      (days[day] = days[day] || []).push(d.template || 'pen');
+    }
+    return json(res, 200, { days });
+  }
+
   /* --- what a card has logged, for the dashboard --- */
   if (p.startsWith('/api/doses/')) {
     const slug = assertSlug(p.slice('/api/doses/'.length));

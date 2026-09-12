@@ -39,18 +39,12 @@
 
   .card { background:var(--card); border-radius:18px; padding:22px;
           box-shadow:0 1px 2px rgba(59,46,32,.05), 0 8px 22px rgba(59,46,32,.05); }
-  .who { text-align:center; padding-bottom:16px; margin-bottom:16px;
-         border-bottom:1px solid var(--hairline); }
-  .who small { display:block; font-size:10px; letter-spacing:.16em;
-               text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
-  .who b { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
-           font-size:27px; letter-spacing:.06em; text-transform:uppercase; color:var(--espresso); }
 
-  .rows { display:grid; grid-template-columns:auto 1fr; gap:9px 16px; }
-  .rows dt { font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
-             color:var(--muted); align-self:center; }
-  .rows dd { font-size:15px; color:var(--espresso); text-align:right; }
-  .rows dd b { font-family:'Cormorant Garamond',Georgia,serif; font-size:26px; font-weight:500; }
+  /* One line under the question, so she can see it is her card and what
+     the pen should be turned to without reading a form. */
+  .line { text-align:center; font-size:13px; color:var(--muted); }
+  .line b { font-family:'Cormorant Garamond',Georgia,serif; font-size:19px;
+            font-weight:500; color:var(--espresso); }
 
   .act { display:block; width:100%; margin-top:20px; padding:16px;
          border:0; border-radius:999px; background:var(--espresso); color:#F6F0E7;
@@ -146,53 +140,64 @@ function stop(title, why, showOpen) {
       `${t.name} is not part of your protocol. Please message the atelier before injecting.`, true);
   }
 
-  const dose = doseOn(pen, today());
+  const when = today();
+  const day = iso(when);
+  const dose = doseOn(pen, when);
   if (!dose) {
     return stop('Not scheduled today',
       `Today is a rest day for ${t.name}. Message the atelier if you think that is wrong.`, true);
   }
 
+  /* The green square, once it is green. Shown after a yes, and also on a
+     second tap, so the answer to "did that go through?" is the same
+     screen either way. */
+  function logged(already) {
+    view.innerHTML = `<div class="done">
+      <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg>
+      <h2>${already ? 'Already logged' : 'Logged'}</h2>
+      <p class="lede">${esc(pen.name)}, ${dose.units} units — today is marked.</p>
+      <a class="ghost" href="calendar.html?c=${encodeURIComponent(slug)}">See my calendar</a>
+      <a class="ghost" href="${esc(HOME)}">Back to my card</a>
+    </div>`;
+  }
+
+  // Already green? Say so before asking a question she has answered.
+  try {
+    const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (res.ok) {
+      const { days } = await res.json();
+      if ((days[day] || []).includes(t.id)) return logged(true);
+    }
+  } catch { /* the question still stands without it */ }
+
+  // One question, two answers. Everything needed to answer it is on the
+  // line underneath: whose card this is, and what to turn the pen to.
   view.innerHTML = `
-    <p class="eyebrow">Vial label</p>
-    <h1>Log this dose</h1>
-    <p class="lede">Confirm this is you, and that you have injected it.</p>
+    <h1>Log today's dose of ${esc(pen.name)}?</h1>
     <div class="card">
-      <div class="who"><small>Logging for</small><b>${esc(CFG.patient.name)}</b></div>
-      <dl class="rows">
-        <dt>Pen</dt><dd>${esc(pen.name)}</dd>
-        ${V.lot ? `<dt>Lot</dt><dd>${esc(V.lot)}</dd>` : ''}
-        <dt>Dose</dt><dd><b>${dose.units}</b> units</dd>
-        <dt>That is</dt><dd>${round(dose.totalMg, 2)} mg</dd>
-      </dl>
-      <button class="act" id="go">I injected this</button>
-      <a class="ghost" href="${esc(HOME)}">Not me — open my card</a>
+      <p class="line">${esc(CFG.patient.name)} · <b>${dose.units}</b> units · ${round(dose.totalMg, 2)} mg</p>
+      <button class="act" id="go">Yes</button>
+      <a class="ghost" href="${esc(HOME)}">No</a>
     </div>
-    <p class="note">This goes in your chart at the atelier. Nothing is recorded until you tap the button.</p>`;
+    <p class="note">Nothing is recorded until you answer.</p>`;
 
   document.getElementById('go').addEventListener('click', async e => {
     const btn = e.currentTarget;
-    btn.disabled = true; btn.textContent = 'Recording…';
+    btn.disabled = true; btn.textContent = 'One moment…';
     try {
       const res = await fetch('/api/dose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slug, template: t.id, lot: V.lot, pen: pen.name, frequency: freqText(pen),
-          units: dose.units, mg: round(dose.totalMg, 3), at: new Date().toISOString()
+          units: dose.units, mg: round(dose.totalMg, 3),
+          at: new Date().toISOString(), day
         })
       });
       if (!res.ok) throw new Error('refused');
-      const out = await res.json();
-      view.innerHTML = `<div class="done">
-        <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg>
-        <h2>${out.duplicate ? 'Already logged' : 'Logged'}</h2>
-        <p class="lede">${out.duplicate
-          ? 'This dose was already on your record.'
-          : `${esc(pen.name)}, ${dose.units} units. It is on your record at the atelier.`}</p>
-        <a class="ghost" href="${esc(HOME)}">Back to my card</a>
-      </div>`;
+      logged((await res.json()).duplicate);
     } catch {
       btn.disabled = false; btn.textContent = 'Try again';
       const p = document.createElement('p');

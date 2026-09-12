@@ -257,6 +257,28 @@
   </section>
 
   <section>
+    <h2>Vial stickers</h2>
+    <p class="hint">
+      One address per peptide, not per patient &mdash; write a roll of each and
+      any sticker works for whoever is holding the pen. Tapping one asks
+      &ldquo;log today&rsquo;s dose?&rdquo; and marks the day on that patient&rsquo;s calendar.
+      Add a lot number if you want it recorded with every dose from that box.
+    </p>
+    <div class="panel">
+      <div class="row" style="margin-bottom:12px">
+        <div style="flex:0 0 200px">
+          <label for="vialLot">Lot (optional)</label>
+          <input id="vialLot" placeholder="e.g. K2607" autocomplete="off">
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Pen</th><th>Sticker address</th><th>On tag</th><th></th></tr></thead>
+        <tbody id="vialRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
     <h2>In use</h2>
     <p class="hint">
       What the cards are doing. A card is counted once per patient browsing
@@ -437,11 +459,43 @@ async function start() {
   TEMPLATES = resolveDoses(
     await (await fetch('/templates.json', { cache: 'no-store' })).json());
   renderDeck();
+  renderVials();
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
     TEMPLATES.templates.filter(t => t.id !== 'custom')
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   await refresh();
   updatePreview();
+}
+
+/* ---------- vial stickers ----------
+   The sticker names the pen and, if you want it, the box it came from —
+   never a patient. That is what lets a roll be written in one sitting and
+   stuck on whatever comes out of the fridge: the phone supplies the person,
+   the sticker supplies the drug. */
+function vialUrl(id, lot) {
+  return `${ORIGIN}/v/${lot ? `${id}.${lot}` : id}`;
+}
+
+function renderVials() {
+  const lot = ($('vialLot').value || '').trim().replace(/[^A-Za-z0-9-]/g, '');
+  $('vialRows').innerHTML = (TEMPLATES.templates || [])
+    .filter(t => t.id !== 'custom')
+    .map(t => {
+      const url = vialUrl(t.id, lot);
+      return `<tr>
+        <td>${t.name}</td>
+        <td class="slug">/v/${lot ? `${t.id}.${lot}` : t.id}</td>
+        <td class="bytes" style="white-space:nowrap">${tagBytes(url)} bytes</td>
+        <td style="text-align:right"><button class="ghost sm" data-vial="${t.id}">Copy</button></td>
+      </tr>`;
+    }).join('');
+
+  $('vialRows').querySelectorAll('[data-vial]').forEach(b =>
+    b.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(vialUrl(b.dataset.vial, lot)
+        .replace(/^https?:\/\//, ''));
+      toast('Sticker address copied — paste it into NFC Tools.');
+    }));
 }
 
 /* ---------- the card list ---------- */
@@ -526,6 +580,7 @@ function updatePreview() {
 }
 
 ['first', 'last'].forEach(id => $(id).addEventListener('input', updatePreview));
+$('vialLot').addEventListener('input', () => { if (TEMPLATES) renderVials(); });
 $('unique').addEventListener('change', updatePreview);
 
 $('create').addEventListener('click', async () => {

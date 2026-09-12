@@ -32,9 +32,15 @@
     --sage:  #7E9080;
     --gold:  #A38C69;
     --plum:  #8A6B75;
+    --slate: #6B7A87;
+    --pc:    var(--gold);
+    /* Taken. Deep enough to carry small text on the cream card (4.98:1),
+       not so dark it reads as another pen colour. */
+    --done:  #4C7150;
   }
-  .c-clay { --pc: var(--clay); } .c-sage { --pc: var(--sage); }
-  .c-brass{ --pc: var(--gold); } .c-plum { --pc: var(--plum); }
+  .c-clay { --pc: var(--clay); } .c-sage  { --pc: var(--sage); }
+  .c-brass{ --pc: var(--gold); } .c-plum  { --pc: var(--plum); }
+  .c-slate{ --pc: var(--slate); }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -99,6 +105,12 @@
   .dnum { font-size: 12.5px; color: var(--espresso-soft); font-variant-numeric: tabular-nums; }
   .day.today .dnum { color: var(--brass); font-weight: 600; }
 
+  /* The mark a tap earns. It sits beside the date rather than around the
+     cell, because today and the selected day already own the two rings. */
+  .dnum-row { display: flex; align-items: center; gap: 4px; }
+  .tick { width: 11px; height: 11px; color: var(--done); flex: none; }
+  .day.part .tick { opacity: .45; }
+
   .pill {
     width: 100%; border-radius: 5px;
     background: var(--pc); color: #FBF6F0;
@@ -106,6 +118,10 @@
     font-variant-numeric: tabular-nums;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  /* A logged pen keeps its own colour — the row is still "which pen" —
+     and gains the tick, so a morning pen taken and an evening pen not yet
+     are told apart at a glance. */
+  .pill.done::before { content: '✓ '; }
 
   /* ---------- Day detail ---------- */
   .detail {
@@ -130,6 +146,7 @@
     font-size: 21px; font-weight: 500; color: var(--pc);
   }
   .rdose span { font-size: 11px; color: var(--muted); display: block; }
+  .rlogged { font-size: 11.5px; color: var(--done); margin-top: 3px; }
 
   .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
   .leg { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
@@ -179,8 +196,34 @@
 
 let cursor, selected;
 
+/* What the stickers have logged: day -> the pens taken that day. Read once
+   on load, from the card's own address — the same thing that opens this
+   page. A card that has never been tapped, or a legacy card with no slug,
+   simply leaves it empty and the month reads as it always did. */
+let LOGGED = {};
 
 const cls = pen => `c-${pen.color || 'brass'}`;
+
+/* A pen on a card is identified by the template it came from; that is the
+   id the vial sticker carries. */
+const penKey = pen => pen.template || pen.id;
+
+function takenOn(pen, d) {
+  return (LOGGED[iso(d)] || []).includes(penKey(pen));
+}
+
+async function loadLogged() {
+  const slug = (typeof CARD_SLUG !== 'undefined' && CARD_SLUG) || null;
+  if (!slug) return;
+  try {
+    const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (res.ok) LOGGED = (await res.json()).days || {};
+  } catch { /* the calendar is still a calendar without it */ }
+}
+
+const TICK = `<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="taken"
+  role="img"><path d="M4 12.5l5 5L20 6.5"/></svg>`;
 
 function render() {
   const grid = document.getElementById('grid');
@@ -197,7 +240,7 @@ function render() {
   const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
   const start = addDays(first, -(isoDow(first) - 1));
   const t = today();
-  let dosingDays = 0;
+  let dosingDays = 0, takenDays = 0;
 
   for (let i = 0; i < 42; i++) {
     const d = addDays(start, i);
@@ -205,17 +248,23 @@ function render() {
     const due = dueOn(d);
     if (inMonth && due.length) dosingDays++;
 
+    const taken = due.filter(pen => takenOn(pen, d)).length;
+    if (inMonth && taken) takenDays++;
+
     const b = document.createElement('button');
     b.className = 'day'
       + (inMonth ? '' : ' out')
       + (due.length ? '' : ' rest')
       + (iso(d) === iso(t) ? ' today' : '')
-      + (selected && iso(d) === iso(selected) ? ' sel' : '');
+      + (selected && iso(d) === iso(selected) ? ' sel' : '')
+      + (taken && taken === due.length ? ' done' : taken ? ' part' : '');
 
-    b.innerHTML = `<span class="dnum">${d.getDate()}</span>` +
+    b.innerHTML =
+      `<span class="dnum-row"><span class="dnum">${d.getDate()}</span>${taken ? TICK : ''}</span>` +
       due.map(pen => {
         const dose = doseOn(pen, d);
-        return `<span class="pill ${cls(pen)}">${pen.short || pen.name.slice(0,3)} ${dose.units}</span>`;
+        return `<span class="pill ${cls(pen)}${takenOn(pen, d) ? ' done' : ''}">${
+          pen.short || pen.name.slice(0,3)} ${dose.units}</span>`;
       }).join('');
 
     b.addEventListener('click', () => { selected = d; render(); });
@@ -223,7 +272,9 @@ function render() {
   }
 
   document.getElementById('sub').textContent =
-    `${dosingDays} dosing ${dosingDays === 1 ? 'day' : 'days'} this month · the number is what to turn the pen to`;
+    `${dosingDays} dosing ${dosingDays === 1 ? 'day' : 'days'} this month` +
+    (takenDays ? ` · ${takenDays} marked taken` : '') +
+    ' · the number is what to turn the pen to';
 
   renderDetail();
 }
@@ -247,6 +298,7 @@ function renderDetail() {
           <div class="rname">${pen.name}</div>
           <div class="rmeta">${dose.phase.name} · ${pen.time} · ${pen.route}</div>
           <div class="rmeta">${dose.components.map(c => `${c.name} ${round(c.mg,2)} mg`).join(' · ')}</div>
+          ${takenOn(pen, d) ? '<div class="rlogged">✓ Taken</div>' : ''}
         </div>
         <div class="rdose"><b>${dose.units}</b><span>units · ${round(dose.ml,2)} mL</span></div>
       </div>`;
@@ -254,8 +306,12 @@ function renderDetail() {
 }
 
 function renderLegend() {
-  document.getElementById('legend').innerHTML = PENS.map(p =>
-    `<span class="leg ${cls(p)}"><i></i>${p.name}</span>`).join('');
+  document.getElementById('legend').innerHTML =
+    PENS.map(p => `<span class="leg ${cls(p)}"><i></i>${p.name}</span>`).join('') +
+    // Only where a sticker can actually mark a day: a card with no slug
+    // never logs anything, so the key would explain a mark that cannot appear.
+    (typeof CARD_SLUG !== 'undefined' && CARD_SLUG
+      ? `<span class="leg" style="color:var(--done)">${TICK}Taken</span>` : '');
 }
 
 (async function boot() {
@@ -270,6 +326,7 @@ function renderLegend() {
   selected = today();
   document.title = `Calendar — ${CFG.patient.name}`;
 
+  await loadLogged();
   render();
   renderLegend();
   applyCardLinks();
