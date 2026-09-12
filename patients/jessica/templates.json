@@ -47,7 +47,7 @@
         {
           "name": "Standard",
           "mg": 2.4,
-          "days": 41
+          "days": null
         }
       ],
       "notes": "Rotate injection sites as needed.",
@@ -84,7 +84,7 @@
         {
           "name": "Standard",
           "mg": 1.0,
-          "days": 28
+          "days": null
         }
       ],
       "notes": "Rotate injection sites as needed.",
@@ -123,7 +123,7 @@
         {
           "name": "Standard",
           "mg": 50.0,
-          "days": 10
+          "days": null
         }
       ],
       "notes": "Rotate injection sites as needed.",
@@ -200,7 +200,7 @@
         {
           "name": "Maintenance",
           "mg": 0.5,
-          "days": 14
+          "days": null
         }
       ],
       "notes": "Rotate injection sites as needed.",
@@ -242,7 +242,7 @@
         {
           "name": "Maintenance",
           "mg": 2.0,
-          "days": 15
+          "days": null
         }
       ],
       "notes": "Rotate injection sites as needed.",
@@ -280,7 +280,7 @@
         {
           "name": "Standard",
           "mg": 0.2,
-          "days": 30
+          "days": null
         }
       ],
       "notes": "Rotate injection sites as needed.",
@@ -319,7 +319,7 @@
         {
           "name": "Maintenance",
           "mg": 2.0,
-          "days": 84
+          "days": null
         }
       ],
       "notes": "Rotate within your least reactive zone \u2014 see below.",
@@ -449,7 +449,7 @@
         {
           "name": "Standard",
           "mg": 1.0,
-          "days": 28
+          "days": null
         }
       ],
       "notes": "Rotate injection sites as needed.",

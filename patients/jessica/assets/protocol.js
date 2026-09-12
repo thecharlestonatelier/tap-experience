@@ -16,7 +16,11 @@ var CFG = null, PENS = [], START = null;
 var DAY_MS = 86400000;
 var ML_PER_UNIT = 0.01;              // one unit on the pen dial = 0.01 mL
 var REFILL_WARNING_DAYS = 7;         // start asking for a refill this far out
-var OPEN_PHASE_HORIZON = 120;        // how far to project an open-ended phase
+var OPEN_PHASE_HORIZON = 730;        // how far to project an open-ended phase.
+                                     // A course ends when the pen is empty, so this
+                                     // only has to outrun the longest pen — CJC /
+                                     // Ipamorelin at 138 days. It is a projection
+                                     // bound, not a protocol length.
 
 var DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 var TIME_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
