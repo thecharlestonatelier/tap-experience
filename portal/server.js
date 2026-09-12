@@ -239,6 +239,25 @@ async function route(req, res) {
     return json(res, 200, publicView(rec));
   }
 
+  /* --- a tag was tapped ---
+     Called by the card itself on open. It records three things and nothing
+     else: that this slug was opened, when, and on which day. No address, no
+     device, no fragment — the fragment carries the protocol and browsers do
+     not send it, which is why legacy fragment cards are invisible here and
+     will stay that way. The page pings once per browsing session, so a
+     refresh does not inflate the count. */
+  if (p.startsWith('/api/tap/') && req.method === 'POST') {
+    const slug = assertSlug(p.slice('/api/tap/'.length));
+    if (!store.touch) return json(res, 501, { error: 'not_supported' });
+    const rec = await store.get(slug);
+    // An unknown slug is not worth a record — it would let anyone create
+    // rows by guessing.
+    if (!rec) return json(res, 404, { error: 'not_found' });
+    const day = new Date().toISOString().slice(0, 10);
+    await store.touch(slug, day);
+    res.writeHead(204); return res.end();
+  }
+
   /* --- the dashboard's side --- */
   if (p === '/api/session' && req.method === 'POST') {
     const body = await readBody(req);

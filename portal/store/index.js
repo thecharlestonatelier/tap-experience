@@ -33,6 +33,18 @@ const COLLECTION = process.env.CARD_COLLECTION || 'cards';
 function nowIso() { return new Date().toISOString(); }
 
 /* Whatever the dashboard posts, only these fields are ever stored. */
+/* Counters live on the record but are not editable from the dashboard, so
+   every save has to carry them forward or a card's history resets the first
+   time its protocol is changed. */
+function carryCounters(out, existing) {
+  if (!existing) return out;
+  if (existing.taps != null) out.taps = Number(existing.taps) || 0;
+  if (existing.firstSeen) out.firstSeen = existing.firstSeen;
+  if (existing.lastSeen) out.lastSeen = existing.lastSeen;
+  if (existing.days) out.days = existing.days;
+  return out;
+}
+
 function sanitize(input, existing = null) {
   const rec = {
     slug: normalizeSlug(input.slug || (existing && existing.slug)),
@@ -54,7 +66,7 @@ function sanitize(input, existing = null) {
   // so here means the dashboard never has to remember to set it.
   if (!rec.status) rec.status = (rec.name || rec.pens.length) ? 'active' : 'blank';
   if (!rec.name && rec.pens.length === 0 && rec.status === 'active') rec.status = 'blank';
-  return rec;
+  return carryCounters(rec, existing);
 }
 
 function sanitizePen(pen) {
@@ -122,6 +134,16 @@ function firestoreStore() {
     },
     async remove(slug) {
       await col.doc(normalizeSlug(slug)).delete();
+    },
+    // A tap must never clobber an edit saved a moment earlier, so this is a
+    // merge of three counters rather than a write of the record.
+    async touch(slug, day) {
+      const { FieldValue } = require('@google-cloud/firestore');
+      await col.doc(normalizeSlug(slug)).set({
+        taps: FieldValue.increment(1),
+        lastSeen: nowIso(),
+        days: { [day]: FieldValue.increment(1) }
+      }, { merge: true });
     }
   };
 }
@@ -160,6 +182,15 @@ function fileStore(file) {
       const all = readAll();
       delete all[normalizeSlug(slug)];
       writeAll(all);
+    },
+    async touch(slug, day) {
+      const all = readAll(), s = normalizeSlug(slug), rec = all[s];
+      if (!rec) return;
+      rec.taps = (Number(rec.taps) || 0) + 1;
+      rec.lastSeen = nowIso();
+      rec.days = rec.days || {};
+      rec.days[day] = (Number(rec.days[day]) || 0) + 1;
+      writeAll(all);
     }
   };
 }
@@ -183,4 +214,5 @@ function assertSlug(slug) {
   return s;
 }
 
-module.exports = { openStore, sanitize, sanitizePen, publicView, assertSlug, COLLECTION };
+module.exports = { openStore, sanitize, sanitizePen, publicView, assertSlug,
+                   carryCounters, COLLECTION };

@@ -548,6 +548,20 @@ function readCard() {
   return { card: raw, start: null };
 }
 
+/* Tell the atelier the card was opened — the slug and nothing else. The
+   protocol lives in the fragment, which browsers never send, so none of it
+   travels with this. Once per browsing session, so reading the page twice
+   is one open rather than two, and a failure is silent: a card that cannot
+   reach the service must still show her dose. */
+function noteTap(slug) {
+  const key = `tca.tapped.${slug}`;
+  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch {}
+  try {
+    fetch(`/api/tap/${encodeURIComponent(slug)}`, { method: 'POST', keepalive: true })
+      .catch(() => {});
+  } catch {}
+}
+
 /* ---------- pens the patient adds herself ----------
    The card carries what was dispensed. If she is later given something else
    and the card hasn't been rewritten, the plus sign lets her add it from the
@@ -810,6 +824,7 @@ async function loadProtocol() {
     const res = await fetch(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
     CFG = hydrateRecord(await res.json(), templates);
+    noteTap(CARD_SLUG);
   } else if (legacy) {
     // The one card written before any of this existed. It is reached only
     // through its own marked address, never by landing on the bare root.

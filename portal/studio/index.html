@@ -95,6 +95,14 @@
   .phase-head { font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
   .phase-head span { padding-left:2px; }
   .phase input { padding:7px 9px; font-size:13.5px; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .stat small { display:block; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .stat strong { display:block; font-size:26px; font-weight:500; margin-top:4px; }
+  td.dose { font-size:12.5px; }
+  td.dose .spent { color:var(--muted); }
+  td.num { font-variant-numeric:tabular-nums; }
+  td.cold { color:var(--muted); }
+  @media (max-width:900px) { .stats { grid-template-columns:repeat(2,1fr); } }
   /* Days comes from the peptide, so it is shown rather than asked for. */
   .phase .derived { font-size:13px; color:var(--muted); padding:7px 2px; text-align:center; }
   .life { font-size:12px; color:var(--muted); margin-top:4px; }
@@ -181,13 +189,29 @@
   </section>
 
   <section>
+    <h2>In use</h2>
+    <p class="hint">
+      What the cards are doing. A card is counted once per patient browsing
+      session, so reading the page twice is one open. Only the address is
+      recorded &mdash; never the protocol, which browsers keep out of every
+      request anyway.
+    </p>
+    <div class="panel stats">
+      <div class="stat"><small>Opens, all cards</small><strong id="mTaps">0</strong></div>
+      <div class="stat"><small>Opened in 7 days</small><strong id="mWeek">0</strong></div>
+      <div class="stat"><small>Never opened</small><strong id="mCold">0</strong></div>
+      <div class="stat"><small>Needs a look</small><strong id="mFlag">0</strong></div>
+    </div>
+  </section>
+
+  <section>
     <h2>Cards</h2>
     <p class="hint" id="cardCount"></p>
     <div class="panel">
       <table>
         <thead>
           <tr>
-            <th>Address</th><th>Patient</th><th>Protocol</th><th>Status</th><th></th>
+            <th>Address</th><th>Patient</th><th>Protocol</th><th>Showing now</th><th>Opens</th><th>Last opened</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -355,22 +379,36 @@ async function refresh() {
     ? 'Tap a row to edit. Changes reach the patient on her next tap — no rewriting.'
     : '';
   $('noCards').hidden = CARDS.length > 0;
+  renderStats();
 
   $('rows').innerHTML = CARDS.map(c => {
     const pens = (c.pens || []).map(p => {
       const t = TEMPLATES.templates.find(x => x.id === p.template);
       return t ? t.name : p.template;
     }).join(' · ');
+    const now = showingNow(c);
+    const taps = Number(c.taps) || 0;
     return `<tr data-slug="${c.slug}" style="cursor:pointer">
       <td class="slug">/${c.slug}</td>
       <td class="who">${c.name || '<span style="color:var(--muted);font-weight:400">unassigned</span>'}</td>
       <td class="pens">${pens || '—'}</td>
+      <td class="dose">${now.text}</td>
+      <td class="num${taps ? '' : ' cold'}">${taps || '—'}</td>
+      <td class="num${c.lastSeen ? '' : ' cold'}">${c.lastSeen ? ago(c.lastSeen) : 'never'}</td>
       <td><span class="pill ${c.status}">${c.status}</span>${
         // A named card with nothing on it opens to "your protocol has not
         // been added yet". Say so here, so it is caught before the card is
         // handed over rather than by the patient.
         (c.name && !(c.pens || []).length)
           ? ' <span class="pill warn" title="This card opens with no protocol on it">no protocol</span>'
+          : ''}${
+        now.flag === 'course finished'
+          ? ' <span class="pill warn" title="Every pen on this card is spent">finished</span>'
+          : ''}${
+        // A named, active card nobody has ever opened is usually a card that
+        // was never handed over, or a tag that does not read.
+        (c.name && c.status === 'active' && !taps)
+          ? ' <span class="pill warn" title="Assigned but never opened">never opened</span>'
           : ''}</td>
       <td style="text-align:right"><button class="ghost sm" data-copy="${c.slug}">Copy URL</button></td>
     </tr>`;
@@ -549,6 +587,71 @@ function mgLine(t, phases) {
     const units = Number(ph.units) || 0;
     return `${units}u ≈ ${(c * units * ML_PER_UNIT).toFixed(2)} mg`;
   }).join(' · ');
+}
+
+/* The four numbers above the table. "Needs a look" is the count of cards
+   carrying any warning pill, so the strip and the rows can never disagree. */
+function renderStats() {
+  const weekAgo = Date.now() - 7 * 86400000;
+  let total = 0, week = 0, cold = 0, flagged = 0;
+  CARDS.forEach(c => {
+    const taps = Number(c.taps) || 0;
+    total += taps;
+    if (c.lastSeen && new Date(c.lastSeen).getTime() >= weekAgo) week++;
+    if (!taps) cold++;
+    const now = showingNow(c);
+    if ((c.name && !(c.pens || []).length) ||
+        now.flag === 'course finished' ||
+        (c.name && c.status === 'active' && !taps)) flagged++;
+  });
+  $('mTaps').textContent = total;
+  $('mWeek').textContent = week;
+  $('mCold').textContent = cold;
+  $('mFlag').textContent = flagged;
+}
+
+/* What a card is showing today, worked out the same way the patient's page
+   works it out: walk the schedule from her start day, drawing from the pen,
+   and report where that lands. A card whose pen ran dry says so — that is
+   the state worth catching before she taps and finds nothing. */
+function showingNow(rec) {
+  const pens = rec.pens || [];
+  if (!pens.length) return { text: '—', flag: rec.name ? 'no protocol' : '' };
+  if (!rec.startDate) return { text: 'waiting for her start day', flag: '' };
+
+  const start = new Date(rec.startDate + 'T00:00:00');
+  const elapsed = Math.floor((Date.now() - start) / 86400000);
+  if (elapsed < 0) return { text: 'not started yet', flag: '' };
+
+  const bits = [], done = [];
+  for (const pen of pens) {
+    const t = (TEMPLATES.templates || []).find(x => x.id === pen.template);
+    if (!t) { bits.push(`unknown pen "${pen.template}"`); continue; }
+    if (t.setup) { bits.push(`${t.name}: set up on her phone`); continue; }
+    const phases = pen.phases || t.phases || [];
+    const L = penLife(t, phases);
+    if (elapsed >= L.days) { done.push(t.name); continue; }
+
+    // Which phase today falls in, and whether today is a dosing day.
+    const sc = t.schedule || { on: 7, off: 0 };
+    const cyc = sc.weekly ? 7 : sc.on + sc.off;
+    const onDay = sc.weekly ? (elapsed % 7 === 0) : (elapsed % cyc < sc.on);
+    let acc = 0, ph = null;
+    for (const x of phases) { acc += (x.days == null ? 1e9 : x.days); if (elapsed < acc) { ph = x; break; } }
+    if (!ph) { done.push(t.name); continue; }
+    bits.push(`${t.name}: ${onDay ? ph.units + 'u' : 'rest day'}`);
+  }
+  if (done.length) bits.push(`<span class="spent">${done.join(', ')} spent</span>`);
+  return { text: bits.join(' · ') || '—', flag: done.length ? 'course finished' : '' };
+}
+
+function ago(iso) {
+  if (!iso) return '';
+  const d = Math.floor((Date.now() - new Date(iso)) / 86400000);
+  if (d <= 0) return 'today';
+  if (d === 1) return 'yesterday';
+  if (d < 30) return `${d} days ago`;
+  return new Date(iso).toISOString().slice(0, 10);
 }
 
 function renderPens() {
