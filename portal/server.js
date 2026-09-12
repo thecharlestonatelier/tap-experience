@@ -26,6 +26,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const { openStore, sanitize, publicView, assertSlug } = require('./store');
+const { openDoses, sanitizeDose } = require('./store/doses');
+const practiceBetter = require('./lib/practicebetter');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
@@ -56,6 +58,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET
 const PUSH_RUN_SECRET = process.env.PUSH_RUN_SECRET || '';
 
 const store = openStore();
+const doses = openDoses();
 const subs = openSubs();
 
 /* ---------- the reminder sweep ----------
@@ -181,7 +184,7 @@ function requireClinician(req, res) {
 
 /* ---------- static files ---------- */
 
-function serveStatic(res, urlPath, { inject } = {}) {
+function serveStatic(res, urlPath, { inject, vial } = {}) {
   const rel = decodeURIComponent(urlPath).replace(/^\/+/, '');
   const full = path.join(WEB_ROOT, rel);
 
@@ -194,10 +197,15 @@ function serveStatic(res, urlPath, { inject } = {}) {
 
   // A card address is a path, not a fragment, so the page has to be told
   // which card it is before its scripts run.
-  if (inject && ext === '.html') {
+  if ((inject || vial) && ext === '.html') {
+    const pre = [];
+    if (inject) pre.push(`window.__CARD_SLUG__=${JSON.stringify(inject)};`);
+    // The vial label names the vial only. Which patient it is logged
+    // against comes from the card already open on this phone.
+    if (vial) pre.push(`window.__VIAL__=${JSON.stringify(vial)};`);
     body = Buffer.from(String(body).replace(
       '<script src="assets/protocol.js"></script>',
-      `<script>window.__CARD_SLUG__=${JSON.stringify(inject)};</script>\n` +
+      `<script>${pre.join('')}</script>\n` +
       '<script src="assets/protocol.js"></script>'));
   }
 
@@ -256,6 +264,69 @@ async function route(req, res) {
     const day = new Date().toISOString().slice(0, 10);
     await store.touch(slug, day);
     res.writeHead(204); return res.end();
+  }
+
+  /* --- a vial label was tapped ---
+     The tag names the vial, never the patient: one printed lot label is
+     valid for whoever holds it, and a label that named someone would be
+     PHI lying on a bench. Identity comes from the card already open on
+     the phone, which is why the page asks her to confirm her own name
+     before anything is written. */
+  if (p.startsWith('/v/')) {
+    const payload = decodeURIComponent(p.slice('/v/'.length));
+    if (/^[A-Za-z0-9._-]{1,48}$/.test(payload)) {
+      if (serveStatic(res, '/dose.html', { vial: payload })) return;
+    }
+    return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
+  }
+
+  /* --- she confirmed the injection --- */
+  if (p === '/api/dose' && req.method === 'POST') {
+    const body = await readBody(req);
+    const dose = sanitizeDose(body);
+    if (!dose || !dose.units) return json(res, 400, { error: 'bad_request' });
+
+    // The card has to exist, or anyone could post doses against a guess.
+    const rec = await store.get(assertSlug(dose.slug));
+    if (!rec) return json(res, 404, { error: 'not_found' });
+
+    const { id, duplicate } = await doses.put(dose);
+    if (duplicate) return json(res, 200, { ok: true, duplicate: true });
+
+    // Push to the chart, but never make her wait on it or lose the dose
+    // if it fails — the queue is what guarantees the record.
+    const out = await practiceBetter.postAdministration(
+      Object.assign({ clientId: rec.pbClientId || null }, dose));
+    if (out.ok) await doses.markSynced(id);
+    else await doses.markFailed(id, out.reason);
+
+    return json(res, 200, { ok: true, charted: !!out.ok });
+  }
+
+  /* --- retry anything the chart has not taken ---
+     Same secret as the reminder run, called on the same schedule. */
+  if (p === '/api/dose/sync' && req.method === 'POST') {
+    if (!PUSH_RUN_SECRET || req.headers['x-push-secret'] !== PUSH_RUN_SECRET) {
+      return json(res, 401, { error: 'unauthorized' });
+    }
+    const queue = await doses.pending(50);
+    let sent = 0, failed = 0;
+    for (const d of queue) {
+      const rec = await store.get(d.slug);
+      const out = await practiceBetter.postAdministration(
+        Object.assign({ clientId: rec && rec.pbClientId || null }, d));
+      if (out.ok) { await doses.markSynced(d.id); sent++; }
+      else { await doses.markFailed(d.id, out.reason); failed++; }
+    }
+    return json(res, 200, { ok: true, pending: queue.length, sent, failed,
+                            configured: practiceBetter.configured() });
+  }
+
+  /* --- what a card has logged, for the dashboard --- */
+  if (p.startsWith('/api/doses/')) {
+    const slug = assertSlug(p.slice('/api/doses/'.length));
+    if (!requireClinician(req, res)) return;
+    return json(res, 200, { doses: await doses.forSlug(slug) });
   }
 
   /* --- the dashboard's side --- */

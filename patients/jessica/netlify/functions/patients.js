@@ -1,84 +1,33 @@
 /* ==================================================================
-   Practice Better → patient list for Card Studio
+   Practice Better → patient list  (RETIRED — do not set a key here)
    ------------------------------------------------------------------
-   THE API KEY LIVES HERE AND ONLY HERE.
+   This function used to pull the client list from Practice Better so
+   the old Card Studio could offer a dropdown of names. It is disabled,
+   and the reason is not tidiness.
 
-   Set it in Netlify:  Site configuration → Environment variables
-     Key:    PRACTICE_BETTER_API_KEY
-     Secret: yes ("Contains secret values")
-     Scopes: All scopes
-     Value:  production (at minimum)
+   Patient names are PHI. This function runs on Netlify, and Netlify has
+   signed no BAA. The atelier now holds BAAs with Google and with
+   Practice Better — not with Netlify — so a name must not travel this
+   path, and the API key must not be set on this site. Setting
+   PRACTICE_BETTER_API_KEY in Netlify would be enough to start a flow of
+   patient names through a processor that has not signed.
 
-   It is read from the environment at request time and never sent to
-   the browser. Do not put it in templates.json, studio.html, or any
-   file in this repo — the repo is public and the site is unlisted, not
-   private.
+   Practice Better now lives on Cloud Run, under the Google Cloud BAA:
 
-   ------------------------------------------------------------------
-   STATUS: the request below is a placeholder. Practice Better's API
-   base URL, auth header and client-list route still need confirming
-   against their developer documentation. Everything else — the studio,
-   the fallback to typing a name, the JSON shape this returns — is
-   finished and working, so wiring this up is a change to the two marked
-   lines, not to the app.
+     portal/lib/practicebetter.js     the only place that holds the key
+     portal/server.js  /api/dose      an administration reaching the chart
 
-   Expected response shape:
-     { "patients": [ { "id": "...", "name": "Jessica R.", "email": "..." } ] }
+   The old studio at patients/jessica/studio.html calls this. It gets a
+   refusal and falls back to typing a name, which is what it already did
+   whenever the key was unset — so nothing that worked stops working.
+   The studio in use is portal/studio/index.html.
    ================================================================== */
 
-const PB_BASE = process.env.PRACTICE_BETTER_API_BASE || 'https://api.practicebetter.io/v1';
-
-export default async (request) => {
-  const key = process.env.PRACTICE_BETTER_API_KEY;
-
-  if (!key) {
-    return json({
-      error: 'not_configured',
-      message: 'PRACTICE_BETTER_API_KEY is not set on this site.'
-    }, 503);
-  }
-
-  try {
-    // ── confirm this route and auth header against Practice Better's docs ──
-    const res = await fetch(`${PB_BASE}/clients?limit=500`, {
-      headers: {
-        'Authorization': `Bearer ${key}`,
-        'Accept': 'application/json'
-      }
-    });
-
-    if (!res.ok) {
-      return json({
-        error: 'upstream',
-        status: res.status,
-        message: `Practice Better returned ${res.status}.`
-      }, 502);
-    }
-
-    const data = await res.json();
-    const rows = Array.isArray(data) ? data : (data.clients || data.data || []);
-
-    // Only what the studio needs to fill a dropdown — nothing clinical.
-    const patients = rows.map(c => ({
-      id: c.id || c._id,
-      name: [c.firstName || c.first_name, c.lastName || c.last_name].filter(Boolean).join(' ')
-            || c.name || c.fullName || 'Unnamed',
-      email: c.email || ''
-    })).filter(p => p.id);
-
-    return json({ patients }, 200, {
-      // A short cache keeps a busy clinic from hammering the API.
-      'Cache-Control': 'private, max-age=300'
-    });
-
-  } catch (err) {
-    return json({ error: 'request_failed', message: String(err) }, 502);
-  }
-};
-
-function json(body, status = 200, extra = {}) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: Object.assign({ 'Content-Type': 'application/json' }, extra)
-  });
-}
+export default async () => new Response(
+  JSON.stringify({
+    error: 'retired',
+    message: 'Practice Better moved to the Cloud Run portal, which is covered ' +
+             'by a BAA. Do not set an API key on this site.'
+  }),
+  { status: 410, headers: { 'Content-Type': 'application/json' } }
+);

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<!-- Served at /v/<vial>, so every relative URL needs the site root. -->
+<base href="/">
+<title>Log this dose</title>
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
+<style>
+  :root {
+    --bg:#F3EBE1; --card:#F8F2EA; --espresso:#3B2E20; --espresso-soft:#4A3B2C;
+    --brass:#8A7350; --muted:#8A7C6A; --hairline:rgba(138,115,80,.18);
+    --alert:#A4553F; --ok:#5C7A5E;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    background:var(--bg); color:var(--espresso-soft);
+    font-family:'Jost',-apple-system,BlinkMacSystemFont,sans-serif;
+    min-height:100dvh; -webkit-font-smoothing:antialiased;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .wrap { width:100%; max-width:430px; padding:calc(20px + env(safe-area-inset-top)) 22px calc(30px + env(safe-area-inset-bottom)); }
+
+  .mark { display:block; height:52px; width:auto; margin:0 auto 22px; }
+  .eyebrow { font-size:10.5px; letter-spacing:.18em; text-transform:uppercase;
+             color:var(--brass); text-align:center; margin-bottom:8px; }
+  h1 { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+       font-size:34px; line-height:1.1; color:var(--espresso);
+       text-align:center; margin-bottom:6px; }
+  .lede { font-size:13.5px; line-height:1.55; color:var(--muted);
+          text-align:center; margin-bottom:22px; }
+
+  .card { background:var(--card); border-radius:18px; padding:22px;
+          box-shadow:0 1px 2px rgba(59,46,32,.05), 0 8px 22px rgba(59,46,32,.05); }
+  .who { text-align:center; padding-bottom:16px; margin-bottom:16px;
+         border-bottom:1px solid var(--hairline); }
+  .who small { display:block; font-size:10px; letter-spacing:.16em;
+               text-transform:uppercase; color:var(--muted); margin-bottom:5px; }
+  .who b { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+           font-size:27px; letter-spacing:.06em; text-transform:uppercase; color:var(--espresso); }
+
+  .rows { display:grid; grid-template-columns:auto 1fr; gap:9px 16px; }
+  .rows dt { font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+             color:var(--muted); align-self:center; }
+  .rows dd { font-size:15px; color:var(--espresso); text-align:right; }
+  .rows dd b { font-family:'Cormorant Garamond',Georgia,serif; font-size:26px; font-weight:500; }
+
+  .act { display:block; width:100%; margin-top:20px; padding:16px;
+         border:0; border-radius:999px; background:var(--espresso); color:#F6F0E7;
+         font-family:'Jost',sans-serif; font-size:13.5px; font-weight:600;
+         letter-spacing:.09em; text-transform:uppercase; cursor:pointer;
+         -webkit-tap-highlight-color:transparent; }
+  .act:disabled { opacity:.5; }
+  .ghost { display:block; width:100%; margin-top:10px; padding:13px;
+           background:none; border:1px solid var(--hairline); border-radius:999px;
+           color:var(--brass); font-family:'Jost',sans-serif; font-size:12.5px;
+           letter-spacing:.07em; text-transform:uppercase; text-align:center;
+           text-decoration:none; cursor:pointer; }
+
+  .note { margin-top:18px; font-size:11.5px; line-height:1.6; color:var(--muted); text-align:center; }
+  .bad { color:var(--alert); }
+  .done { text-align:center; }
+  .done .tick { width:54px; height:54px; margin:0 auto 14px; display:block; color:var(--ok); }
+  .done h2 { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+             font-size:28px; color:var(--espresso); margin-bottom:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="mark" src="assets/icons/monogram.png" alt="The Charleston Atelier">
+  <div id="view">
+    <p class="lede" id="boot">Reading the label…</p>
+  </div>
+</div>
+
+<script>
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+
+/* The label carries "<template>.<lot>" — the pen and the vial it came
+   from. Never a patient: one printed label is valid for whoever is
+   holding it, and a label naming someone would be PHI sitting on a bench. */
+function readVial() {
+  const raw = String(window.__VIAL__ || '');
+  const dot = raw.indexOf('.');
+  return dot === -1
+    ? { template: raw, lot: '' }
+    : { template: raw.slice(0, dot), lot: raw.slice(dot + 1) };
+}
+
+const V = readVial();
+const view = document.getElementById('view');
+
+let HOME = '/';   // her card, once we know which one it is
+
+function stop(title, why, showOpen) {
+  view.innerHTML = `<h1>${esc(title)}</h1><p class="lede">${esc(why)}</p>` +
+    (showOpen ? `<a class="ghost" href="${esc(HOME)}">Open my card</a>` : '');
+}
+
+(async function boot() {
+  let templates;
+  try { templates = await loadTemplates(); }
+  catch { return stop('Not right now', 'This page could not load. Try again in a moment.'); }
+
+  const t = (templates.templates || []).find(x => x.id === V.template);
+  if (!t) return stop('Unknown label', 'This vial is not one the atelier recognises. Please message us before injecting.');
+
+  // Identity comes from the card this phone has already opened. Without
+  // it there is nobody to log against, and guessing is not an option.
+  const mem = recallCard();
+  const slug = (mem && mem.slug) || null;
+  if (slug) HOME = '/' + slug;
+  if (!slug) {
+    return stop('Open your card first',
+      'Tap your Atelier card, then tap this vial again. The label knows the vial, not who is holding it.', true);
+  }
+
+  let CFGX;
+  try {
+    const res = await fetch(`/api/card/${encodeURIComponent(slug)}`, { cache:'no-store' });
+    if (!res.ok) throw new Error('gone');
+    CFGX = hydrateRecord(await res.json(), templates);
+  } catch {
+    return stop('Could not reach your card', 'Please try again, or message the atelier.', true);
+  }
+
+  // The dose is whatever her own protocol says for this pen today — not
+  // a number typed on a label.
+  CFG = CFGX;
+  PENS = CFG.protocol.pens || [];
+  START = parse(loadStart() || CFG.protocol.startDate);
+  applySetups();
+
+  const pen = PENS.find(x => x.template === t.id || x.id === t.id);
+  if (!pen) {
+    return stop('Not on your card',
+      `${t.name} is not part of your protocol. Please message the atelier before injecting.`, true);
+  }
+
+  const dose = doseOn(pen, today());
+  if (!dose) {
+    return stop('Not scheduled today',
+      `Today is a rest day for ${t.name}. Message the atelier if you think that is wrong.`, true);
+  }
+
+  view.innerHTML = `
+    <p class="eyebrow">Vial label</p>
+    <h1>Log this dose</h1>
+    <p class="lede">Confirm this is you, and that you have injected it.</p>
+    <div class="card">
+      <div class="who"><small>Logging for</small><b>${esc(CFG.patient.name)}</b></div>
+      <dl class="rows">
+        <dt>Pen</dt><dd>${esc(pen.name)}</dd>
+        ${V.lot ? `<dt>Lot</dt><dd>${esc(V.lot)}</dd>` : ''}
+        <dt>Dose</dt><dd><b>${dose.units}</b> units</dd>
+        <dt>That is</dt><dd>${round(dose.totalMg, 2)} mg</dd>
+      </dl>
+      <button class="act" id="go">I injected this</button>
+      <a class="ghost" href="${esc(HOME)}">Not me — open my card</a>
+    </div>
+    <p class="note">This goes in your chart at the atelier. Nothing is recorded until you tap the button.</p>`;
+
+  document.getElementById('go').addEventListener('click', async e => {
+    const btn = e.currentTarget;
+    btn.disabled = true; btn.textContent = 'Recording…';
+    try {
+      const res = await fetch('/api/dose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug, template: t.id, lot: V.lot, pen: pen.name,
+          units: dose.units, mg: round(dose.totalMg, 3), at: new Date().toISOString()
+        })
+      });
+      if (!res.ok) throw new Error('refused');
+      const out = await res.json();
+      view.innerHTML = `<div class="done">
+        <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg>
+        <h2>${out.duplicate ? 'Already logged' : 'Logged'}</h2>
+        <p class="lede">${out.duplicate
+          ? 'This dose was already on your record.'
+          : `${esc(pen.name)}, ${dose.units} units. It is on your record at the atelier.`}</p>
+        <a class="ghost" href="${esc(HOME)}">Back to my card</a>
+      </div>`;
+    } catch {
+      btn.disabled = false; btn.textContent = 'Try again';
+      const p = document.createElement('p');
+      p.className = 'note bad';
+      p.textContent = 'That did not reach the atelier. Your dose still counts — try again, or tell us at your next visit.';
+      btn.parentElement.appendChild(p);
+    }
+  });
+})();
+</script>
+</body>
+</html>
