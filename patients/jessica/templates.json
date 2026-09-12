@@ -55,7 +55,8 @@
       "diluentMl": 3,
       "doseSource": "Precision Auto Pen Summary \u2014 70 mg / 3 mL / 300 clicks, 2.4 mg x 5/week, pen ~5.83 weeks",
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 80
     },
     {
       "id": "wolverine",
@@ -98,7 +99,8 @@
         "TB-500: mild lethargy in the first weeks, transient head rush just after injecting, injection-site discomfort"
       ],
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 70
     },
     {
       "id": "nad",
@@ -132,7 +134,8 @@
       "timing": "In the morning",
       "doseSource": "Dr Kendall \u2014 500 mg / 3 mL pen, 50 mg daily in the AM. DAILY.",
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 50
     },
     {
       "id": "nadvial",
@@ -213,7 +216,8 @@
         "Nausea (rare), mild fatigue in the first week, minor injection-site redness"
       ],
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 40
     },
     {
       "id": "ghk",
@@ -252,7 +256,8 @@
       "timing": "30-60 minutes before bed, at least 2 hours after eating",
       "cycle": "30 days on, then a 30-day pause before repeating.",
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 40
     },
     {
       "id": "cjcipa",
@@ -289,7 +294,8 @@
       "diluentMl": 3,
       "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 0.2 mg x 5/week, pen ~20 weeks",
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 65
     },
     {
       "id": "tesa",
@@ -425,7 +431,8 @@
         }
       ],
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 120
     },
     {
       "id": "semax",
@@ -457,7 +464,8 @@
       "diluentMl": 3,
       "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week",
       "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
-      "store": "fridge"
+      "store": "fridge",
+      "cog": 40
     },
     {
       "id": "tirz",

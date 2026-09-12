@@ -111,6 +111,58 @@
   .mg { font-size:12px; color:var(--muted); margin-top:6px; }
   .setup-note { font-size:12.5px; color:var(--brass); margin-top:8px; }
 
+  /* The mark, in the gold it is drawn in. */
+  header .mark { height:54px; width:auto; display:block; flex:none; }
+
+  /* Write a card and Pen life sit side by side until the screen is too
+     narrow to carry both. */
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+  .split > section { margin-bottom:38px; }
+  @media (max-width:900px) { .split { grid-template-columns:1fr; gap:0; } }
+
+  /* A readout rather than a table: dark ground, hairline rules, figures in
+     a face where the columns line up. The gold is the data. */
+  .deck {
+    background:linear-gradient(168deg,#2E2519,#221B12);
+    border:1px solid rgba(198,166,111,.28); padding:4px 18px 14px;
+    box-shadow:0 1px 2px rgba(59,46,32,.18), 0 10px 30px rgba(40,32,20,.22);
+  }
+  .deck-head, .deck-row {
+    display:grid; grid-template-columns:1fr 52px 74px; gap:12px; align-items:center;
+  }
+  .deck-head {
+    padding:12px 0 9px; border-bottom:1px solid rgba(198,166,111,.22);
+    font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:#9C8B6E;
+  }
+  .deck-head span:not(:first-child), .deck-row b, .deck-row i { text-align:right; }
+  .deck-row {
+    padding:9px 0; border-bottom:1px solid rgba(198,166,111,.1);
+    cursor:default; transition:background .12s ease;
+  }
+  .deck-row:last-child { border-bottom:0; }
+  .deck-row:hover, .deck-row:focus-visible { background:rgba(198,166,111,.07); outline:none; }
+  .deck-row .nm { font-size:12.5px; color:#EFE3CC; line-height:1.25; }
+  .deck-row .nm small {
+    display:block; font-size:8.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:#8B7B60; margin-top:2px;
+  }
+  .deck-row b, .deck-row i {
+    font-family:ui-monospace,Menlo,monospace; font-style:normal; font-weight:500;
+    font-variant-numeric:tabular-nums; font-size:12.5px; color:#D8B978;
+  }
+  .deck-row i { color:#B9A27A; }
+  .deck-foot {
+    display:flex; gap:16px; flex-wrap:wrap; padding-top:11px; margin-top:2px;
+    border-top:1px solid rgba(198,166,111,.22);
+    font-size:10px; letter-spacing:.06em; color:#8B7B60;
+  }
+  .deck-foot b { color:#D8B978; font-weight:500; font-variant-numeric:tabular-nums; }
+
+  /* The detail replaces the summary line rather than floating over the rows —
+     a panel you read across should never be covered by its own tooltip. */
+  .deck-foot .det { display:flex; gap:16px; flex-wrap:wrap; }
+  .deck-foot .det span { white-space:nowrap; }
+
   .empty { color:var(--muted); font-size:14px; padding:22px 0; text-align:center; }
   .toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%,10px);
            background:var(--ink); color:#F6F0E7; padding:12px 20px; border-radius:13px;
@@ -133,6 +185,7 @@
 
 <div class="wrap" id="app" hidden>
   <header>
+    <img class="mark" src="/studio/monogram.png" alt="" width="327" height="480">
     <div>
       <p class="crest">The Charleston Atelier</p>
       <h1>Card Studio</h1>
@@ -140,6 +193,7 @@
     <p class="header-note" id="storeNote"></p>
   </header>
 
+  <div class="split">
   <section>
     <h2>Write a card</h2>
     <p class="hint">
@@ -172,6 +226,20 @@
       </div>
     </div>
   </section>
+
+  <section>
+    <h2>Pen life</h2>
+    <p class="hint">
+      What one pen costs and how far it goes. Read from the same templates the
+      cards are built from, so it never drifts. Hover a row for the detail.
+    </p>
+    <div class="panel deck">
+      <div class="deck-head"><span>Pen</span><span>Cost</span><span>Coverage</span></div>
+      <div id="deck"></div>
+      <div class="deck-foot" id="deckFoot"></div>
+    </div>
+  </section>
+  </div>
 
   <section>
     <h2>Blank tags</h2>
@@ -368,6 +436,7 @@ async function start() {
   $('app').hidden = false;
   TEMPLATES = resolveDoses(
     await (await fetch('/templates.json', { cache: 'no-store' })).json());
+  renderDeck();
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
     TEMPLATES.templates.filter(t => t.id !== 'custom')
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -593,6 +662,60 @@ function mgLine(t, phases) {
     const units = Number(ph.units) || 0;
     return `${units}u ≈ ${(c * units * ML_PER_UNIT).toFixed(2)} mg`;
   }).join(' · ');
+}
+
+/* The pen deck. Everything here is derived from templates.json — cost, dose,
+   schedule — so correcting a template corrects this at the same moment it
+   corrects the patient's card. Nothing is copied in. */
+function renderDeck() {
+  const pens = (TEMPLATES.templates || [])
+    .filter(t => t.cog && !t.setup && (t.phases || []).length)
+    .map(t => {
+      const L = penLife(t, t.phases);
+      const weeks = L.days / 7;
+      return { t, life: L, weeks, perWeek: weeks ? t.cog / weeks : 0 };
+    })
+    .sort((a, b) => b.weeks - a.weeks);
+
+  $('deck').innerHTML = pens.map((p, i) => `
+    <div class="deck-row" data-deck="${i}" tabindex="0">
+      <div class="nm">${p.t.name}<small>${freqShort(p.t)}</small></div>
+      <b>$${p.t.cog}</b>
+      <i>${p.life.days}d</i>
+    </div>`).join('');
+
+  const cog = pens.reduce((a, p) => a + p.t.cog, 0);
+  const best = pens.reduce((a, b) => (b.perWeek < a.perWeek ? b : a), pens[0]);
+  $('deckFoot').innerHTML = pens.length
+    ? `<span>One of each <b>$${cog}</b></span>
+       <span>Best value <b>${best.t.name} · $${best.perWeek.toFixed(2)}/wk</b></span>`
+    : '';
+
+  const summary = $('deckFoot').innerHTML;
+  const detail = p => `<div class="det">
+    <span>Dose <b>${p.t.phases.map(x => x.units + 'u').join(' → ')}</b></span>
+    <span>Injections <b>${p.life.doses}</b></span>
+    <span>Weeks <b>${p.weeks.toFixed(1)}</b></span>
+    <span>Per week <b>$${p.perWeek.toFixed(2)}</b></span>
+    <span>Left <b>${p.life.left > 0.005 ? p.life.left.toFixed(2) + ' mL' : 'none'}</b></span>
+  </div>`;
+  $('deck').querySelectorAll('[data-deck]').forEach(row => {
+    const p = pens[row.dataset.deck];
+    const on = () => { $('deckFoot').innerHTML = detail(p); };
+    const off = () => { $('deckFoot').innerHTML = summary; };
+    row.addEventListener('mouseenter', on);
+    row.addEventListener('focus', on);
+    row.addEventListener('mouseleave', off);
+    row.addEventListener('blur', off);
+  });
+}
+
+/* The rhythm, said the way the patient's pages say it. */
+function freqShort(t) {
+  const sc = t.schedule || {};
+  if (sc.weekly) return 'Weekly';
+  if (!sc.off) return 'Daily';
+  return `${sc.on} on / ${sc.off} off`;
 }
 
 /* The four numbers above the table. "Needs a look" is the count of cards
