@@ -150,11 +150,11 @@
       <div class="row">
         <div>
           <label for="first">First name</label>
-          <input id="first" placeholder="Phillip" autocomplete="off">
+          <input id="first" placeholder="First name" autocomplete="off">
         </div>
         <div>
           <label for="last">Last name</label>
-          <input id="last" placeholder="Hurley" autocomplete="off">
+          <input id="last" placeholder="Last name" autocomplete="off">
         </div>
         <div style="flex:0 0 auto">
           <button class="primary" id="create">Create card</button>
@@ -182,7 +182,7 @@
     <div class="panel row">
       <div style="flex:0 0 120px">
         <label for="blankCount">How many</label>
-        <input id="blankCount" type="number" min="1" max="50" value="10">
+        <input id="blankCount" type="number" min="1" max="50" value="1">
       </div>
       <div style="flex:0 0 auto"><button class="ghost" id="makeBlanks">Mint blanks</button></div>
     </div>
@@ -337,6 +337,12 @@ function fitsNote(url) {
 
 function cardUrl(slug) { return `${ORIGIN}/${slug}`; }
 
+/* What actually goes on a tag. NDEF stores the scheme as a single byte and
+   every NFC writer puts https:// back, so copying it would waste eight of
+   the sixty-four bytes an Ultralight has — and the byte count beside the
+   address has always been measured this way. */
+function tagAddress(slug) { return cardUrl(slug).replace(/^https?:\/\//, ''); }
+
 /* ---------- sign in ---------- */
 
 async function boot() {
@@ -422,7 +428,7 @@ async function refresh() {
   $('rows').querySelectorAll('[data-copy]').forEach(b =>
     b.addEventListener('click', async e => {
       e.stopPropagation();
-      await navigator.clipboard.writeText(cardUrl(b.dataset.copy));
+      await navigator.clipboard.writeText(tagAddress(b.dataset.copy));
       // Copying is usually the last step before the address goes on a tag,
       // so it is the right moment to say the card is not finished.
       const card = CARDS.find(c => c.slug === b.dataset.copy);
@@ -468,7 +474,7 @@ $('create').addEventListener('click', async () => {
     $('first').value = ''; $('last').value = '';
     updatePreview();
     await refresh();
-    await navigator.clipboard.writeText(cardUrl(rec.slug)).catch(() => {});
+    await navigator.clipboard.writeText(tagAddress(rec.slug)).catch(() => {});
     toast(`/${rec.slug} created — address copied.`);
     openEditor(rec.slug);
   } catch (e) {
