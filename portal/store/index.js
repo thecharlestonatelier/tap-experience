@@ -56,6 +56,10 @@ function sanitize(input, existing = null) {
       ? input.status
       : (existing ? existing.status : null),   // settled below once name/pens are known
     note: String(input.note ?? (existing ? existing.note : '')).slice(0, 500),
+    // Which Practice Better chart a tapped vial is written to. Internal:
+    // publicView() does not carry it, so the patient's page never sees it.
+    pbClientId: String(input.pbClientId ?? (existing ? existing.pbClientId : '') ?? '')
+      .trim().slice(0, 64),
     pens: Array.isArray(input.pens)
       ? input.pens.slice(0, 8).map(sanitizePen).filter(Boolean)
       : (existing ? existing.pens : []),

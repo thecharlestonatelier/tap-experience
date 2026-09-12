@@ -315,6 +315,15 @@
       </div>
     </div>
 
+    <div style="margin-top:14px">
+      <label for="editPbId">Practice Better client ID</label>
+      <input id="editPbId" placeholder="Paste from the client's URL in Practice Better" autocomplete="off">
+      <p class="hint" style="margin:6px 0 0">
+        Where a tapped vial is charted. Without it the dose is still recorded
+        here and queued, but it cannot reach Practice Better.
+      </p>
+    </div>
+
     <div style="margin-top:22px">
       <label>Protocol</label>
       <div id="penList"></div>
@@ -569,6 +578,7 @@ function openEditor(slug) {
   $('editName').value = editing.name || '';
   $('editStart').value = editing.startDate || '';
   $('editStatus').value = editing.status || 'active';
+  $('editPbId').value = editing.pbClientId || '';
   $('editNote').value = editing.note || '';
   renderPens();
   $('testPush').hidden = true;
@@ -882,6 +892,7 @@ $('saveCard').addEventListener('click', async () => {
   editing.name = $('editName').value.trim();
   editing.startDate = $('editStart').value || null;
   editing.status = $('editStatus').value;
+  editing.pbClientId = $('editPbId').value.trim();
   editing.note = $('editNote').value;
   if (editing.name && editing.status === 'blank') editing.status = 'active';
   await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
