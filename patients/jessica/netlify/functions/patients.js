@@ -6,16 +6,18 @@
    and the reason is not tidiness.
 
    Patient names are PHI. This function runs on Netlify, and Netlify has
-   signed no BAA. The atelier now holds BAAs with Google and with
-   Practice Better — not with Netlify — so a name must not travel this
-   path, and the API key must not be set on this site. Setting
-   PRACTICE_BETTER_API_KEY in Netlify would be enough to start a flow of
+   signed no BAA — the atelier's BAA is with Google — so a name must not
+   travel this path, and no Practice Better key may be set on this site.
+   Setting PRACTICE_BETTER_API_KEY here would be enough to start a flow of
    patient names through a processor that has not signed.
 
-   Practice Better now lives on Cloud Run, under the Google Cloud BAA:
+   Nothing calls Practice Better any more. Names live on the card records
+   in Firestore, and doses in the administrations collection, both on
+   Cloud Run under the Google Cloud BAA:
 
-     portal/lib/practicebetter.js     the only place that holds the key
-     portal/server.js  /api/dose      an administration reaching the chart
+     portal/store/index.js            the card records
+     portal/store/doses.js            what was injected, and when
+     portal/server.js  /api/dose      a tapped vial label recording a dose
 
    The old studio at patients/jessica/studio.html calls this. It gets a
    refusal and falls back to typing a name, which is what it already did

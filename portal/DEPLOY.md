@@ -110,15 +110,12 @@ its first write; there is no schema to define.
 
 ## 4. Store the secrets
 
-Nothing sensitive goes in the repository. Two secrets:
+Nothing sensitive goes in the repository. One secret:
 
 ```bash
 # The passphrase that opens Card Studio. Pick something long.
 printf '%s' 'a long passphrase you choose' | \
   gcloud secrets create studio-passphrase --data-file=-
-
-# Practice Better. Paste the key when prompted, then press Ctrl-D.
-gcloud secrets create practice-better-key --data-file=-
 ```
 
 To change one later:
@@ -127,17 +124,15 @@ To change one later:
 printf '%s' 'the new value' | gcloud secrets versions add studio-passphrase --data-file=-
 ```
 
-Give the service account permission to read them:
+Give the service account permission to read it:
 
 ```bash
 PROJECT_NUMBER=$(gcloud projects describe atelier-tap --format='value(projectNumber)')
 SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
-for s in studio-passphrase practice-better-key; do
-  gcloud secrets add-iam-policy-binding "$s" \
-    --member="serviceAccount:${SA}" \
-    --role="roles/secretmanager.secretAccessor"
-done
+gcloud secrets add-iam-policy-binding studio-passphrase \
+  --member="serviceAccount:${SA}" \
+  --role="roles/secretmanager.secretAccessor"
 ```
 
 And permission to build. On projects created from 2024 on, the default compute
@@ -175,7 +170,7 @@ gcloud run deploy atelier-tap \
   --region us-east1 \
   --allow-unauthenticated \
   --set-env-vars CARD_STORE=firestore,NODE_ENV=production \
-  --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,PRACTICE_BETTER_API_KEY=practice-better-key:latest
+  --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest
 ```
 
 First run takes three or four minutes; later ones are under a minute.

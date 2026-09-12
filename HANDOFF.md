@@ -151,12 +151,12 @@ which is carried into the app as an advisory.)
 home-screen icon, full-screen launch, offline, and (iOS 16.4+, once installed) real push
 notifications for daily reminders. This is the recommended next build.
 
-**Practice Better integration** — the user has an API key. It must be set as a Netlify
-environment variable named `PRACTICE_BETTER_API_KEY` (Site configuration → Environment
-variables), marked "Contains secret values", **All scopes** (specific scopes are paywalled on
-their plan), and the value set for the Production context. A Netlify Function then reads
-`process.env` — the key never touches the repo, the browser, or a chat transcript.
-**Never accept the key pasted into conversation.**
+**Practice Better integration** — dropped, deliberately. Their API has no endpoint that
+accepts an administration (session notes and journal entries are read-only; the only
+writable target is a health-products medication list), and the dose log does not need to
+reach the medical record. Doses live in Firestore under the Google Cloud BAA instead, and
+no Practice Better credential is set anywhere. Netlify signs no BAA, so if this is ever
+revisited it does not go there. **Never accept a key pasted into conversation.**
 
 **NFC tags** — NTAG213 stickers, ~$0.30. Encode the *product and lot*, not the patient, so
 tags can be pre-printed in bulk and any pen tag works for any patient; identity comes from

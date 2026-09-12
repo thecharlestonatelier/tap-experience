@@ -89,7 +89,6 @@ gcloud run deploy atelier-tap \
   --set-env-vars CARD_STORE=firestore,NODE_ENV=production,\
 PASS_TYPE_ID=pass.com.thecharlestonatelier.card,APPLE_TEAM_ID=YOURTEAMID \
   --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,\
-PRACTICE_BETTER_API_KEY=practice-better-key:latest,\
 /secrets/wallet/pass.key=wallet-pass-key:latest,\
 /secrets/wallet/pass.pem=wallet-pass-pem:latest,\
 /secrets/wallet/wwdr.pem=wallet-wwdr-pem:latest

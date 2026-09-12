@@ -27,7 +27,6 @@ const crypto = require('node:crypto');
 
 const { openStore, sanitize, publicView, assertSlug } = require('./store');
 const { openDoses, sanitizeDose } = require('./store/doses');
-const practiceBetter = require('./lib/practicebetter');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
@@ -266,40 +265,6 @@ async function route(req, res) {
     res.writeHead(204); return res.end();
   }
 
-/* Practice Better holds a medication list, not a dose log — their API has
-   no endpoint that takes an administration. So a tapped vial keeps the
-   pen's entry on her record current, and carries the running count in its
-   notes; the dose-by-dose history lives in Firestore because there is
-   nowhere else for it to go. The product id we get back is stored on the
-   card so the next dose updates that entry instead of adding another. */
-async function chartPen(rec, dose) {
-  const seen = await doses.forSlug(rec.slug, 400);
-  const mine = seen.filter(d => d.template === dose.template);
-  const first = mine.length ? mine[mine.length - 1].at : dose.at;
-
-  const products = rec.pbProducts || {};
-  const out = await practiceBetter.syncPen({
-    clientId: rec.pbClientId || null,
-    productId: products[dose.template] || null,
-    pen: {
-      productName: dose.pen,
-      frequency: dose.frequency || 'As prescribed',
-      startDate: first
-    },
-    summary: `${mine.length} dose${mine.length === 1 ? '' : 's'} logged by vial tap` +
-             `, most recently ${new Date(dose.at).toISOString().slice(0, 10)}` +
-             `. Latest: ${dose.units} units` + (dose.lot ? ` from lot ${dose.lot}` : '') + '.'
-  });
-
-  if (out.ok && out.productId && products[dose.template] !== out.productId) {
-    await store.put(sanitize(
-      Object.assign({}, rec, {
-        pbProducts: Object.assign({}, products, { [dose.template]: out.productId })
-      }), rec));
-  }
-  return out;
-}
-
   /* --- a vial label was tapped ---
      The tag names the vial, never the patient: one printed lot label is
      valid for whoever holds it, and a label that named someone would be
@@ -324,35 +289,8 @@ async function chartPen(rec, dose) {
     const rec = await store.get(assertSlug(dose.slug));
     if (!rec) return json(res, 404, { error: 'not_found' });
 
-    const { id, duplicate } = await doses.put(dose);
-    if (duplicate) return json(res, 200, { ok: true, duplicate: true });
-
-    // Keep her medication list current at Practice Better. Never make her
-    // wait on it and never lose the dose if it fails — the Firestore
-    // record is what guarantees it, and the queue retries.
-    const out = await chartPen(rec, dose);
-    if (out.ok) await doses.markSynced(id);
-    else await doses.markFailed(id, out.reason);
-
-    return json(res, 200, { ok: true, charted: !!out.ok });
-  }
-
-  /* --- retry anything the chart has not taken ---
-     Same secret as the reminder run, called on the same schedule. */
-  if (p === '/api/dose/sync' && req.method === 'POST') {
-    if (!PUSH_RUN_SECRET || req.headers['x-push-secret'] !== PUSH_RUN_SECRET) {
-      return json(res, 401, { error: 'unauthorized' });
-    }
-    const queue = await doses.pending(50);
-    let sent = 0, failed = 0;
-    for (const d of queue) {
-      const rec = await store.get(d.slug);
-      const out = rec ? await chartPen(rec, d) : { ok: false, reason: 'card_gone' };
-      if (out.ok) { await doses.markSynced(d.id); sent++; }
-      else { await doses.markFailed(d.id, out.reason); failed++; }
-    }
-    return json(res, 200, { ok: true, pending: queue.length, sent, failed,
-                            configured: practiceBetter.configured() });
+    const { duplicate } = await doses.put(dose);
+    return json(res, 200, { ok: true, duplicate });
   }
 
   /* --- what a card has logged, for the dashboard --- */

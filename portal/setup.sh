@@ -148,21 +148,11 @@ if ! gcloud secrets describe push-run-secret >/dev/null 2>&1; then
   put_secret push-run-secret "$(head -c 32 /dev/urandom | base64 | tr -d '=+/' | cut -c1-32)"
 fi
 
-step "Practice Better key"
-echo "Optional. Press return to skip — Card Studio takes typed names either way."
-read -r -s -p "Practice Better API key (hidden, or return to skip): " PB; echo
-if [ -n "$PB" ]; then put_secret practice-better-key "$PB"; else
-  # The service expects the secret to exist; a placeholder keeps the deploy simple.
-  gcloud secrets describe practice-better-key >/dev/null 2>&1 || put_secret practice-better-key "unset"
-  echo "  skipped."
-fi
-unset PB
-
 # ---------------------------------------------------------------- iam
 step "Letting the service read those secrets"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
 SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-for s in studio-passphrase practice-better-key vapid-public-key vapid-private-key push-run-secret; do
+for s in studio-passphrase vapid-public-key vapid-private-key push-run-secret; do
   gcloud secrets add-iam-policy-binding "$s" \
     --member="serviceAccount:${SA}" \
     --role="roles/secretmanager.secretAccessor" --quiet >/dev/null
@@ -198,7 +188,7 @@ gcloud run deploy "$SERVICE" \
   --region "$REGION" \
   --allow-unauthenticated \
   --set-env-vars CARD_STORE=firestore,NODE_ENV=production \
-  --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,PRACTICE_BETTER_API_KEY=practice-better-key:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,PUSH_RUN_SECRET=push-run-secret:latest \
+  --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,PUSH_RUN_SECRET=push-run-secret:latest \
   --quiet
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"

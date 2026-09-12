@@ -7,11 +7,10 @@
    its own collection so it is never mixed with the card records the
    dashboard lists.
 
-   It is also a QUEUE. Practice Better is the record of truth, but a
-   patient injecting at 10pm should never lose her dose because an API
-   was down. So every administration is written here first and pushed
-   afterwards; `synced` says whether the chart has it yet, and anything
-   unsynced is retried.
+   Firestore is the record. This is an atelier log of what was injected
+   and when — it is not the patient's medical record and is not pushed to
+   one, so there is no queue and nothing to sync: a written dose is a
+   recorded dose.
    ================================================================== */
 
 const COLLECTION = 'administrations';
@@ -29,15 +28,12 @@ function sanitizeDose(input) {
     pen: String(input.pen || '').slice(0, 60),
     template: String(input.template || '').slice(0, 24),
     lot: String(input.lot || '').slice(0, 24),
-    // How the pen is taken, for the medication line in her chart.
+    // How the pen is taken, so the log reads on its own.
     frequency: String(input.frequency || '').slice(0, 40),
     units: Number.isFinite(units) && units > 0 ? Math.round(units) : 0,
     mg: Number.isFinite(Number(input.mg)) ? Number(input.mg) : null,
     at: /^\d{4}-\d{2}-\d{2}T/.test(input.at || '') ? input.at : nowIso(),
-    recordedAt: nowIso(),
-    synced: false,
-    attempts: 0,
-    lastError: null
+    recordedAt: nowIso()
   };
 }
 
@@ -60,20 +56,6 @@ function firestoreDoses(db) {
       if (snap.exists) return { id, duplicate: true };
       await ref.set(dose);
       return { id, duplicate: false };
-    },
-    async markSynced(id) {
-      await col.doc(id).set({ synced: true, syncedAt: nowIso() }, { merge: true });
-    },
-    async markFailed(id, reason) {
-      const { FieldValue } = require('@google-cloud/firestore');
-      await col.doc(id).set(
-        { attempts: FieldValue.increment(1), lastError: String(reason).slice(0, 120) },
-        { merge: true });
-    },
-    async pending(limit = 50) {
-      const snap = await col.where('synced', '==', false)
-        .orderBy('recordedAt', 'asc').limit(limit).get();
-      return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
     },
     async forSlug(slug, limit = 60) {
       const snap = await col.where('slug', '==', slug)
@@ -100,25 +82,6 @@ function fileDoses(file) {
       if (all[id]) return { id, duplicate: true };
       all[id] = dose; writeAll(all);
       return { id, duplicate: false };
-    },
-    async markSynced(id) {
-      const all = readAll();
-      if (all[id]) { all[id].synced = true; all[id].syncedAt = nowIso(); writeAll(all); }
-    },
-    async markFailed(id, reason) {
-      const all = readAll();
-      if (all[id]) {
-        all[id].attempts = (all[id].attempts || 0) + 1;
-        all[id].lastError = String(reason).slice(0, 120);
-        writeAll(all);
-      }
-    },
-    async pending(limit = 50) {
-      return Object.entries(readAll())
-        .filter(([, d]) => !d.synced)
-        .sort((a, b) => String(a[1].recordedAt).localeCompare(String(b[1].recordedAt)))
-        .slice(0, limit)
-        .map(([id, d]) => Object.assign({ id }, d));
     },
     async forSlug(slug, limit = 60) {
       return Object.entries(readAll())
