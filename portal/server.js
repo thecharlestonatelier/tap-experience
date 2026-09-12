@@ -266,6 +266,40 @@ async function route(req, res) {
     res.writeHead(204); return res.end();
   }
 
+/* Practice Better holds a medication list, not a dose log — their API has
+   no endpoint that takes an administration. So a tapped vial keeps the
+   pen's entry on her record current, and carries the running count in its
+   notes; the dose-by-dose history lives in Firestore because there is
+   nowhere else for it to go. The product id we get back is stored on the
+   card so the next dose updates that entry instead of adding another. */
+async function chartPen(rec, dose) {
+  const seen = await doses.forSlug(rec.slug, 400);
+  const mine = seen.filter(d => d.template === dose.template);
+  const first = mine.length ? mine[mine.length - 1].at : dose.at;
+
+  const products = rec.pbProducts || {};
+  const out = await practiceBetter.syncPen({
+    clientId: rec.pbClientId || null,
+    productId: products[dose.template] || null,
+    pen: {
+      productName: dose.pen,
+      frequency: dose.frequency || 'As prescribed',
+      startDate: first
+    },
+    summary: `${mine.length} dose${mine.length === 1 ? '' : 's'} logged by vial tap` +
+             `, most recently ${new Date(dose.at).toISOString().slice(0, 10)}` +
+             `. Latest: ${dose.units} units` + (dose.lot ? ` from lot ${dose.lot}` : '') + '.'
+  });
+
+  if (out.ok && out.productId && products[dose.template] !== out.productId) {
+    await store.put(sanitize(
+      Object.assign({}, rec, {
+        pbProducts: Object.assign({}, products, { [dose.template]: out.productId })
+      }), rec));
+  }
+  return out;
+}
+
   /* --- a vial label was tapped ---
      The tag names the vial, never the patient: one printed lot label is
      valid for whoever holds it, and a label that named someone would be
@@ -293,10 +327,10 @@ async function route(req, res) {
     const { id, duplicate } = await doses.put(dose);
     if (duplicate) return json(res, 200, { ok: true, duplicate: true });
 
-    // Push to the chart, but never make her wait on it or lose the dose
-    // if it fails — the queue is what guarantees the record.
-    const out = await practiceBetter.postAdministration(
-      Object.assign({ clientId: rec.pbClientId || null }, dose));
+    // Keep her medication list current at Practice Better. Never make her
+    // wait on it and never lose the dose if it fails — the Firestore
+    // record is what guarantees it, and the queue retries.
+    const out = await chartPen(rec, dose);
     if (out.ok) await doses.markSynced(id);
     else await doses.markFailed(id, out.reason);
 
@@ -313,8 +347,7 @@ async function route(req, res) {
     let sent = 0, failed = 0;
     for (const d of queue) {
       const rec = await store.get(d.slug);
-      const out = await practiceBetter.postAdministration(
-        Object.assign({ clientId: rec && rec.pbClientId || null }, d));
+      const out = rec ? await chartPen(rec, d) : { ok: false, reason: 'card_gone' };
       if (out.ok) { await doses.markSynced(d.id); sent++; }
       else { await doses.markFailed(d.id, out.reason); failed++; }
     }

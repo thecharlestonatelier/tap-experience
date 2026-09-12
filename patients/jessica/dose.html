@@ -177,7 +177,7 @@ function stop(title, why, showOpen) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          slug, template: t.id, lot: V.lot, pen: pen.name,
+          slug, template: t.id, lot: V.lot, pen: pen.name, frequency: freqText(pen),
           units: dose.units, mg: round(dose.totalMg, 3), at: new Date().toISOString()
         })
       });

@@ -60,6 +60,11 @@ function sanitize(input, existing = null) {
     // publicView() does not carry it, so the patient's page never sees it.
     pbClientId: String(input.pbClientId ?? (existing ? existing.pbClientId : '') ?? '')
       .trim().slice(0, 64),
+    // Practice Better's id for each pen's medication entry, so a second
+    // dose updates that entry rather than adding another to her history.
+    pbProducts: (input.pbProducts && typeof input.pbProducts === 'object')
+      ? input.pbProducts
+      : ((existing && existing.pbProducts) || {}),
     pens: Array.isArray(input.pens)
       ? input.pens.slice(0, 8).map(sanitizePen).filter(Boolean)
       : (existing ? existing.pens : []),

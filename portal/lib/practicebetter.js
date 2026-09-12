@@ -1,109 +1,171 @@
 /* ==================================================================
-   PRACTICE BETTER — the clinical record
+   PRACTICE BETTER — what the patient is on
    ------------------------------------------------------------------
-   A vial tap is an administration: this patient, this vial, this
-   moment. Practice Better is where that belongs, so this is the one
-   place that talks to it.
+   WHAT THIS CAN AND CANNOT DO
 
-   WHY THIS LIVES HERE AND NOT IN A NETLIFY FUNCTION
+   The intent was to write each tapped vial into the patient's chart as
+   a note. Their OpenAPI spec (v1, 69 paths) says that is not possible:
 
-   There was a Practice Better stub in patients/jessica/netlify/, and it
-   could not be used for this. Netlify has signed no BAA. An
-   administration record names a patient and a drug, which is PHI, and
-   it must not pass through a processor that has not signed. Cloud Run
-   sits under the Google Cloud BAA, so the call is made from here and
-   the browser never sees the key or the endpoint.
+     /consultant/sessionnotes        GET only — notes cannot be created
+     journal entries                 GET only
+     nothing anywhere                accepts an administration
 
-   THE KEY
+   The only endpoint that will take a medication on a client record is
 
-   Read from the environment at call time and never logged, never
-   returned to the browser, never written to the repository. On Cloud
-   Run it comes from Secret Manager:
+     POST/PUT /consultant/medicalhistory/{recordId}/healthproducts
+       required: productName, frequency, startDate
+       optional: endDate, notes, id
 
-     gcloud secrets create practice-better-key --data-file=-
+   which is a medication list, not a dose log. So the split is:
+
+     Practice Better   what she is currently on — one health product per
+                       pen, with the dates it runs between, and a notes
+                       line saying how many doses have been logged and
+                       when the last one was.
+
+     Firestore         the dose-by-dose record, under the Google Cloud
+                       BAA. It has to live here because their API has
+                       nowhere to put it.
+
+   Posting one health product per injection was the alternative and it
+   is wrong: it would bury her medical history under hundreds of
+   entries, none of which is a medication she is taking.
+
+   AUTH — OAuth2 client credentials, confirmed in the spec
+     tokenUrl  https://api.practicebetter.io/oauth2/token
+     scopes    read write
+     base      https://api.practicebetter.io
+
+   CREDENTIALS — never in this repository
+     gcloud secrets create pb-client-secret --data-file=-
      gcloud run services update atelier-tap --region us-east1 \
-       --set-secrets=PRACTICE_BETTER_API_KEY=practice-better-key:latest
-
-   ------------------------------------------------------------------
-   STATUS — three facts are still needed
-
-   Practice Better's developer documentation is not reachable from the
-   build environment, so the request below is shaped but not confirmed.
-   Everything else in the chain — the tag, the confirmation the patient
-   sees, the queue, the retry — is finished and tested. Filling these
-   three in is a change to this file alone:
-
-     1. PB_BASE        the API base URL
-     2. AUTH_HEADER    the header name and value shape below
-     3. NOTE_PATH      the route that writes a note to a client record
-
-   Until they are set, postAdministration() reports 'not_configured'
-   and the dose is still recorded and still queued, so nothing is lost
-   in the meantime.
+       --set-secrets=PRACTICE_BETTER_CLIENT_SECRET=pb-client-secret:latest \
+       --set-env-vars=PRACTICE_BETTER_CLIENT_ID=...
    ================================================================== */
 
-const PB_BASE = process.env.PRACTICE_BETTER_API_BASE || '';
-const PB_KEY  = process.env.PRACTICE_BETTER_API_KEY  || '';
+const API_BASE  = process.env.PRACTICE_BETTER_API_BASE || 'https://api.practicebetter.io';
+const TOKEN_URL = process.env.PRACTICE_BETTER_TOKEN_URL || `${API_BASE}/oauth2/token`;
+const CLIENT_ID = process.env.PRACTICE_BETTER_CLIENT_ID || '';
+const SECRET    = process.env.PRACTICE_BETTER_CLIENT_SECRET || '';
+const SCOPE     = process.env.PRACTICE_BETTER_SCOPE || 'read write';
+const STYLE     = process.env.PRACTICE_BETTER_AUTH_STYLE || 'body';   // or 'basic'
 
-/* ── 2. confirm against their documentation ── */
-function authHeader(key) {
-  return { Authorization: `Bearer ${key}` };
+function configured() { return !!(CLIENT_ID && SECRET); }
+
+/* ---------- token ----------
+   Held in memory, refreshed a minute early. `inFlight` means a burst of
+   doses triggers one exchange rather than one each. */
+let token = null, inFlight = null;
+
+async function fetchToken() {
+  const form = new URLSearchParams({ grant_type: 'client_credentials' });
+  if (SCOPE) form.set('scope', SCOPE);
+  const headers = { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' };
+  if (STYLE === 'basic') {
+    headers.Authorization = 'Basic ' + Buffer.from(`${CLIENT_ID}:${SECRET}`).toString('base64');
+  } else {
+    form.set('client_id', CLIENT_ID);
+    form.set('client_secret', SECRET);
+  }
+
+  const res = await fetch(TOKEN_URL, { method: 'POST', headers, body: form.toString() });
+  // The status matters; the body does not — a failed token response can
+  // echo the credential straight back into a log.
+  if (!res.ok) throw new Error(`token_http_${res.status}`);
+  const data = await res.json();
+  if (!data.access_token) throw new Error('token_missing');
+  const ttl = Number(data.expires_in) || 3600;
+  return { value: data.access_token, expires: Date.now() + (ttl - 60) * 1000 };
 }
 
-/* ── 3. confirm against their documentation ── */
-function notePath(clientId) {
-  return `/clients/${encodeURIComponent(clientId)}/notes`;
+async function accessToken(force) {
+  if (!force && token && token.expires > Date.now()) return token.value;
+  if (!inFlight) {
+    inFlight = fetchToken()
+      .then(t => { token = t; return t.value; })
+      .finally(() => { inFlight = null; });
+  }
+  return inFlight;
 }
 
-function configured() {
-  return !!(PB_BASE && PB_KEY);
+/* One call, with a lapsed token retried once rather than costing a dose. */
+async function call(method, path, body) {
+  const send = async bearer => fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${bearer}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json'
+    },
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+
+  let res = await send(await accessToken(false));
+  if (res.status === 401) res = await send(await accessToken(true));
+  return res;
 }
 
-/* What the chart should say. Written here rather than at the call site
-   so every administration reads the same way in the record. */
-function noteBody(dose) {
-  const when = new Date(dose.at).toISOString();
-  const lot = dose.lot ? ` · lot ${dose.lot}` : '';
-  return [
-    `${dose.pen}${lot}`,
-    `${dose.units} units${dose.mg ? ` (${dose.mg} mg)` : ''}`,
-    `Self-administered, confirmed by the patient at ${when}.`,
-    'Recorded by tapping the vial label with The Charleston Atelier card.'
-  ].join('\n');
+/* The medication line as it should read in her history. */
+function healthProduct(pen, summary, existingId) {
+  const p = {
+    productName: pen.productName,
+    frequency: pen.frequency,
+    startDate: pen.startDate,
+    notes: summary
+  };
+  if (pen.endDate) p.endDate = pen.endDate;
+  if (existingId) p.id = existingId;
+  return p;
 }
 
-/* Send one administration to the chart.
+/* Put the pen on the client's medication list, or bring the existing
+   entry up to date. `productId` is what we were given last time; the
+   caller stores whatever comes back so the next call updates rather
+   than duplicating.
 
-   Returns { ok } on success, or { ok: false, reason } — never throws.
-   A failed write must not cost the patient her dose record, so the
-   caller keeps the queued copy and retries; this only reports. */
-async function postAdministration(dose) {
+   Returns { ok } or { ok: false, reason, retryable } — never throws. */
+async function syncPen({ clientId, pen, summary, productId }) {
   if (!configured()) return { ok: false, reason: 'not_configured' };
-  if (!dose.clientId) return { ok: false, reason: 'no_client_id' };
+  if (!clientId) return { ok: false, reason: 'no_client_id' };
 
+  const path = `/consultant/medicalhistory/${encodeURIComponent(clientId)}/healthproducts`;
   try {
-    const res = await fetch(`${PB_BASE}${notePath(dose.clientId)}`, {
-      method: 'POST',
-      headers: Object.assign(
-        { 'Content-Type': 'application/json', Accept: 'application/json' },
-        authHeader(PB_KEY)
-      ),
-      body: JSON.stringify({
-        title: `Peptide administration — ${dose.pen}`,
-        body: noteBody(dose),
-        date: dose.at
-      })
-    });
-
+    const res = await call(productId ? 'PUT' : 'POST', path,
+                           healthProduct(pen, summary, productId));
     if (!res.ok) {
-      // The status is worth keeping; the response body is not, because it
-      // may echo patient data into the logs.
-      return { ok: false, reason: `http_${res.status}`, retryable: res.status >= 500 || res.status === 429 };
+      return {
+        ok: false,
+        reason: `http_${res.status}`,
+        retryable: res.status >= 500 || res.status === 429
+      };
     }
-    return { ok: true };
+    // The spec documents no response body, so keep the id we already had.
+    let id = productId || null;
+    try {
+      const data = await res.json();
+      id = (data && (data.id || data._id)) || id;
+    } catch { /* empty body is expected */ }
+    return { ok: true, productId: id };
   } catch (err) {
-    return { ok: false, reason: 'unreachable', retryable: true };
+    return { ok: false, reason: err.message || 'unreachable', retryable: true };
   }
 }
 
-module.exports = { postAdministration, configured };
+/* Find a client record by name, so a card can be matched to a chart
+   without anyone copying an id by hand. Read scope only. */
+async function findRecord(name) {
+  if (!configured()) return { ok: false, reason: 'not_configured' };
+  try {
+    const res = await call('GET', `/consultant/records?client=${encodeURIComponent(name)}&limit=20`);
+    if (!res.ok) return { ok: false, reason: `http_${res.status}` };
+    const data = await res.json();
+    const rows = Array.isArray(data) ? data : (data.data || data.records || []);
+    return { ok: true, records: rows.map(r => ({ id: r.id || r._id, name: r.fullName || r.name || '' })) };
+  } catch (err) {
+    return { ok: false, reason: err.message || 'unreachable' };
+  }
+}
+
+function _resetToken() { token = null; inFlight = null; }
+
+module.exports = { syncPen, findRecord, configured, _resetToken };
