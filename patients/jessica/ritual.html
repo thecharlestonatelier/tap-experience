@@ -270,15 +270,18 @@
   .wd.done { background: var(--sage); }
   .wd.miss { background: var(--clay); opacity: .5; }
 
-  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  /* Three buttons do not fit one phone-width row; let them wrap rather
+     than squeeze the labels to two letters. */
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
   .action {
-    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    flex: 1 1 150px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
     padding: 14px; background: var(--card); border: none; border-radius: 15px;
     box-shadow: var(--shadow); color: var(--espresso-soft);
     font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 600;
     letter-spacing: .09em; text-transform: uppercase; cursor: pointer;
   }
   .action svg { width: 15px; height: 15px; color: var(--brass); flex: none; }
+  .cal-note { margin-top: 10px; font-size: 11.5px; line-height: 1.55; color: var(--muted); }
 
   /* ---------- Tabs ---------- */
   .tabs { display: flex; gap: 6px; margin: 30px 0 18px; overflow-x: auto; scrollbar-width: none; }
@@ -480,11 +483,23 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
       Add to calendar
     </button>
+    <button class="action" id="btnUncalendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9.5 15.5l5 0"/></svg>
+      Remove from calendar
+    </button>
     <button class="action" onclick="window.print()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2"/><rect x="8" y="14" width="8" height="7"/></svg>
       Print
     </button>
   </div>
+  <p class="cal-note">
+    Adding again updates the doses already in your calendar rather than
+    leaving a second copy. If your schedule itself has changed, tap
+    <b>Remove from calendar</b> first and then add again, so nothing from the
+    old plan is left behind. Putting them in a calendar of their own called
+    &ldquo;Atelier Doses&rdquo; also lets you clear every dose at once by
+    deleting that calendar.
+  </p>
 
   <div class="tabs" role="tablist">
     <button class="tab" role="tab" data-panel="phases"   aria-selected="true">Phases</button>
@@ -1280,54 +1295,215 @@ function showToast(msg) {
 }
 
 
-/* ---------- calendar export ---------- */
-function buildICS() {
-  const pad = n => String(n).padStart(2,'0');
-  const stamp = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-  const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//The Charleston Atelier//Ritual//EN','CALSCALE:GREGORIAN'];
+/* ==================================================================
+   CALENDAR EXPORT
+   ------------------------------------------------------------------
+   Three rules, each learned from a way this went wrong.
+
+   1. NEVER WRITE A FLOATING TIME.
+      "DTSTART:20260917T200000" — no Z, no TZID — is a floating time,
+      and the spec lets the reader interpret it however it likes. Some
+      calendars read it as the viewer's own local time, which is what
+      this used to assume. Others read it as UTC, and an 8pm dose then
+      alarms at 4pm in Charleston, four hours early, every day.
+      So every timed event now carries a real instant, written in UTC.
+      It is built from her clock time in her own timezone — the same
+      arithmetic upcomingDoses() uses for push — so the calendar alarm
+      and the phone reminder fire at the same moment.
+
+   2. A UID IS A PROMISE.
+      Calendars replace an event whose UID they already hold. The old
+      UID carried the position of a dose in the list, so inserting one
+      day at the front renamed every event after it and a re-export
+      dropped a second copy of the protocol beside the first. A UID is
+      now the patient, the pen and the calendar day — nothing that
+      moves when the schedule does. Re-exporting is how you edit.
+
+   3. REMEMBER WHAT WAS ISSUED, SO IT CAN BE WITHDRAWN.
+      Every UID this device has written is kept, so "Remove from
+      calendar" can cancel exactly those — including doses that have
+      since left the schedule and could not otherwise be named.
+   ================================================================== */
+
+const ICS_PRODID = '-//The Charleston Atelier//Ritual//EN';
+const ICS_CALNAME = 'Atelier Doses';
+
+function icsKey() { return `tca.ics.${CFG.patient.id}`; }
+
+function icsIssued() {
+  try {
+    const m = JSON.parse(localStorage.getItem(icsKey()));
+    return { uids: Array.isArray(m && m.uids) ? m.uids : [], seq: Number(m && m.seq) || 0 };
+  } catch { return { uids: [], seq: 0 }; }
+}
+
+function icsRemember(uids, seq) {
+  const prev = icsIssued();
+  const all = Array.from(new Set(prev.uids.concat(uids))).slice(-800);
+  try { localStorage.setItem(icsKey(), JSON.stringify({ uids: all, seq })); } catch {}
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+
+/* Local calendar day — for a UID, and for all-day events. */
+function icsDay(d) { return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}`; }
+
+/* A real instant, written as UTC. This is the line that had the bug. */
+function icsUtc(d) {
+  return `${d.getUTCFullYear()}${pad2(d.getUTCMonth()+1)}${pad2(d.getUTCDate())}T` +
+         `${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}Z`;
+}
+
+/* Her clock time on that day, in her own timezone, as an instant. */
+function icsInstant(day, hhmm) {
+  const [hh, mm] = String(hhmm || '').split(':').map(Number);
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                  isNaN(hh) ? 9 : hh, isNaN(mm) ? 0 : mm, 0, 0);
+}
+
+/* Commas, semicolons and backslashes separate fields in iCalendar; a
+   name containing one would otherwise split the line. */
+function icsText(s) {
+  return String(s)
+    .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+/* Content lines are limited to 75 octets, continued with a leading
+   space. Strict parsers reject a file that ignores it. */
+function icsFold(line) {
+  if (line.length <= 73) return line;
+  const out = [line.slice(0, 73)];
+  let rest = line.slice(73);
+  while (rest.length > 72) { out.push(' ' + rest.slice(0, 72)); rest = rest.slice(72); }
+  if (rest) out.push(' ' + rest);
+  return out.join('\r\n');
+}
+
+const penKeyOf = pen => pen.template || pen.templateId || pen.id;
+
+function icsUid(pen, day) {
+  return `${CFG.patient.id}.${penKeyOf(pen)}.${icsDay(day)}@thecharlestonatelier`;
+}
+function icsRefillUid(pen) {
+  return `${CFG.patient.id}.${penKeyOf(pen)}.refill@thecharlestonatelier`;
+}
+
+/* The UIDs the old exporter wrote, recomputed its way. Anyone carrying
+   events from before this was fixed can have those withdrawn too, which
+   is most of the point of the remove file. */
+function legacyUids() {
+  const out = [];
+  PENS.forEach(pen => {
+    occurrences(pen).forEach((d, i) => {
+      if (!doseOn(pen, d)) return;
+      out.push(`${pen.id}-${icsDay(d)}-${i}@atelier`);
+    });
+    const s = supplyView(pen);
+    if (s && s.lastDose) out.push(`${pen.id}-refill-${icsDay(s.lastDose)}@atelier`);
+  });
+  return out;
+}
+
+/* The whole calendar. `cancel: true` writes the same events as
+   withdrawals instead of appointments. */
+function buildICS(opts) {
+  const cancel = !!(opts && opts.cancel);
+  const seq = icsIssued().seq + 1;
+  const stamp = icsUtc(new Date());
+  const uids = [];
+
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:${ICS_PRODID}`, 'CALSCALE:GREGORIAN',
+    `METHOD:${cancel ? 'CANCEL' : 'PUBLISH'}`,
+    // Names the calendar, so the doses can be cleared in one go by
+    // deleting it rather than one event at a time.
+    `X-WR-CALNAME:${ICS_CALNAME}`
+  ];
+
+  const event = body => lines.push('BEGIN:VEVENT', ...body, 'END:VEVENT');
+
+  if (cancel) {
+    const known = Array.from(new Set(icsIssued().uids.concat(legacyUids())));
+    known.forEach(uid => {
+      uids.push(uid);
+      event([
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${stamp}`,
+        `SEQUENCE:${seq}`,
+        'STATUS:CANCELLED',
+        icsFold('SUMMARY:' + icsText('Cancelled — The Charleston Atelier'))
+      ]);
+    });
+    lines.push('END:VCALENDAR');
+    return { text: lines.join('\r\n'), uids, seq, count: known.length };
+  }
 
   PENS.forEach(pen => {
-    // Weekly injections are calendared at 9am on the day she chose.
-    // Her chosen hour, not the band's default.
-    const [hh, mm] = timeFor(pen).split(':');
-    occurrences(pen).forEach((d, i) => {
+    const when = timeFor(pen);          // her hour, not the band's default
+    occurrences(pen).forEach(d => {
       const dose = doseOn(pen, d);
       if (!dose) return;
+      const start = icsInstant(d, when);
+      const end = new Date(start.getTime() + 15 * 60000);
       const title = `${pen.name} — ${dialLead(pen).toLowerCase()} ${dose.units}`;
-      lines.push('BEGIN:VEVENT',
-        `UID:${pen.id}-${stamp(d)}-${i}@atelier`,
-        `DTSTAMP:${stamp(new Date())}T000000`,
-        `DTSTART:${stamp(d)}T${hh}${mm}00`,
-        `DTEND:${stamp(d)}T${hh}${pad(Number(mm)+15)}00`,
-        `SUMMARY:${title}`,
-        `DESCRIPTION:${dose.phase.name} · ${round(dose.ml,2)} mL · ${pen.route}`,
-        'BEGIN:VALARM','TRIGGER:-PT15M','ACTION:DISPLAY',`DESCRIPTION:${title}`,'END:VALARM',
-        'END:VEVENT');
+      const uid = icsUid(pen, d);
+      uids.push(uid);
+      event([
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${icsUtc(start)}`,
+        `DTEND:${icsUtc(end)}`,
+        `SEQUENCE:${seq}`,
+        icsFold('SUMMARY:' + icsText(title)),
+        icsFold('DESCRIPTION:' + icsText(`${dose.phase.name} · ${round(dose.ml,2)} mL · ${pen.route}`)),
+        'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY',
+        icsFold('DESCRIPTION:' + icsText(title)), 'END:VALARM'
+      ]);
     });
 
     const s = supplyView(pen);
     if (s && s.lastDose) {
-      lines.push('BEGIN:VEVENT',
-        `UID:${pen.id}-refill-${stamp(s.lastDose)}@atelier`,
-        `DTSTAMP:${stamp(new Date())}T000000`,
-        `DTSTART;VALUE=DATE:${stamp(addDays(s.lastDose, -3))}`,
-        `SUMMARY:Refill due — ${pen.name}`,
-        'DESCRIPTION:This pen is nearly empty.',
-        'END:VEVENT');
+      const uid = icsRefillUid(pen);
+      uids.push(uid);
+      event([
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${icsDay(addDays(s.lastDose, -3))}`,
+        `SEQUENCE:${seq}`,
+        icsFold('SUMMARY:' + icsText(`Refill due — ${pen.name}`)),
+        icsFold('DESCRIPTION:' + icsText('This pen is nearly empty.'))
+      ]);
     }
   });
 
   lines.push('END:VCALENDAR');
-  return lines.join('\r\n');
+  return { text: lines.join('\r\n'), uids, seq, count: uids.length };
+}
+
+function saveICS(text, name) {
+  const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 
 function downloadICS() {
-  const blob = new Blob([buildICS()], { type:'text/calendar;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${CFG.patient.name}-protocol.ics`;
-  document.body.appendChild(a); a.click(); a.remove();
-  showToast('Calendar file created — open it to add your reminders.');
+  const out = buildICS();
+  icsRemember(out.uids, out.seq);
+  saveICS(out.text, `${CFG.patient.name}-protocol.ics`);
+  showToast('Calendar file created — opening it updates the doses already there.');
+}
+
+function removeICS() {
+  const out = buildICS({ cancel: true });
+  if (!out.count) return showToast('Nothing has been added to your calendar from this phone.');
+  icsRemember([], out.seq);
+  saveICS(out.text, `${CFG.patient.name}-remove.ics`);
+  showToast('Open this file to clear the doses it added.');
 }
 
 /* ---------- boot ---------- */
@@ -1406,6 +1582,7 @@ document.getElementById('calNext').addEventListener('click', () => {
   calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); renderCalendar();
 });
 document.getElementById('btnCalendar').addEventListener('click', downloadICS);
+document.getElementById('btnUncalendar').addEventListener('click', removeICS);
 document.getElementById('modalCancel').addEventListener('click', closeLog);
 document.getElementById('modalConfirm').addEventListener('click', confirmLog);
 document.getElementById('scrim').addEventListener('click', e => { if (e.target.id === 'scrim') closeLog(); });
