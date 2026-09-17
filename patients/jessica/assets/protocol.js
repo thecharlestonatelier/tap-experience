@@ -101,6 +101,7 @@ function saveSetup(pen, data) {
   try { localStorage.setItem(setupKey(pen), JSON.stringify(data)); } catch {}
   applySetup(pen, data);
   _supplyCache.clear();
+  try { reportState(true); } catch {}
 }
 
 function needsSetup(pen) { return !!pen.setup && !loadSetup(pen); }
@@ -406,6 +407,7 @@ function loadTimes() {
 
 function saveTimes(map) {
   try { localStorage.setItem(timesKey(), JSON.stringify(map || {})); } catch {}
+  try { reportState(true); } catch {}
 }
 
 /* The clock time for a pen: hers if she set one, otherwise the band default. */
@@ -439,6 +441,8 @@ function setStart(isoDate) {
   START = parse(isoDate);
   saveStart(isoDate);
   _supplyCache.clear();          // every projection depends on the start day
+  // The atelier's copy of "what she is seeing" is now wrong; say so.
+  try { reportState(true); } catch {}
 }
 
 /* ---------- card payloads ----------
@@ -560,6 +564,124 @@ function noteTap(slug) {
     fetch(`/api/tap/${encodeURIComponent(slug)}`, { method: 'POST', keepalive: true })
       .catch(() => {});
   } catch {}
+}
+
+/* ==================================================================
+   THE ATELIER'S SIDE OF THE DEVICE SETTINGS
+   ------------------------------------------------------------------
+   Her start day and the hour she takes each pen live on this phone,
+   which is right: she is the one who knows when she started and when
+   she actually injects. But it left the atelier unable to help — a
+   patient who rings to say the reminder comes at the wrong time could
+   only be talked through fixing it herself.
+
+   So the card now does two things.
+
+   APPLIES what the atelier has set for her. `rev` is what keeps this
+   honest: the phone remembers the last rev it took, so a change made in
+   Card Studio lands exactly once. Anything she changes herself
+   afterwards stands, and is not stamped over at the next open.
+
+   REPORTS what it is showing. The dosing arithmetic lives here, so the
+   dashboard asks rather than recomputing — one copy of the maths, and
+   what the atelier reads is what is on her screen.
+   ================================================================== */
+var _tookSettings = false;      // did this load adopt a change from the atelier?
+
+function revKey() { return `tca.rev.${CFG.patient.id}`; }
+
+function appliedRev() {
+  try { return Number(localStorage.getItem(revKey())) || 0; } catch { return 0; }
+}
+
+function applySettings(settings) {
+  if (!settings || !Number(settings.rev)) return false;
+  if (Number(settings.rev) <= appliedRev()) return false;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(settings.startDate || '')) saveStart(settings.startDate);
+  if (settings.times && typeof settings.times === 'object') {
+    const mine = loadTimes();
+    Object.keys(settings.times).forEach(band => {
+      if (/^\d{2}:\d{2}$/.test(settings.times[band])) mine[band] = settings.times[band];
+    });
+    saveTimes(mine);
+  }
+  try { localStorage.setItem(revKey(), String(Number(settings.rev))); } catch {}
+  return true;
+}
+
+/* The clock time in force for each band this protocol uses. */
+function effectiveTimes() {
+  const mine = loadTimes(), out = {};
+  timeBands().forEach(b => { out[b] = mine[b] || TIME_AT[b] || '09:00'; });
+  return out;
+}
+
+/* What is on her screen today, in the shape the dashboard renders. */
+function stateReport() {
+  const t = today();
+  return {
+    startDate: iso(START),
+    times: effectiveTimes(),
+    tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
+    rev: appliedRev(),
+    homeScreen: isHomeScreenApp(),
+    today: PENS.filter(p => isActive(p, t)).map(pen => {
+      const dose = isDue(pen, t) ? doseOn(pen, t) : null;
+      return {
+        pen: pen.name,
+        template: pen.template || pen.id,
+        phase: dose ? dose.phase.name : '',
+        units: dose ? dose.units : 0,
+        mg: dose ? round(dose.totalMg, 3) : 0,
+        at: effectiveTimes()[pen.time] || '',
+        rest: !dose
+      };
+    }),
+    supply: PENS.map(pen => {
+      const s = supply(pen);
+      return {
+        template: pen.template || pen.id,
+        dosesLeft: dosesLeft(pen),
+        lastDose: s.lastDose ? iso(s.lastDose) : ''
+      };
+    })
+  };
+}
+
+/* Reported at most every ten minutes as she reads, and immediately when
+   something changes. The interval rather than once-a-session is
+   deliberate: a patient on the phone to the atelier will tap her card
+   again while they talk, and "last reported just now" is what tells the
+   atelier she is actually looking at it. Silent on failure — a card that
+   cannot reach the service must still show her dose. */
+const STATE_EVERY_MS = 10 * 60 * 1000;
+let _stateTimer = null;
+function reportState(force) {
+  const slug = CARD_SLUG || readSlug();
+  if (!slug || !PENS.length) return;
+  const key = `tca.state.${slug}`;
+  if (!force) {
+    try {
+      const last = Number(sessionStorage.getItem(key)) || 0;
+      if (Date.now() - last < STATE_EVERY_MS) return;
+      sessionStorage.setItem(key, String(Date.now()));
+    } catch {}
+  }
+  clearTimeout(_stateTimer);
+  _stateTimer = setTimeout(async () => {
+    let reminders = false;
+    try { reminders = !!(await currentPushSub()); } catch {}
+    const body = Object.assign(stateReport(), { reminders });
+    try {
+      fetch(`/api/state/${encodeURIComponent(slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        keepalive: true
+      }).catch(() => {});
+    } catch {}
+  }, force ? 400 : 0);
 }
 
 /* ---------- pens the patient adds herself ----------
@@ -823,7 +945,10 @@ async function loadProtocol() {
   } else if (CARD_SLUG) {
     const res = await fetch(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
-    CFG = hydrateRecord(await res.json(), templates);
+    const rec = await res.json();
+    CFG = hydrateRecord(rec, templates);
+    // Anything the atelier set for her, before the start day is read.
+    _tookSettings = applySettings(rec.settings);
     noteTap(CARD_SLUG);
   } else if (legacy) {
     // The one card written before any of this existed. It is reached only
@@ -843,6 +968,11 @@ async function loadProtocol() {
 
   // Only a card that actually resolved is worth remembering.
   if (PENS.length) rememberCard({ card, slug: CARD_SLUG, legacy, start: pinned });
+
+  // Tell the atelier what this screen is showing. A change it just sent
+  // is reported straight back, so the dashboard can see it landed.
+  reportState(_tookSettings);
+  _tookSettings = false;
 
   return CFG;
 }

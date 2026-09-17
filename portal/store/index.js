@@ -42,7 +42,91 @@ function carryCounters(out, existing) {
   if (existing.firstSeen) out.firstSeen = existing.firstSeen;
   if (existing.lastSeen) out.lastSeen = existing.lastSeen;
   if (existing.days) out.days = existing.days;
+  // What her phone last reported. It is hers, not the dashboard's, so a
+  // save from Card Studio must never overwrite it.
+  if (existing.state) out.state = existing.state;
   return out;
+}
+
+/* ---------- what the atelier sets on her behalf ----------
+   Her start day and the hour she takes each pen have always lived on her
+   phone, which is right — she is the one who knows. But when she rings to
+   say the reminder is coming at the wrong time, there was no way to
+   change it from here.
+
+   These are the same two settings, held on the card. `rev` is what makes
+   it safe: the phone remembers the last rev it applied, so a value set
+   here lands once and her own later choice is not stamped on again at
+   every open. Leave a field empty and the phone keeps deciding. */
+function sanitizeSettings(input, existing) {
+  const prev = (existing && existing.settings) || {};
+  if (!input || typeof input !== 'object') return prev.rev ? prev : undefined;
+
+  const times = {};
+  const src = (input.times && typeof input.times === 'object') ? input.times : {};
+  Object.keys(src).slice(0, 6).forEach(band => {
+    const v = String(src[band] || '');
+    if (/^\d{2}:\d{2}$/.test(v)) times[String(band).slice(0, 16)] = v;
+  });
+
+  const out = {
+    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '') ? input.startDate : '',
+    times,
+    rev: Number(prev.rev) || 0
+  };
+
+  // A new rev only when something actually changed, so opening the editor
+  // and saving does not keep re-stamping her phone.
+  //
+  // `force` is the exception, and it is the case that matters most: her
+  // phone has drifted to something the card never said, and the atelier
+  // wants the card's own values put back. Nothing has "changed" in the
+  // form — it already reads what it should — so without this there would
+  // be no way to send it.
+  const same = out.startDate === (prev.startDate || '') &&
+               JSON.stringify(out.times) === JSON.stringify(prev.times || {});
+  if (!same || input.force) out.rev = (Number(prev.rev) || 0) + 1;
+  if (!out.rev && !out.startDate && !Object.keys(times).length) return undefined;
+  return out;
+}
+
+/* ---------- what her phone says it is showing ----------
+   Reported by the card itself, because the card is what does the dosing
+   arithmetic. The dashboard shows this rather than recomputing it, so
+   what the atelier reads is what she is actually looking at. */
+function sanitizeState(input) {
+  if (!input || typeof input !== 'object') return null;
+  const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+  const times = {};
+  const src = (input.times && typeof input.times === 'object') ? input.times : {};
+  Object.keys(src).slice(0, 6).forEach(b => {
+    const v = String(src[b] || '');
+    if (/^\d{2}:\d{2}$/.test(v)) times[String(b).slice(0, 16)] = v;
+  });
+
+  return {
+    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '') ? input.startDate : '',
+    times,
+    tz: str(input.tz, 60),
+    rev: Number(input.rev) || 0,
+    reminders: !!input.reminders,
+    homeScreen: !!input.homeScreen,
+    today: (Array.isArray(input.today) ? input.today : []).slice(0, 8).map(d => ({
+      pen: str(d.pen, 40),
+      template: str(d.template, 24),
+      phase: str(d.phase, 40),
+      units: Number(d.units) || 0,
+      mg: Number(d.mg) || 0,
+      at: /^\d{2}:\d{2}$/.test(d.at || '') ? d.at : '',
+      rest: !!d.rest
+    })),
+    supply: (Array.isArray(input.supply) ? input.supply : []).slice(0, 8).map(s => ({
+      template: str(s.template, 24),
+      dosesLeft: Number(s.dosesLeft) || 0,
+      lastDose: /^\d{4}-\d{2}-\d{2}$/.test(s.lastDose || '') ? s.lastDose : ''
+    })),
+    at: nowIso()
+  };
 }
 
 function sanitize(input, existing = null) {
@@ -62,6 +146,8 @@ function sanitize(input, existing = null) {
     createdAt: existing ? existing.createdAt : nowIso(),
     updatedAt: nowIso()
   };
+  const settings = sanitizeSettings(input.settings, existing);
+  if (settings) rec.settings = settings;
   // A card is blank until it has someone's name or something on it. Saying
   // so here means the dashboard never has to remember to set it.
   if (!rec.status) rec.status = (rec.name || rec.pens.length) ? 'active' : 'blank';
@@ -100,7 +186,11 @@ function publicView(rec) {
     name: rec.name || '',
     status: rec.status,
     startDate: rec.startDate || null,
-    pens: rec.pens || []
+    pens: rec.pens || [],
+    // Her own settings, so the card can adopt anything the atelier
+    // changed for her. Not the state report — that came from her phone
+    // and it has no use for it back.
+    settings: rec.settings || null
   };
 }
 
@@ -144,6 +234,11 @@ function firestoreStore() {
         lastSeen: nowIso(),
         days: { [day]: FieldValue.increment(1) }
       }, { merge: true });
+    },
+    // Same reasoning: her phone reporting in while the dashboard is being
+    // saved must not undo the save.
+    async setState(slug, state) {
+      await col.doc(normalizeSlug(slug)).set({ state }, { merge: true });
     }
   };
 }
@@ -191,6 +286,12 @@ function fileStore(file) {
       rec.days = rec.days || {};
       rec.days[day] = (Number(rec.days[day]) || 0) + 1;
       writeAll(all);
+    },
+    async setState(slug, state) {
+      const all = readAll(), s = normalizeSlug(slug);
+      if (!all[s]) return;
+      all[s].state = state;
+      writeAll(all);
     }
   };
 }
@@ -215,4 +316,4 @@ function assertSlug(slug) {
 }
 
 module.exports = { openStore, sanitize, sanitizePen, publicView, assertSlug,
-                   carryCounters, COLLECTION };
+                   carryCounters, sanitizeState, COLLECTION };

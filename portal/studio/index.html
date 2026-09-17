@@ -164,6 +164,26 @@
   .deck-foot .det span { white-space:nowrap; }
 
   .empty { color:var(--muted); font-size:14px; padding:22px 0; text-align:center; }
+
+  /* ---------- what her phone reports ---------- */
+  .seen { padding:16px 18px; font-size:13.5px; }
+  .seen .line { display:flex; gap:12px; padding:7px 0; border-top:1px solid var(--line); }
+  .seen .line:first-child { border-top:0; padding-top:0; }
+  .seen .k { flex:0 0 116px; color:var(--muted); font-size:11px; letter-spacing:.12em;
+             text-transform:uppercase; padding-top:3px; }
+  .seen .v { flex:1; color:var(--ink); }
+  .seen .v small { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
+  .seen .off { color:var(--muted); }
+  /* Where her phone and the card disagree — the thing worth ringing about. */
+  .seen .clash { color:var(--alert); }
+  .seen .rest { color:var(--muted); }
+  .time-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .time-row .band { flex:0 0 108px; font-size:13.5px; color:var(--ink); }
+  .time-row input { flex:0 0 140px; }
+  .time-row .was { font-size:12px; color:var(--muted); }
+  /* Marks a row whose "showing now" came off the patient's own screen
+     rather than being worked out here. */
+  .live { color:var(--ok); font-size:15px; line-height:0; }
   .toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%,10px);
            background:var(--ink); color:#F6F0E7; padding:12px 20px; border-radius:13px;
            font-size:13.5px; opacity:0; pointer-events:none; transition:.22s; z-index:50; }
@@ -282,9 +302,9 @@
     <h2>In use</h2>
     <p class="hint">
       What the cards are doing. A card is counted once per patient browsing
-      session, so reading the page twice is one open. Only the address is
-      recorded &mdash; never the protocol, which browsers keep out of every
-      request anyway.
+      session, so reading the page twice is one open. A green dot beside
+      &ldquo;showing now&rdquo; means that line came off the patient&rsquo;s own
+      screen rather than being worked out here.
     </p>
     <div class="panel stats">
       <div class="stat"><small>Opens, all cards</small><strong id="mTaps">0</strong></div>
@@ -335,6 +355,32 @@
           <option value="retired">Retired</option>
         </select>
       </div>
+    </div>
+
+    <!-- What her phone says it is showing. Reported by the card itself,
+         because the card is what does the dosing arithmetic. -->
+    <div style="margin-top:22px">
+      <label>On her phone</label>
+      <div class="panel seen" id="seen"></div>
+    </div>
+
+    <!-- The two settings that used to live only on her phone. Changing one
+         here reaches her card the next time she opens it. -->
+    <div style="margin-top:22px">
+      <label>Dose times</label>
+      <p class="hint" style="margin:0 0 10px">
+        The hour her reminder fires and her calendar is written to. Leave a
+        row alone and her own choice stands; change one and her phone takes
+        it on her next tap.
+      </p>
+      <div id="timeRows"></div>
+      <button type="button" class="ghost sm" id="pushSettings" style="margin-top:10px">
+        Send start day &amp; times to her phone
+      </button>
+      <p class="hint" style="margin:8px 0 0">
+        Use this when her phone has drifted and the card was right all along —
+        it sends what is in this form whether or not you changed it.
+      </p>
     </div>
 
     <div style="margin-top:22px">
@@ -521,7 +567,7 @@ async function refresh() {
       <td class="slug">/${c.slug}</td>
       <td class="who">${c.name || '<span style="color:var(--muted);font-weight:400">unassigned</span>'}</td>
       <td class="pens">${pens || '—'}</td>
-      <td class="dose">${now.text}</td>
+      <td class="dose">${now.text}${now.live ? ' <span class="live" title="Reported by her phone">•</span>' : ''}</td>
       <td class="num${taps ? '' : ' cold'}">${taps || '—'}</td>
       <td class="num${c.lastSeen ? '' : ' cold'}">${c.lastSeen ? ago(c.lastSeen) : 'never'}</td>
       <td><span class="pill ${c.status}">${c.status}</span>${
@@ -626,6 +672,14 @@ function openEditor(slug) {
   $('editStatus').value = editing.status || 'active';
   $('editNote').value = editing.note || '';
   renderPens();
+  renderSeen();
+  renderTimes();
+  renderDoses(editing.slug);
+  // What the fields held when the editor opened. Only what she actually
+  // changes is pushed to the phone — otherwise opening a card and pressing
+  // Save would stamp the atelier's start day over one the patient chose.
+  editing._was = { startDate: $('editStart').value, times: readTimeInputs() };
+  editing._force = false;
   $('testPush').hidden = true;
   // Only offer it where there is a phone to send to.
   api(`/api/push/phones/${editing.slug}`).then(r => {
@@ -633,6 +687,153 @@ function openEditor(slug) {
     $('testPush').textContent = r && r.phones > 1 ? `Send test (${r.phones} phones)` : 'Send test';
   }).catch(() => {});
   $('editor').showModal();
+}
+
+/* ---------- what she is seeing ----------
+   None of this is recomputed here. The card reports what it drew, which
+   is the only way the dashboard and the phone cannot disagree. */
+const BAND_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
+
+function prettyTime(hhmm) {
+  const [h, m] = String(hhmm || '').split(':').map(Number);
+  if (isNaN(h)) return '—';
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+function prettyDate(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined,
+    { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/* The bands this card's pens actually use — a morning pen and an evening
+   pen is two rows, not four. */
+function bandsOf(rec) {
+  const seen = [];
+  (rec.pens || []).forEach(p => {
+    const t = (TEMPLATES.templates || []).find(x => x.id === p.template);
+    if (t && t.time && !seen.includes(t.time)) seen.push(t.time);
+  });
+  return seen;
+}
+
+function renderSeen() {
+  const el = $('seen');
+  const s = editing.state;
+  if (!s || !s.at) {
+    el.innerHTML = `<div class="empty" style="padding:6px 0">Nothing reported yet — this card
+      has not been opened since the portal started asking.</div>`;
+    return;
+  }
+
+  const rows = [];
+  const clash = s.startDate && editing.startDate && s.startDate !== editing.startDate;
+  rows.push(['Start day',
+    `<span class="${clash ? 'clash' : ''}">${prettyDate(s.startDate)}</span>` +
+    (clash ? `<small class="clash">The card says ${prettyDate(editing.startDate)}. Her phone wins
+              until you send the card's day to it — the button under Dose times.</small>` : '')]);
+
+  const todayRows = (s.today || []).map(d => d.rest
+    ? `<div class="rest">${d.pen} — rest day</div>`
+    : `<div><b>${d.pen}</b> ${d.units} units · ${d.mg} mg · ${d.phase || '—'}
+         ${d.at ? `· ${prettyTime(d.at)}` : ''}</div>`);
+  rows.push(['Today', todayRows.length ? todayRows.join('') : '<span class="off">Nothing scheduled</span>']);
+
+  const times = Object.keys(s.times || {});
+  rows.push(['Her times', times.length
+    ? times.map(b => `${b} ${prettyTime(s.times[b])}`).join(' · ')
+    : '<span class="off">—</span>']);
+
+  const supply = (s.supply || []).map(x => {
+    const t = (TEMPLATES.templates || []).find(y => y.id === x.template);
+    return `${t ? t.name : x.template}: ${x.dosesLeft} left${x.lastDose ? `, last ${prettyDate(x.lastDose)}` : ''}`;
+  });
+  if (supply.length) rows.push(['Pen supply', supply.join('<br>')]);
+
+  rows.push(['Reminders', s.reminders
+    ? '<span style="color:var(--ok)">On</span>'
+    : '<span class="off">Off</span>'] );
+  rows.push(['Phone', `${s.homeScreen ? 'Added to home screen' : 'Browser tab'}${
+    s.tz ? ` · ${s.tz}` : ''}<small>Last reported ${since(s.at)}</small>`]);
+
+  // Filled in once the dose log comes back; it is a separate collection.
+  rows.push(['Logged', '<span class="off" id="seenDoses">…</span>']);
+
+  el.innerHTML = rows.map(([k, v]) =>
+    `<div class="line"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+}
+
+/* What the vial stickers have recorded. Behind the passphrase, like the
+   rest of the dashboard — this is the only place a dose log is shown. */
+async function renderDoses(slug) {
+  const el = () => $('seenDoses');
+  let rows = [];
+  try { rows = (await api(`/api/doses/${slug}`)).doses || []; }
+  catch { if (el()) el().textContent = 'could not be read'; return; }
+  if (!el()) return;
+  if (!rows.length) { el().textContent = 'No doses logged from a vial sticker yet.'; return; }
+
+  const week = Date.now() - 7 * 86400000;
+  const recent = rows.filter(d => new Date(d.at).getTime() >= week).length;
+  const last = rows[0];
+  const name = (TEMPLATES.templates.find(t => t.id === last.template) || {}).name || last.template;
+  el().className = 'v';
+  el().innerHTML = `${recent} in the last 7 days · ${rows.length} in all` +
+    `<small>Last: ${name}, ${last.units} units, ${prettyDate(last.day || String(last.at).slice(0,10))}` +
+    `${last.lot ? ` · lot ${last.lot}` : ''}</small>`;
+}
+
+function renderTimes() {
+  const bands = bandsOf(editing);
+  const set = (editing.settings && editing.settings.times) || {};
+  const hers = (editing.state && editing.state.times) || {};
+  $('timeRows').innerHTML = bands.length
+    ? bands.map(b => {
+        const value = set[b] || hers[b] || BAND_AT[b] || '09:00';
+        const note = hers[b] && hers[b] !== value ? `her phone: ${prettyTime(hers[b])}`
+                   : (hers[b] ? 'in use on her phone' : 'not reported yet');
+        return `<div class="time-row">
+          <span class="band">${b}</span>
+          <input type="time" data-band="${b}" value="${value}">
+          <span class="was">${note}</span>
+        </div>`;
+      }).join('')
+    : '<div class="empty" style="padding:4px 0">No pens on this card yet.</div>';
+}
+
+function readTimeInputs() {
+  const out = {};
+  $('timeRows').querySelectorAll('input[data-band]').forEach(i => {
+    if (/^\d{2}:\d{2}$/.test(i.value)) out[i.dataset.band] = i.value;
+  });
+  return out;
+}
+
+/* Only what she actually changed travels to the phone — otherwise opening
+   a card and pressing Save would push the atelier's start day over one the
+   patient picked herself.
+
+   "Send to her phone" overrides that: it takes everything in the form as
+   it stands, changed or not. That is the call where her phone has drifted
+   and the card was right all along. */
+function settingsFromEditor() {
+  const was = editing._was || { startDate: '', times: {} };
+  const out = Object.assign({ startDate: '', times: {} },
+    JSON.parse(JSON.stringify(editing.settings || {})));
+  out.times = out.times || {};
+  const now = readTimeInputs();
+
+  if (editing._force) {
+    out.startDate = $('editStart').value || '';
+    Object.assign(out.times, now);
+    out.force = true;
+    return out;
+  }
+
+  if ($('editStart').value !== was.startDate) out.startDate = $('editStart').value || '';
+  Object.keys(now).forEach(b => { if (now[b] !== was.times[b]) out.times[b] = now[b]; });
+  return out;
 }
 
 $('testPush').addEventListener('click', async () => {
@@ -794,11 +995,25 @@ function renderStats() {
   $('mFlag').textContent = flagged;
 }
 
-/* What a card is showing today, worked out the same way the patient's page
-   works it out: walk the schedule from her start day, drawing from the pen,
-   and report where that lands. A card whose pen ran dry says so — that is
-   the state worth catching before she taps and finds nothing. */
+/* What a card is showing today.
+
+   If her phone has reported in today, that IS the answer — it is her
+   screen, drawn by the same engine she is reading, with her own start day
+   and her own setup answers in it. Nothing below can know those.
+
+   The rest is the fallback for a card that has never been opened, or was
+   opened days ago: walk the schedule from the card's start day and say
+   where that lands. It is a second copy of the arithmetic, and it is kept
+   only because a card nobody has tapped still has to show something. */
 function showingNow(rec) {
+  const s = rec.state;
+  if (s && s.at && Date.now() - new Date(s.at) < 36 * 3600000 && (s.today || []).length) {
+    const live = s.today.map(d => d.rest
+      ? `${d.pen}: rest day`
+      : `${d.pen}: ${d.units}u`).join(' · ');
+    return { text: live, flag: '', live: true };
+  }
+
   const pens = rec.pens || [];
   if (!pens.length) return { text: '—', flag: rec.name ? 'no protocol' : '' };
   if (!rec.startDate) return { text: 'waiting for her start day', flag: '' };
@@ -827,6 +1042,18 @@ function showingNow(rec) {
   }
   if (done.length) bits.push(`<span class="spent">${done.join(', ')} spent</span>`);
   return { text: bits.join(' · ') || '—', flag: done.length ? 'course finished' : '' };
+}
+
+/* "Opened 9 days ago" is enough for a card; "reported 4 minutes ago" is
+   what tells you whether she has her phone in her hand right now. */
+function since(iso) {
+  if (!iso) return 'never';
+  const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  return ago(iso);
 }
 
 function ago(iso) {
@@ -933,16 +1160,29 @@ $('addPen').addEventListener('click', () => {
   renderPens();
 });
 
+$('pushSettings').addEventListener('click', () => {
+  if (!editing) return;
+  editing._force = true;
+  $('saveCard').click();
+});
+
 $('saveCard').addEventListener('click', async () => {
   editing.name = $('editName').value.trim();
   editing.startDate = $('editStart').value || null;
   editing.status = $('editStatus').value;
   editing.note = $('editNote').value;
+  editing.settings = settingsFromEditor();
   if (editing.name && editing.status === 'blank') editing.status = 'active';
-  await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
+
+  const before = (editing.settings && editing.settings.rev) || 0;
+  const saved = await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
   $('editor').close();
   await refresh();
-  toast('Saved. It is live on the next tap.');
+  // A settings change is the one edit that has to travel to a device, so
+  // say plainly that it is waiting rather than already done.
+  toast((saved && saved.settings && saved.settings.rev > before)
+    ? 'Saved. Her phone takes the new times the next time she opens her card.'
+    : 'Saved. It is live on the next tap.');
 });
 
 $('cancelEdit').addEventListener('click', () => $('editor').close());

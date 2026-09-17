@@ -25,7 +25,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 
-const { openStore, sanitize, publicView, assertSlug } = require('./store');
+const { openStore, sanitize, publicView, assertSlug, sanitizeState } = require('./store');
 const { openDoses, sanitizeDose } = require('./store/doses');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
@@ -291,6 +291,26 @@ async function route(req, res) {
 
     const { duplicate } = await doses.put(dose);
     return json(res, 200, { ok: true, duplicate });
+  }
+
+  /* --- her phone saying what it is showing ---
+     The card does the dosing arithmetic, so the card is what knows the
+     answer. It reports on each visit and the dashboard reads it back,
+     which is why "showing now" is what she is actually looking at rather
+     than a second copy of the maths that can drift from hers.
+
+     Public, like the tap counter and the dose log: her card's address is
+     what opens it, and everything here came off her own screen. Only the
+     reported block is written — the protocol cannot be edited this way. */
+  if (p.startsWith('/api/state/') && req.method === 'POST') {
+    const slug = assertSlug(p.slice('/api/state/'.length));
+    const rec = await store.get(slug);
+    if (!rec) return json(res, 404, { error: 'not_found' });
+    const state = sanitizeState(await readBody(req));
+    if (!state) return json(res, 400, { error: 'bad_request' });
+    if (!store.setState) return json(res, 501, { error: 'not_supported' });
+    await store.setState(slug, state);
+    res.writeHead(204); return res.end();
   }
 
   /* --- which days are green, for the patient's own calendar ---
