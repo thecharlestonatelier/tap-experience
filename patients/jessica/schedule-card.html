@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Changing your schedule — The Charleston Atelier</title>
+<link rel="stylesheet" href="assets/fonts.css">
+<style>
+  /* ==================================================================
+     4 × 6 CARD — changing a schedule, and clearing the old calendar
+
+     Printed, not read on a screen, so everything here is sized in
+     inches and points. The card is exactly 4in × 6in with a 0.28in
+     quiet edge; a home printer that cannot go edge to edge will still
+     have the type well inside its margin.
+
+     Nothing on this card is patient-specific, so one print run serves
+     every patient and it can sit in the dispensing drawer.
+     ================================================================== */
+  @page { size: 4in 6in; margin: 0; }
+
+  :root {
+    --bg:#F3EBE1; --ink:#3B2E20; --ink-soft:#4A3B2C;
+    --muted:#7E7161; --brass:#8A7350; --rule:rgba(138,115,80,.22);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background:#EDE3D6;
+    font-family:'Jost',-apple-system,BlinkMacSystemFont,sans-serif;
+    color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center;
+    min-height:100vh; padding:24px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .card {
+    width:4in; height:6in;
+    background:var(--bg);
+    padding:.28in .3in .24in;
+    display:flex; flex-direction:column;
+    /* The cream ground is the card; browsers drop backgrounds when
+       printing unless told not to. */
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  .head { text-align:center; padding-bottom:9pt; border-bottom:.5pt solid var(--rule); }
+  .mark { height:26pt; width:auto; color:var(--brass); display:block; margin:0 auto 6pt; }
+  .house { font-size:5.6pt; letter-spacing:.2em; text-transform:uppercase; color:var(--brass); }
+
+  h1 {
+    font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+    font-size:19pt; line-height:1.08; color:var(--ink);
+    text-align:center; margin:10pt 0 3pt;
+  }
+  .lede { font-size:7.4pt; line-height:1.45; color:var(--muted); text-align:center; margin-bottom:11pt; }
+
+  .part {
+    font-size:5.8pt; letter-spacing:.17em; text-transform:uppercase;
+    color:var(--brass); margin-bottom:6pt;
+  }
+  .part + ol { margin-bottom:11pt; }
+
+  ol { list-style:none; }
+  li { display:flex; gap:7pt; margin-bottom:6.5pt; }
+  .n {
+    flex:0 0 12pt; height:12pt; border-radius:50%;
+    background:var(--ink); color:var(--bg);
+    font-size:6.6pt; font-weight:600; line-height:12pt; text-align:center;
+  }
+  .t { font-size:8pt; line-height:1.4; color:var(--ink); padding-top:.6pt; }
+  .t b { font-weight:600; }
+  /* What she taps, set apart from the prose around it. */
+  .t q { quotes:'“' '”'; font-weight:600; }
+  .t small { display:block; font-size:7pt; line-height:1.4; color:var(--muted); margin-top:1.5pt; }
+
+  .aside {
+    margin-top:auto; background:rgba(138,115,80,.09);
+    border-left:1.5pt solid var(--brass); border-radius:0 5pt 5pt 0;
+    padding:7pt 9pt; font-size:7.2pt; line-height:1.45; color:var(--ink-soft);
+  }
+  .aside b { color:var(--ink); }
+
+  .foot {
+    margin-top:8pt; padding-top:7pt; border-top:.5pt solid var(--rule);
+    display:flex; align-items:baseline; gap:8pt;
+    font-size:6.6pt; color:var(--muted);
+  }
+  .foot .tel { font-size:8pt; color:var(--ink); letter-spacing:.01em; }
+  .foot .where { margin-left:auto; text-align:right; }
+
+  @media print {
+    body { background:none; padding:0; display:block; min-height:0; }
+    .card { box-shadow:none; }
+  }
+  @media screen {
+    .card { box-shadow:0 1px 2px rgba(59,46,32,.06), 0 10px 30px rgba(59,46,32,.09); border-radius:6px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="head">
+    <svg class="mark" viewBox="0 108 117 160" fill="currentColor" role="img" aria-label="The Charleston Atelier">
+      <text x="0" y="200" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="100">C</text>
+      <text x="27" y="232" font-family="Cormorant Garamond, Georgia, serif" font-weight="500" font-size="126">A</text>
+    </svg>
+    <p class="house">The Charleston Atelier</p>
+  </div>
+
+  <h1>Changing your schedule</h1>
+  <p class="lede">If your start day moves, or you would rather inject at a different hour.</p>
+
+  <p class="part">On your card</p>
+  <ol>
+    <li><span class="n">1</span><span class="t">
+      Tap your Atelier card and open <b>Today&rsquo;s Ritual</b>.
+    </span></li>
+    <li><span class="n">2</span><span class="t">
+      Tap <q>Started&hellip; &mdash; change</q> near the top.
+    </span></li>
+    <li><span class="n">3</span><span class="t">
+      Set the day you started and the hour for each pen, then tap
+      <q>Set my schedule</q>.
+      <small>Your app reminders follow straight away. Your calendar does not &mdash; so do the two steps below.</small>
+    </span></li>
+  </ol>
+
+  <p class="part">In your calendar</p>
+  <ol>
+    <li><span class="n">4</span><span class="t">
+      Tap <q>Remove from calendar</q>, then open the file your phone
+      downloads. This clears the doses from the old schedule.
+    </span></li>
+    <li><span class="n">5</span><span class="t">
+      Tap <q>Add to calendar</q> and open that file.
+      <small>When your phone asks where to put them, choose a calendar of their own named <b>Atelier Doses</b>.</small>
+    </span></li>
+  </ol>
+
+  <p class="aside">
+    <b>To clear every dose at once</b> &mdash; in your Calendar app, delete the
+    calendar named <b>Atelier Doses</b>. Nothing else of yours is in it.
+  </p>
+
+  <div class="foot">
+    <div>
+      <div class="tel">843&thinsp;377&thinsp;3713</div>
+      Text us &mdash; we can change it for you
+    </div>
+    <div class="where">
+      83 Cannon Street<br>Charleston, SC
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

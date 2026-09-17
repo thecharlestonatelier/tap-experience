@@ -101,7 +101,7 @@ function saveSetup(pen, data) {
   try { localStorage.setItem(setupKey(pen), JSON.stringify(data)); } catch {}
   applySetup(pen, data);
   _supplyCache.clear();
-  try { reportState(true); } catch {}
+  scheduleChanged();
 }
 
 function needsSetup(pen) { return !!pen.setup && !loadSetup(pen); }
@@ -407,7 +407,7 @@ function loadTimes() {
 
 function saveTimes(map) {
   try { localStorage.setItem(timesKey(), JSON.stringify(map || {})); } catch {}
-  try { reportState(true); } catch {}
+  scheduleChanged();
 }
 
 /* The clock time for a pen: hers if she set one, otherwise the band default. */
@@ -441,8 +441,7 @@ function setStart(isoDate) {
   START = parse(isoDate);
   saveStart(isoDate);
   _supplyCache.clear();          // every projection depends on the start day
-  // The atelier's copy of "what she is seeing" is now wrong; say so.
-  try { reportState(true); } catch {}
+  scheduleChanged();
 }
 
 /* ---------- card payloads ----------
@@ -682,6 +681,16 @@ function reportState(force) {
       }).catch(() => {});
     } catch {}
   }, force ? 400 : 0);
+}
+
+/* Her schedule just moved. Two things have to follow it, and neither
+   used to: the instants the reminder service holds — refreshed only on
+   the card's home page, so changing a time on Today's Ritual left the
+   old reminder standing — and the atelier's copy of what she is seeing.
+   Both are safe to call when there is nothing to do. */
+function scheduleChanged() {
+  try { reportState(true); } catch {}
+  try { refreshReminders(); } catch {}
 }
 
 /* ---------- pens the patient adds herself ----------
