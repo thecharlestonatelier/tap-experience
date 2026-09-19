@@ -691,6 +691,7 @@ function reportState(force) {
 function scheduleChanged() {
   try { reportState(true); } catch {}
   try { refreshReminders(); } catch {}
+  try { publishFeed(); } catch {}
 }
 
 /* ---------- pens the patient adds herself ----------
@@ -983,6 +984,9 @@ async function loadProtocol() {
   reportState(_tookSettings);
   _tookSettings = false;
 
+  // Keep the subscribed calendar current with what the card now draws.
+  publishFeed();
+
   return CFG;
 }
 
@@ -1000,7 +1004,7 @@ function cardQuery() {
 }
 
 function linkWithCard(href) {
-  if (!href || /^(https?:|sms:|tel:|mailto:)/i.test(href)) return href;
+  if (!href || /^(https?:|sms:|tel:|mailto:|webcal:)/i.test(href)) return href;
   const suffix = cardSuffix();
   if (suffix) return href.split('#')[0] + suffix;
   const query = cardQuery();
@@ -1031,7 +1035,7 @@ function installCardLinkGuard() {
     if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
 
     const href = a.getAttribute('href');
-    if (!href || /^(https?:|sms:|tel:|mailto:|#)/i.test(href)) return;
+    if (!href || /^(https?:|sms:|tel:|mailto:|webcal:|#)/i.test(href)) return;
 
     const withCard = linkWithCard(href);
     if (withCard && withCard !== href) a.setAttribute('href', withCard);
@@ -1083,8 +1087,201 @@ function applyCardLinks(root) {
   if (!cardSuffix() && !cardQuery()) return;
   (root || document).querySelectorAll('a[href]').forEach(a => {
     const href = a.getAttribute('href');
-    if (href && !/^(https?:|sms:|tel:|mailto:|#)/i.test(href)) a.setAttribute('href', linkWithCard(href));
+    if (href && !/^(https?:|sms:|tel:|mailto:|webcal:|#)/i.test(href)) a.setAttribute('href', linkWithCard(href));
   });
+}
+
+/* ==================================================================
+   CALENDAR EXPORT
+   ------------------------------------------------------------------
+   Three rules, each learned from a way this went wrong.
+
+   1. NEVER WRITE A FLOATING TIME.
+      "DTSTART:20260917T200000" — no Z, no TZID — is a floating time,
+      and the spec lets the reader interpret it however it likes. Some
+      calendars read it as the viewer's own local time, which is what
+      this used to assume. Others read it as UTC, and an 8pm dose then
+      alarms at 4pm in Charleston, four hours early, every day.
+      So every timed event now carries a real instant, written in UTC.
+      It is built from her clock time in her own timezone — the same
+      arithmetic upcomingDoses() uses for push — so the calendar alarm
+      and the phone reminder fire at the same moment.
+
+   2. A UID IS A PROMISE.
+      Calendars replace an event whose UID they already hold. The old
+      UID carried the position of a dose in the list, so inserting one
+      day at the front renamed every event after it and a re-export
+      dropped a second copy of the protocol beside the first. A UID is
+      now the patient, the pen and the calendar day — nothing that
+      moves when the schedule does. Re-exporting is how you edit.
+
+   3. A FILE CANNOT TAKE AN EVENT BACK.
+      This once wrote a second file full of METHOD:CANCEL entries, on
+      the theory that a calendar would withdraw what it recognised.
+      iPhone does not: it read them as 112 more events and offered to
+      "Add All", which is what a patient then got. Removal is not
+      something a downloaded file can do — only deleting a calendar can,
+      which is why the subscription below exists.
+   ================================================================== */
+
+const ICS_PRODID = '-//The Charleston Atelier//Ritual//EN';
+const ICS_CALNAME = 'Atelier Doses';
+
+function icsKey() { return `tca.ics.${CFG.patient.id}`; }
+
+function icsIssued() {
+  try {
+    const m = JSON.parse(localStorage.getItem(icsKey()));
+    return { uids: Array.isArray(m && m.uids) ? m.uids : [], seq: Number(m && m.seq) || 0 };
+  } catch { return { uids: [], seq: 0 }; }
+}
+
+function icsRemember(uids, seq) {
+  const prev = icsIssued();
+  const all = Array.from(new Set(prev.uids.concat(uids))).slice(-800);
+  try { localStorage.setItem(icsKey(), JSON.stringify({ uids: all, seq })); } catch {}
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+
+/* Local calendar day — for a UID, and for all-day events. */
+function icsDay(d) { return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}`; }
+
+/* A real instant, written as UTC. This is the line that had the bug. */
+function icsUtc(d) {
+  return `${d.getUTCFullYear()}${pad2(d.getUTCMonth()+1)}${pad2(d.getUTCDate())}T` +
+         `${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}Z`;
+}
+
+/* Her clock time on that day, in her own timezone, as an instant. */
+function icsInstant(day, hhmm) {
+  const [hh, mm] = String(hhmm || '').split(':').map(Number);
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                  isNaN(hh) ? 9 : hh, isNaN(mm) ? 0 : mm, 0, 0);
+}
+
+/* Commas, semicolons and backslashes separate fields in iCalendar; a
+   name containing one would otherwise split the line. */
+function icsText(s) {
+  return String(s)
+    .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+/* Content lines are limited to 75 octets, continued with a leading
+   space. Strict parsers reject a file that ignores it. */
+function icsFold(line) {
+  if (line.length <= 73) return line;
+  const out = [line.slice(0, 73)];
+  let rest = line.slice(73);
+  while (rest.length > 72) { out.push(' ' + rest.slice(0, 72)); rest = rest.slice(72); }
+  if (rest) out.push(' ' + rest);
+  return out.join('\r\n');
+}
+
+const penKeyOf = pen => pen.template || pen.templateId || pen.id;
+
+function icsUid(pen, day) {
+  return `${CFG.patient.id}.${penKeyOf(pen)}.${icsDay(day)}@thecharlestonatelier`;
+}
+function icsRefillUid(pen) {
+  return `${CFG.patient.id}.${penKeyOf(pen)}.refill@thecharlestonatelier`;
+}
+
+/* The whole calendar, as appointments. */
+function buildICS() {
+  const seq = icsIssued().seq + 1;
+  const stamp = icsUtc(new Date());
+  const uids = [];
+
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:${ICS_PRODID}`, 'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    // Names the calendar, so the doses can be cleared in one go by
+    // deleting it rather than one event at a time.
+    `X-WR-CALNAME:${ICS_CALNAME}`
+  ];
+
+  const event = body => lines.push('BEGIN:VEVENT', ...body, 'END:VEVENT');
+
+  PENS.forEach(pen => {
+    const when = timeFor(pen);          // her hour, not the band's default
+    occurrences(pen).forEach(d => {
+      const dose = doseOn(pen, d);
+      if (!dose) return;
+      const start = icsInstant(d, when);
+      const end = new Date(start.getTime() + 15 * 60000);
+      const title = `${pen.name} — ${dialLead(pen).toLowerCase()} ${dose.units}`;
+      const uid = icsUid(pen, d);
+      uids.push(uid);
+      event([
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${icsUtc(start)}`,
+        `DTEND:${icsUtc(end)}`,
+        `SEQUENCE:${seq}`,
+        icsFold('SUMMARY:' + icsText(title)),
+        icsFold('DESCRIPTION:' + icsText(`${dose.phase.name} · ${round(dose.ml,2)} mL · ${pen.route}`)),
+        'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY',
+        icsFold('DESCRIPTION:' + icsText(title)), 'END:VALARM'
+      ]);
+    });
+
+    const s = supply(pen);
+    if (s && s.lastDose) {
+      const uid = icsRefillUid(pen);
+      uids.push(uid);
+      event([
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${icsDay(addDays(s.lastDose, -3))}`,
+        `SEQUENCE:${seq}`,
+        icsFold('SUMMARY:' + icsText(`Refill due — ${pen.name}`)),
+        icsFold('DESCRIPTION:' + icsText('This pen is nearly empty.'))
+      ]);
+    }
+  });
+
+  lines.push('END:VCALENDAR');
+  return { text: lines.join('\r\n'), uids, seq, count: uids.length };
+}
+
+/* ---------- the subscribed calendar ----------
+   A downloaded file can add and update; only a calendar of its own can
+   be removed. So the card publishes itself to the service, and the
+   patient subscribes to that address once. Her Calendar then mirrors
+   whatever the card last published — a changed start day, a new hour, a
+   pen that ran out — and deleting the subscription deletes every dose
+   with it.
+
+   The feed is republished whenever the card is opened or her schedule
+   moves, which is the same moment everything else is refreshed. Her
+   calendar picks the change up on its own next fetch. */
+function icsFeedUrl(scheme) {
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return '';
+  const host = location.host;
+  return `${scheme || 'https:'}//${host}/ics/${encodeURIComponent(slug)}.ics`;
+}
+
+let _feedTimer = null;
+function publishFeed() {
+  const slug = CARD_SLUG || readSlug();
+  if (!slug || !PENS.length) return;
+  clearTimeout(_feedTimer);
+  // Off the critical path: the page she is reading never waits for this.
+  _feedTimer = setTimeout(() => {
+    let text;
+    try { text = buildICS().text; } catch { return; }
+    try {
+      fetch(`/api/ics/${encodeURIComponent(slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/calendar' },
+        body: text,
+        keepalive: true
+      }).catch(() => {});
+    } catch {}
+  }, 250);
 }
 
 /* ==================================================================

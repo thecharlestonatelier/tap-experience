@@ -27,6 +27,7 @@ const crypto = require('node:crypto');
 
 const { openStore, sanitize, publicView, assertSlug, sanitizeState } = require('./store');
 const { openDoses, sanitizeDose } = require('./store/doses');
+const { openFeeds, sanitizeFeed } = require('./store/feeds');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
@@ -59,6 +60,7 @@ const PUSH_RUN_SECRET = process.env.PUSH_RUN_SECRET || '';
 const store = openStore();
 const doses = openDoses();
 const subs = openSubs();
+const feeds = openFeeds();
 
 /* ---------- the reminder sweep ----------
    Called by Cloud Scheduler every quarter hour. For each phone, ask
@@ -138,15 +140,21 @@ function json(res, status, obj, headers = {}) {
 }
 
 async function readBody(req, limit = 64 * 1024) {
+  // A calendar is posted as text, not JSON, and runs to a few hundred
+  // kilobytes; everything else is a small object.
+  const asText = limit === 'text';
+  const cap = asText ? 400 * 1024 : limit;
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > limit) throw Object.assign(new Error('too_large'), { status: 413 });
+    if (size > cap) throw Object.assign(new Error('too_large'), { status: 413 });
     chunks.push(chunk);
   }
-  if (!chunks.length) return {};
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  if (!chunks.length) return asText ? '' : {};
+  const body = Buffer.concat(chunks).toString('utf8');
+  if (asText) return body;
+  try { return JSON.parse(body); }
   catch { throw Object.assign(new Error('bad_json'), { status: 400 }); }
 }
 
@@ -291,6 +299,33 @@ async function route(req, res) {
 
     const { duplicate } = await doses.put(dose);
     return json(res, 200, { ok: true, duplicate });
+  }
+
+  /* --- the calendar she can subscribe to ---
+     Written by her card, because the card is what knows the schedule.
+     Served to whatever her phone's calendar uses to fetch it, which is
+     not her browser and carries no cookie — the address is the whole
+     credential, exactly as it is for the card itself. */
+  if (p.startsWith('/api/ics/') && req.method === 'POST') {
+    const slug = assertSlug(p.slice('/api/ics/'.length));
+    if (!await store.get(slug)) return json(res, 404, { error: 'not_found' });
+    const text = sanitizeFeed(await readBody(req, 'text'));
+    if (!text) return json(res, 400, { error: 'bad_request' });
+    await feeds.put(slug, text);
+    res.writeHead(204); return res.end();
+  }
+
+  if (p.startsWith('/ics/')) {
+    const slug = assertSlug(p.slice('/ics/'.length).replace(/\.ics$/i, ''));
+    const feed = await feeds.get(slug);
+    if (!feed) return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
+    // Calendar clients poll this; let them, but never let a proxy hold a
+    // schedule that has since changed.
+    return send(res, 200, feed.text, {
+      'Content-Type': 'text/calendar; charset=utf-8',
+      'Content-Disposition': 'inline; filename="atelier-doses.ics"',
+      'Cache-Control': 'no-cache, must-revalidate'
+    });
   }
 
   /* --- her phone saying what it is showing ---
