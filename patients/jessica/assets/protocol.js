@@ -1132,14 +1132,72 @@ function icsKey() { return `tca.ics.${CFG.patient.id}`; }
 function icsIssued() {
   try {
     const m = JSON.parse(localStorage.getItem(icsKey()));
-    return { uids: Array.isArray(m && m.uids) ? m.uids : [], seq: Number(m && m.seq) || 0 };
-  } catch { return { uids: [], seq: 0 }; }
+    return {
+      uids: Array.isArray(m && m.uids) ? m.uids : [],
+      seq: Number(m && m.seq) || 0,
+      sig: (m && m.sig) || '',
+      subscribed: !!(m && m.subscribed)
+    };
+  } catch { return { uids: [], seq: 0, sig: '', subscribed: false }; }
 }
 
-function icsRemember(uids, seq) {
+function icsRemember(uids, seq, extra) {
   const prev = icsIssued();
   const all = Array.from(new Set(prev.uids.concat(uids))).slice(-800);
-  try { localStorage.setItem(icsKey(), JSON.stringify({ uids: all, seq })); } catch {}
+  const rec = Object.assign({ sig: prev.sig, subscribed: prev.subscribed },
+                            extra || {}, { uids: all, seq });
+  try { localStorage.setItem(icsKey(), JSON.stringify(rec)); } catch {}
+}
+
+/* ---------- is the calendar she downloaded still true? ----------
+   A downloaded calendar is a photograph: it says what the schedule said
+   on the day she took it. Change a start day, an hour, or a dose and
+   every event in it is quietly wrong, with nothing on her phone to say
+   so. This is the fingerprint of what was photographed — every dose,
+   its day, its hour and its dial number — so the card can tell her.
+
+   A subscribed calendar does not need it: it refetches. The flag says
+   which she has. */
+function icsSignature() {
+  const parts = [];
+  PENS.forEach(pen => {
+    const when = timeFor(pen);
+    occurrences(pen).forEach(d => {
+      const dose = doseOn(pen, d);
+      if (dose) parts.push(`${penKeyOf(pen)}|${icsDay(d)}|${when}|${dose.units}`);
+    });
+  });
+  // A short, stable fingerprint; this is change detection, not security.
+  let h = 5381;
+  const str = parts.join(';');
+  for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  return `${str.length}.${h.toString(36)}`;
+}
+
+/* True when she has a downloaded calendar that no longer matches her
+   schedule. False for a subscriber, and false for anyone who has never
+   put these in a calendar at all. */
+function icsStale() {
+  const m = icsIssued();
+  if (m.subscribed || !m.uids.length || !m.sig) return false;
+  return m.sig !== icsSignature();
+}
+
+function icsMarkSubscribed() {
+  const m = icsIssued();
+  try {
+    localStorage.setItem(icsKey(), JSON.stringify(
+      Object.assign({}, m, { subscribed: true })));
+  } catch {}
+}
+
+/* Where an event in her calendar sends her to change any of this. */
+function icsChangeUrl() {
+  try {
+    const url = new URL(linkWithCard('ritual.html'), location.href);
+    url.searchParams.set('change', '1');
+    return url.href;
+  } catch { return ''; }
 }
 
 const pad2 = n => String(n).padStart(2, '0');
@@ -1192,6 +1250,7 @@ function icsRefillUid(pen) {
 function buildICS() {
   const seq = icsIssued().seq + 1;
   const stamp = icsUtc(new Date());
+  const changeUrl = icsChangeUrl();
   const uids = [];
 
   const lines = [
@@ -1214,6 +1273,13 @@ function buildICS() {
       const title = `${pen.name} — ${dialLead(pen).toLowerCase()} ${dose.units}`;
       const uid = icsUid(pen, d);
       uids.push(uid);
+      // The event carries the way back. A patient looking at a dose in
+      // her calendar and thinking "that is not my time any more" should
+      // not have to go and find the card — the line she is reading is
+      // the link. Calendars show URL: as a tappable row and linkify the
+      // address in the notes, so it is written in both places.
+      const body = `${dose.phase.name} · ${round(dose.ml,2)} mL · ${pen.route}` +
+        (changeUrl ? `\n\nTo change your days or times, open your card:\n${changeUrl}` : '');
       event([
         `UID:${uid}`,
         `DTSTAMP:${stamp}`,
@@ -1221,7 +1287,8 @@ function buildICS() {
         `DTEND:${icsUtc(end)}`,
         `SEQUENCE:${seq}`,
         icsFold('SUMMARY:' + icsText(title)),
-        icsFold('DESCRIPTION:' + icsText(`${dose.phase.name} · ${round(dose.ml,2)} mL · ${pen.route}`)),
+        icsFold('DESCRIPTION:' + icsText(body)),
+        ...(changeUrl ? [icsFold(`URL:${changeUrl}`)] : []),
         'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY',
         icsFold('DESCRIPTION:' + icsText(title)), 'END:VALARM'
       ]);
@@ -1243,7 +1310,7 @@ function buildICS() {
   });
 
   lines.push('END:VCALENDAR');
-  return { text: lines.join('\r\n'), uids, seq, count: uids.length };
+  return { text: lines.join('\r\n'), uids, seq, count: uids.length, sig: icsSignature() };
 }
 
 /* ---------- the subscribed calendar ----------

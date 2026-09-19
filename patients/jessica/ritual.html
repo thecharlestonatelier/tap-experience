@@ -282,6 +282,15 @@
   }
   .action svg { width: 15px; height: 15px; color: var(--brass); flex: none; }
   .cal-note { margin-top: 10px; font-size: 11.5px; line-height: 1.55; color: var(--muted); }
+  /* Loud enough to be believed, quiet enough not to look like an error —
+     nothing is wrong with her dosing, only with her calendar. */
+  .cal-stale {
+    margin-top: 12px; padding: 12px 14px;
+    background: rgba(164,85,63,.08);
+    border-left: 2px solid var(--alert, #A4553F); border-radius: 0 12px 12px 0;
+    font-size: 12.5px; line-height: 1.55; color: var(--espresso-soft);
+  }
+  .cal-stale b { color: var(--espresso); }
   .cal-help {
     margin-top: 12px; background: var(--card); border-radius: 14px;
     box-shadow: var(--shadow); padding: 15px 17px;
@@ -514,6 +523,8 @@
     downloaded them.
   </p>
 
+  <p class="cal-stale" id="calStale" hidden></p>
+
   <!-- Removal is one move, and it is not a button we can press for her:
        no file can take an event back, so say where the switch actually is. -->
   <div class="cal-help" id="calHelp" hidden>
@@ -680,13 +691,16 @@ function commitStart() {
   renderAll();
   applyCardLinks();
   const bands = timeBands().map(b => `${b.toLowerCase()} at ${prettyTime(timeFor({ time: b }))}`);
-  showToast(`Set from ${fmtShort(START)}${bands.length ? ' · ' + bands.join(', ') : ''}.`);
+  showToast(icsStale()
+    ? 'Saved — now bring your calendar up to date below.'
+    : `Set from ${fmtShort(START)}${bands.length ? ' · ' + bands.join(', ') : ''}.`);
 }
 
 function renderAll() {
   const btn = document.getElementById('btnStart');
   btn.hidden = false;
   btn.textContent = `Started ${fmtShort(START)} — change`;
+  renderCalNotice();
   renderToday(); renderRefills(); renderAdherence(); renderPhases();
   renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
 }
@@ -1335,9 +1349,12 @@ function saveICS(text, name) {
 
 function downloadICS() {
   const out = buildICS();
-  icsRemember(out.uids, out.seq);
+  // Remember the schedule this photograph was taken of, so the card can
+  // tell her when it stops being true.
+  icsRemember(out.uids, out.seq, { sig: out.sig });
   saveICS(out.text, `${CFG.patient.name}-protocol.ics`);
   showToast('Calendar file created — opening it updates the doses already there.');
+  renderCalNotice();
 }
 
 /* There is no file that removes events. Say how it is actually done. */
@@ -1345,6 +1362,21 @@ function removeICS() {
   const el = document.getElementById('calHelp');
   el.hidden = !el.hidden;
   if (!el.hidden) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+/* A downloaded calendar that no longer matches her schedule says nothing
+   on her phone — the events simply carry the old times. This is the only
+   place that can tell her, so it says it where she just made the change
+   and gives her the one button that fixes it. */
+function renderCalNotice() {
+  const el = document.getElementById('calStale');
+  const stale = icsStale();
+  el.hidden = !stale;
+  if (stale) el.innerHTML =
+    '<b>Your calendar is out of date.</b> The doses in it still follow your ' +
+    'old schedule. Tap <b>Download once</b> above and open the file to bring ' +
+    'them up to date &mdash; or tap <b>Subscribe in Calendar</b> and it will ' +
+    'keep itself right from now on.';
 }
 
 /* ---------- boot ---------- */
@@ -1406,7 +1438,10 @@ async function boot() {
 
   // First visit on this device: ask which day she actually started, so the
   // whole schedule is anchored to her, not to a date typed in the chart.
-  if (!saved) openStartPicker();
+  // ?change=1 is the link inside every calendar event: she tapped a dose,
+  // wanted it moved, and should land on the sheet that moves it.
+  const wantsChange = new URLSearchParams(location.search).get('change') === '1';
+  if (!saved || wantsChange) openStartPicker();
 
   // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
   const tagged = TRACKING ? new URLSearchParams(location.search).get('log') : null;
@@ -1435,6 +1470,10 @@ function wireSubscribe() {
   if (!url) { a.hidden = true; return; }        // a fragment card has no feed
   a.href = url;
   a.addEventListener('click', () => {
+    // From here on her calendar refetches, so the out-of-date notice is
+    // no longer hers to act on.
+    icsMarkSubscribed();
+    renderCalNotice();
     showToast('Say yes to subscribe. Keep alerts on if you want calendar reminders.');
   });
 }

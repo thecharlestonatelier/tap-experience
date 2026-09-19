@@ -450,12 +450,14 @@ function reason(lead, e) {
 }
 
 let toastTimer;
-function toast(msg) {
+function toast(msg, ms) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.add('on');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('on'), 2600);
+  // A warning has to outlast a confirmation; nobody reads a lost phase in
+  // two and a half seconds.
+  toastTimer = setTimeout(() => t.classList.remove('on'), ms || 2600);
 }
 
 /* A tag stores the address without https:// plus about eight bytes of
@@ -1160,6 +1162,22 @@ $('addPen').addEventListener('click', () => {
   renderPens();
 });
 
+/* What the record kept, against what the editor sent. Returns a sentence
+   to show, or null when everything landed. */
+function phasesLost(sent, saved) {
+  if (!saved || !Array.isArray(saved.pens)) return 'Saved, but the card could not be read back — reopen it and check the protocol.';
+  const names = id => (TEMPLATES.templates.find(t => t.id === id) || {}).name || id;
+  const bad = [];
+  (sent.pens || []).forEach((pen, i) => {
+    const want = (pen.phases || []).length;
+    if (!want) return;                       // no phases sent: the template's stand
+    const got = ((saved.pens[i] || {}).phases || []).length;
+    if (got < want) bad.push(`${names(pen.template)} kept ${got} of ${want} phases`);
+  });
+  if (!bad.length) return null;
+  return `Not all of it saved — ${bad.join('; ')}. A phase with no dial number is dropped; reopen the card and fill it in.`;
+}
+
 $('pushSettings').addEventListener('click', () => {
   if (!editing) return;
   editing._force = true;
@@ -1175,9 +1193,18 @@ $('saveCard').addEventListener('click', async () => {
   if (editing.name && editing.status === 'blank') editing.status = 'active';
 
   const before = (editing.settings && editing.settings.rev) || 0;
+  const sent = JSON.parse(JSON.stringify(editing));
   const saved = await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
+
+  // Did the record actually take what was typed? A phase with no dial
+  // number is dropped on the way in, and a protocol that quietly lost a
+  // phase is the kind of thing found weeks later on a patient's phone.
+  // Compare what came back against what went out and say so here.
+  const lost = phasesLost(sent, saved);
   $('editor').close();
   await refresh();
+  if (lost) return toast(lost, 8000);
+
   // A settings change is the one edit that has to travel to a device, so
   // say plainly that it is waiting rather than already done.
   toast((saved && saved.settings && saved.settings.rev > before)
