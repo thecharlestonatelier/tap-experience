@@ -240,6 +240,10 @@ async function route(req, res) {
     const build = {
       revision: process.env.K_REVISION || 'local',
       service: process.env.K_SERVICE || 'local',
+      // A fresh Cloud Shell has no project set and the deploy stops to ask.
+      // The running container knows the answer, so it can be written into
+      // the command rather than looked up.
+      project: process.env.GOOGLE_CLOUD_PROJECT || '',
       startedAt: STARTED_AT
     };
     try {

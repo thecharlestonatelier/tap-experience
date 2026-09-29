@@ -565,6 +565,7 @@ function deployCommand(health) {
     `  && git pull origin ${DEPLOY_BRANCH} \\`,
     `  && gcloud run deploy ${service} \\`,
     '       --source . \\',
+    ...(health && health.project ? [`       --project ${health.project} \\`] : []),
     '       --region us-east1 \\',
     '       --allow-unauthenticated \\',
     '       --set-env-vars CARD_STORE=firestore,NODE_ENV=production \\',
