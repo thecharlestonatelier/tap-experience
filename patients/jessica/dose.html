@@ -200,8 +200,16 @@ function stop(title, why, actions) {
 
   // Identity comes from the card this phone has already opened. Without
   // it there is nobody to log against, and guessing is not an option.
+  /* Three places the phone might know whose card it is, in the order we
+     trust them: what it remembered itself, and — when its storage has
+     been cleared, or a privacy setting emptied it, or Safari evicted it
+     after a week away — the cookie the card page set server-side. */
   const mem = recallCard();
-  const slug = (mem && mem.slug) || null;
+  const slug = (mem && mem.slug) || window.__CARD_MEMORY__ || null;
+  // Having recovered it from the cookie, put it back where it belongs.
+  if (!(mem && mem.slug) && slug) {
+    rememberCard({ card: null, slug, legacy: false, start: null });
+  }
   if (slug) HOME = '/' + slug;
   if (!slug) {
     return stop('Open your card first',

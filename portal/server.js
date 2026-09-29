@@ -192,7 +192,40 @@ function requireClinician(req, res) {
 
 /* ---------- static files ---------- */
 
-function serveStatic(res, urlPath, { inject, vial } = {}) {
+/* ---------- which card this browser belongs to ----------
+   The phone remembering its own card in localStorage is not durable
+   enough to hang a dose log on. Safari clears storage for a site not
+   visited in seven days, private browsing gives a tab its own that dies
+   with it, and the privacy settings a patient may have on can empty it
+   at any time — and the first thing she sees when a vial tag opens a
+   browser that has forgotten is "Open your card first", with no way to
+   know why.
+
+   So the card also sets a cookie when it is opened, server-side, which
+   survives all three. It carries the slug and nothing else — the same
+   value that is already in the address bar.
+
+   It does NOT cross from Safari to a card added to the home screen:
+   those are separate browsers with separate everything, and no cookie
+   can bridge them. A patient who lives in the installed app has to open
+   her card in Safari once. */
+const CARD_COOKIE = 'ca_card';
+
+function cardCookie(slug) {
+  return `${CARD_COOKIE}=${encodeURIComponent(slug)}; Path=/; Max-Age=${180 * 86400}` +
+         `; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+}
+
+function readCardCookie(req) {
+  const raw = req.headers.cookie || '';
+  const hit = raw.split(';').map(c => c.trim())
+    .find(c => c.startsWith(CARD_COOKIE + '='));
+  if (!hit) return null;
+  const slug = normalizeSlug(decodeURIComponent(hit.slice(CARD_COOKIE.length + 1)));
+  return isValidSlug(slug) ? slug : null;
+}
+
+function serveStatic(res, urlPath, { inject, vial, remember, setCard } = {}) {
   const rel = decodeURIComponent(urlPath).replace(/^\/+/, '');
   const full = path.join(WEB_ROOT, rel);
 
@@ -205,22 +238,27 @@ function serveStatic(res, urlPath, { inject, vial } = {}) {
 
   // A card address is a path, not a fragment, so the page has to be told
   // which card it is before its scripts run.
-  if ((inject || vial) && ext === '.html') {
+  if ((inject || vial || remember) && ext === '.html') {
     const pre = [];
     if (inject) pre.push(`window.__CARD_SLUG__=${JSON.stringify(inject)};`);
     // The vial label names the vial only. Which patient it is logged
     // against comes from the card already open on this phone.
     if (vial) pre.push(`window.__VIAL__=${JSON.stringify(vial)};`);
+    // Who this browser last opened a card as, when the page itself has
+    // been forgotten.
+    if (remember) pre.push(`window.__CARD_MEMORY__=${JSON.stringify(remember)};`);
     body = Buffer.from(String(body).replace(
       '<script src="assets/protocol.js"></script>',
       `<script>${pre.join('')}</script>\n` +
       '<script src="assets/protocol.js"></script>'));
   }
 
-  send(res, 200, body, {
+  const headers = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Cache-Control': ext === '.html' ? 'no-store' : 'public, max-age=300'
-  });
+  };
+  if (setCard) headers['Set-Cookie'] = cardCookie(setCard);
+  send(res, 200, body, headers);
   return true;
 }
 
@@ -294,7 +332,8 @@ async function route(req, res) {
   if (p.startsWith('/v/')) {
     const payload = decodeURIComponent(p.slice('/v/'.length));
     if (/^[A-Za-z0-9._-]{1,48}$/.test(payload)) {
-      if (serveStatic(res, '/dose.html', { vial: payload })) return;
+      if (serveStatic(res, '/dose.html',
+                      { vial: payload, remember: readCardCookie(req) })) return;
     }
     return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
   }
@@ -598,7 +637,7 @@ async function route(req, res) {
   if (isValidSlug(candidate)) {
     const rec = await store.get(candidate);
     if (rec) {
-      if (serveStatic(res, '/index.html', { inject: candidate })) return;
+      if (serveStatic(res, '/index.html', { inject: candidate, setCard: candidate })) return;
     }
     // An unassigned tag still opens the portal, which offers to set it up.
     if (serveStatic(res, '/index.html', { inject: candidate })) return;
