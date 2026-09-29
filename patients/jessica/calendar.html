@@ -147,8 +147,12 @@
   }
   .rdose span { font-size: 11px; color: var(--muted); display: block; }
   .rlogged { font-size: 11.5px; color: var(--done); margin-top: 3px; }
+  .rnotyet { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
 
-  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  .legend { display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+            margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+  .legend .key-label { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase;
+                       color: var(--muted); margin-right: 2px; }
   .leg { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); }
   .leg i { width: 9px; height: 9px; border-radius: 50%; background: var(--pc); display: inline-block; }
 
@@ -298,7 +302,9 @@ function renderDetail() {
           <div class="rname">${pen.name}</div>
           <div class="rmeta">${dose.phase.name} · ${pen.time} · ${pen.route}</div>
           <div class="rmeta">${dose.components.map(c => `${c.name} ${round(c.mg,2)} mg`).join(' · ')}</div>
-          ${takenOn(pen, d) ? '<div class="rlogged">✓ Taken</div>' : ''}
+          ${takenOn(pen, d)
+            ? '<div class="rlogged">✓ Taken</div>'
+            : (d <= today() && CARD_SLUG ? '<div class="rnotyet">Not logged yet</div>' : '')}
         </div>
         <div class="rdose"><b>${dose.units}</b><span>units · ${round(dose.ml,2)} mL</span></div>
       </div>`;
@@ -307,6 +313,7 @@ function renderDetail() {
 
 function renderLegend() {
   document.getElementById('legend').innerHTML =
+    '<span class="key-label">Key</span>' +
     PENS.map(p => `<span class="leg ${cls(p)}"><i></i>${p.name}</span>`).join('') +
     // Only where a sticker can actually mark a day: a card with no slug
     // never logs anything, so the key would explain a mark that cannot appear.
@@ -330,6 +337,20 @@ function renderLegend() {
   render();
   renderLegend();
   applyCardLinks();
+
+  /* A dose is logged on whichever browser the NFC tag opened — on iOS
+     that is Safari, never the installed app. The record is on the server,
+     so the only thing standing between them is this page not asking
+     again. Ask every time it comes back to the front. */
+  let refreshing = false;
+  async function refreshLogged() {
+    if (refreshing || document.hidden) return;
+    refreshing = true;
+    try { await loadLogged(); render(); } finally { refreshing = false; }
+  }
+  document.addEventListener('visibilitychange', refreshLogged);
+  addEventListener('pageshow', refreshLogged);
+  addEventListener('focus', refreshLogged);
 
   document.getElementById('prev').addEventListener('click', () => {
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); render();

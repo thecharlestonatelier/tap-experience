@@ -62,6 +62,8 @@
   .bad { color:var(--alert); }
   .done { text-align:center; }
   .done .tick { width:54px; height:54px; margin:0 auto 14px; display:block; color:var(--ok); }
+  .done .warn { width:54px; height:54px; margin:0 auto 14px; display:block; color:var(--alert); }
+  .done h2.stop { color:var(--alert); }
   .done h2 { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
              font-size:28px; color:var(--espresso); margin-bottom:6px; }
 </style>
@@ -194,13 +196,32 @@ function stop(title, why, actions) {
   /* The green square, once it is green. Shown after a yes, and also on a
      second tap, so the answer to "did that go through?" is the same
      screen either way. */
+  /* Two different screens, deliberately. A dose recorded is a tick and a
+     quiet well done. A dose recorded TWICE is not a success — it is a
+     patient standing over a pen with the needle in her hand about to
+     repeat a dose she has already taken, and the only useful thing this
+     page can do is stop her. Same green in both places would read as
+     "fine, carry on". */
   function logged(already) {
-    view.innerHTML = `<div class="done">
+    view.innerHTML = already ? `<div class="done">
+      <svg class="warn" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3.5 1.8 20.5h20.4L12 3.5Z"/><path d="M12 10v4.4"/><circle cx="12" cy="17.6" r=".9" fill="currentColor"/></svg>
+      <h2 class="stop">Stop — already taken</h2>
+      <p class="lede"><b>${esc(pen.name)}, ${dose.units} units</b> is already
+        recorded for today. Do not take another dose.</p>
+      <p class="note">If you are certain you have not injected today,
+        message the atelier before you do.</p>
+      <a class="ghost" href="${esc(smsHref())}">Message the atelier</a>
+      <a class="ghost" href="${esc(HOME)}">Back to my card</a>
+    </div>` : `<div class="done">
       <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg>
-      <h2>${already ? 'Already logged' : 'Logged'}</h2>
+      <h2>Logged</h2>
       <p class="lede">${esc(pen.name)}, ${dose.units} units — today is marked.</p>
+      <p class="note">If your card is on your home screen, it will show this
+        the next time you open it.</p>
       <a class="ghost" href="calendar.html?c=${encodeURIComponent(slug)}">See my calendar</a>
       <a class="ghost" href="${esc(HOME)}">Back to my card</a>
     </div>`;
