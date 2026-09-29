@@ -188,7 +188,7 @@
   .cmd {
     background:var(--sunk); border-radius:12px; padding:14px 16px; margin-bottom:12px;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
-    line-height:1.7; color:var(--ink); white-space:pre; overflow-x:auto;
+    line-height:1.7; color:var(--ink); white-space:pre-wrap; word-break:break-word;
   }
   .toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%,10px);
            background:var(--ink); color:#F6F0E7; padding:12px 20px; border-radius:13px;
@@ -558,19 +558,20 @@ const DEPLOY_BRANCH = 'claude/jessica-nfc-patient-portal-4nxcmj';
 function deployCommand(health) {
   const service = (health && health.service && health.service !== 'local')
     ? health.service : 'atelier-tap';
+  const project = (health && health.project) || '';
+  /* One line, no backslashes. A block with continuations pasted into a
+     shell that is still waiting at a prompt gets eaten a line at a time —
+     the first line becomes the answer to the prompt and the rest come
+     back as syntax errors. This cannot be split. */
   return [
-    'cd ~/tap-experience \\',
-    `  && git fetch origin ${DEPLOY_BRANCH} \\`,
-    `  && git checkout ${DEPLOY_BRANCH} \\`,
-    `  && git pull origin ${DEPLOY_BRANCH} \\`,
-    `  && gcloud run deploy ${service} \\`,
-    '       --source . \\',
-    ...(health && health.project ? [`       --project ${health.project} \\`] : []),
-    '       --region us-east1 \\',
-    '       --allow-unauthenticated \\',
-    '       --set-env-vars CARD_STORE=firestore,NODE_ENV=production \\',
-    '       --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest'
-  ].join('\n');
+    'cd ~/tap-experience',
+    `git pull origin ${DEPLOY_BRANCH}`,
+    `gcloud run deploy ${service} --source .` +
+      (project ? ` --project ${project}` : '') +
+      ' --region us-east1 --allow-unauthenticated' +
+      ' --set-env-vars CARD_STORE=firestore,NODE_ENV=production' +
+      ' --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest'
+  ].join(' && ');
 }
 
 async function renderDeploy() {
