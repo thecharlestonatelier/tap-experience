@@ -184,6 +184,12 @@
   /* Marks a row whose "showing now" came off the patient's own screen
      rather than being worked out here. */
   .live { color:var(--ok); font-size:15px; line-height:0; }
+
+  .cmd {
+    background:var(--sunk); border-radius:12px; padding:14px 16px; margin-bottom:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+    line-height:1.7; color:var(--ink); white-space:pre; overflow-x:auto;
+  }
   .toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%,10px);
            background:var(--ink); color:#F6F0E7; padding:12px 20px; border-radius:13px;
            font-size:13.5px; opacity:0; pointer-events:none; transition:.22s; z-index:50; }
@@ -273,6 +279,29 @@
         <input id="blankCount" type="number" min="1" max="50" value="1">
       </div>
       <div style="flex:0 0 auto"><button class="ghost" id="makeBlanks">Mint blanks</button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Deploy</h2>
+    <p class="hint">
+      What is running right now, and how to put the latest code behind it.
+      Changes to cards are live the moment you save &mdash; this is only for
+      changes to the app itself.
+    </p>
+    <div class="panel">
+      <div class="stats" style="margin-bottom:16px">
+        <div class="stat"><small>Running revision</small><strong id="dRev">—</strong></div>
+        <div class="stat"><small>Since</small><strong id="dSince">—</strong></div>
+        <div class="stat"><small>Database</small><strong id="dStore">—</strong></div>
+      </div>
+      <p class="hint" style="margin:0 0 8px">
+        Open <a href="https://shell.cloud.google.com" target="_blank" rel="noopener">Cloud Shell</a>
+        and paste this. Three or four minutes; the revision above changes when it lands.
+      </p>
+      <pre class="cmd" id="deployCmd"></pre>
+      <button class="ghost sm" id="copyDeploy">Copy command</button>
+      <button class="ghost sm" id="checkDeploy">Check again</button>
     </div>
   </section>
 
@@ -508,12 +537,63 @@ async function start() {
     await (await fetch('/templates.json', { cache: 'no-store' })).json());
   renderDeck();
   renderVials();
+  renderDeploy();
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
     TEMPLATES.templates.filter(t => t.id !== 'custom')
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   await refresh();
   updatePreview();
 }
+
+/* ---------- deploy ----------
+   A card edit is live on the next tap; a change to the app itself is not
+   live until the container is rebuilt. Those are different things and
+   this is the only place that says so.
+
+   The command is written out here rather than kept in a document, because
+   the thing most likely to go wrong is pasting last month's version of
+   it — one that still names a secret nothing reads. */
+const DEPLOY_BRANCH = 'claude/jessica-nfc-patient-portal-4nxcmj';
+
+function deployCommand(health) {
+  const service = (health && health.service && health.service !== 'local')
+    ? health.service : 'atelier-tap';
+  return [
+    'cd ~/tap-experience \\',
+    `  && git fetch origin ${DEPLOY_BRANCH} \\`,
+    `  && git checkout ${DEPLOY_BRANCH} \\`,
+    `  && git pull origin ${DEPLOY_BRANCH} \\`,
+    `  && gcloud run deploy ${service} \\`,
+    '       --source . \\',
+    '       --region us-east1 \\',
+    '       --allow-unauthenticated \\',
+    '       --set-env-vars CARD_STORE=firestore,NODE_ENV=production \\',
+    '       --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest'
+  ].join('\n');
+}
+
+async function renderDeploy() {
+  $('dRev').textContent = '…';
+  let health = null;
+  try { health = await (await fetch('/health', { cache: 'no-store' })).json(); }
+  catch { /* shown as unknown below */ }
+
+  $('dRev').textContent = (health && health.revision) || 'unknown';
+  $('dSince').textContent = health && health.startedAt ? since(health.startedAt) : '—';
+  $('dStore').textContent = health
+    ? `${health.store}${health.reachable === false ? ' · unreachable' : ''}`
+    : '—';
+  $('deployCmd').textContent = deployCommand(health);
+}
+
+$('copyDeploy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText($('deployCmd').textContent);
+  toast('Command copied — paste it into Cloud Shell.');
+});
+$('checkDeploy').addEventListener('click', async () => {
+  await renderDeploy();
+  toast(`Running ${$('dRev').textContent}, up ${$('dSince').textContent}.`);
+});
 
 /* ---------- vial stickers ----------
    The sticker names the pen and, if you want it, the box it came from —

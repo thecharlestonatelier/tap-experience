@@ -61,6 +61,7 @@ const store = openStore();
 const doses = openDoses();
 const subs = openSubs();
 const feeds = openFeeds();
+const STARTED_AT = new Date().toISOString();
 
 /* ---------- the reminder sweep ----------
    Called by Cloud Scheduler every quarter hour. For each phone, ask
@@ -234,14 +235,21 @@ async function route(req, res) {
   // "firestore", and the first sign of trouble is a clinician unable to
   // save a card. Better the check fails than the dashboard does.
   if (p === '/health') {
+    // Which build is answering, so a deploy can be told from a browser
+    // cache. Cloud Run names every revision; a laptop has none.
+    const build = {
+      revision: process.env.K_REVISION || 'local',
+      service: process.env.K_SERVICE || 'local',
+      startedAt: STARTED_AT
+    };
     try {
       if (store.ping) await store.ping();
-      return json(res, 200, { ok: true, store: store.kind, reachable: true });
+      return json(res, 200, Object.assign({ ok: true, store: store.kind, reachable: true }, build));
     } catch (err) {
-      return json(res, 503, {
+      return json(res, 503, Object.assign({
         ok: false, store: store.kind, reachable: false,
         error: String(err && err.message || err).slice(0, 300)
-      });
+      }, build));
     }
   }
 
