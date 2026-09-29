@@ -1327,8 +1327,10 @@ function buildICS() {
    ================================================================== */
 var LOGGED = {};
 
-async function loadLogged() {
-  const slug = (typeof CARD_SLUG !== 'undefined' && CARD_SLUG) || readSlug();
+async function loadLogged(only) {
+  // The vial page knows its card from what the phone remembered rather
+  // than from the address, so it hands the slug in.
+  const slug = only || (typeof CARD_SLUG !== 'undefined' && CARD_SLUG) || readSlug();
   if (!slug) return LOGGED;                       // a card with no slug logs nothing
   try {
     const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
@@ -1396,6 +1398,210 @@ function publishFeed() {
       }).catch(() => {});
     } catch {}
   }, 250);
+}
+
+/* ==================================================================
+   THE REWARD
+   ------------------------------------------------------------------
+   A protocol is a long series of small unremarkable acts, and the only
+   thing that carries a patient through it is seeing that she has done
+   them. So a logged dose is not a database write with a confirmation —
+   it is gold confetti, a mark that lands, and a count of how far she
+   has come.
+
+   The gold is the monogram's own: #d4b982 lit, #cbae73 body, #897039 in
+   shadow, sampled off the mark itself so a checkmark beside the CA
+   reads as the same metal and not as a green tick someone tinted.
+   ================================================================== */
+
+var GOLD = ['#E9D7AC', '#D4B982', '#CBAE73', '#A98844', '#897039'];
+
+/* The mark, in the metal. Each one needs its own gradient id or the
+   second on a page inherits the first. */
+var _goldSeq = 0;
+function goldCheck(px) {
+  const id = `au${++_goldSeq}`;
+  return `<svg class="au-check" viewBox="0 0 48 48" width="${px || 48}" height="${px || 48}"
+    role="img" aria-label="taken">
+    <defs>
+      <linearGradient id="${id}" x1="6%" y1="0%" x2="94%" y2="100%">
+        <stop offset="0%"   stop-color="#E9D7AC"/>
+        <stop offset="22%"  stop-color="#D4B982"/>
+        <stop offset="44%"  stop-color="#A98844"/>
+        <stop offset="58%"  stop-color="#897039"/>
+        <stop offset="78%"  stop-color="#CBAE73"/>
+        <stop offset="100%" stop-color="#E3CE9E"/>
+      </linearGradient>
+    </defs>
+    <path d="M10 25.5 L20 35 L38 14" fill="none" stroke="url(#${id})"
+          stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* ---------- how far she has come ----------
+   Counted in DOSING days, not calendar days: a five-on-two-off protocol
+   does not break its run over the weekend. A day counts only when every
+   pen due that day was logged. */
+function doseStreak() {
+  let d = today(), n = 0;
+  const due0 = dueOn(d);
+  // Today not done yet is not a broken run — it has not happened yet.
+  if (due0.length && !due0.every(p => takenOn(p, d))) d = addDays(d, -1);
+  for (let i = 0; i < 400; i++) {
+    if (!START || d < START) break;
+    const due = dueOn(d);
+    if (due.length) {
+      if (!due.every(p => takenOn(p, d))) break;
+      n++;
+    }
+    d = addDays(d, -1);
+  }
+  return n;
+}
+
+/* Every scheduled day since she began, taken. */
+function perfectRun() {
+  let d = START ? new Date(START) : null, days = 0;
+  if (!d) return false;
+  const t = today();
+  while (d <= t) {
+    const due = dueOn(d);
+    if (due.length) {
+      if (!due.every(p => takenOn(p, d))) return false;
+      days++;
+    }
+    d = addDays(d, 1);
+  }
+  return days > 0;
+}
+
+function protocolFinished() {
+  return PENS.length > 0 && PENS.every(p => isSpent(p));
+}
+
+/* What to say at this number. Milestones get their own line; the days in
+   between get the count, which is its own quiet encouragement. */
+var STREAK_NOTES = {
+  1:  ['The first one', 'That is the one that is hardest to start.'],
+  2:  ['Two days running', 'This is how it becomes ordinary.'],
+  5:  ['Five in a row', 'A week’s rhythm, already holding.'],
+  10: ['Ten straight', 'Beautifully kept.'],
+  14: ['Two full weeks', 'Not a day missed.'],
+  20: ['Twenty days', 'Remarkable consistency.'],
+  25: ['Twenty-five', 'You have barely put a foot wrong.']
+};
+
+function streakNote(n) {
+  if (protocolFinished() && perfectRun()) {
+    return ['Your protocol, start to finish',
+            'Every scheduled day, without missing one. That is rare.'];
+  }
+  if (STREAK_NOTES[n]) return STREAK_NOTES[n];
+  if (n > 1) return [`${n} days in a row`, 'Keep it going.'];
+  return null;
+}
+
+/* ---------- the celebration ----------
+   Confetti in the atelier's gold, a mark that arrives large and settles
+   small, and whatever haptic the phone will give us. Honoured by
+   prefers-reduced-motion: the mark still lands, it simply does not fly. */
+function haptic() {
+  // Android and desktop Chrome. iOS Safari has no vibration API at all.
+  try { if (navigator.vibrate) navigator.vibrate([14, 55, 22]); } catch {}
+  // iOS 17.4+ gives a real haptic for a switch toggled inside a gesture.
+  try {
+    const sw = document.createElement('input');
+    sw.type = 'checkbox'; sw.setAttribute('switch', '');
+    sw.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:1px;height:1px';
+    document.body.appendChild(sw);
+    sw.checked = true;
+    sw.dispatchEvent(new Event('change', { bubbles: true }));
+    setTimeout(() => sw.remove(), 400);
+  } catch {}
+}
+
+function confettiBurst(canvas, x, y) {
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+  ctx.scale(dpr, dpr);
+
+  const bits = [];
+  for (let i = 0; i < 90; i++) {
+    const a = (Math.PI * 2 * i) / 90 + Math.random() * 0.3;
+    const speed = 5 + Math.random() * 9;
+    bits.push({
+      x, y,
+      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed - 4,
+      w: 5 + Math.random() * 5, h: 8 + Math.random() * 8,
+      rot: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 0.35,
+      col: GOLD[(Math.random() * GOLD.length) | 0], life: 1
+    });
+  }
+
+  let raf;
+  (function frame() {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    let alive = false;
+    bits.forEach(b => {
+      if (b.life <= 0) return;
+      alive = true;
+      b.vy += 0.34; b.vx *= 0.995;
+      b.x += b.vx; b.y += b.vy; b.rot += b.spin; b.life -= 0.012;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, b.life * 1.4));
+      ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+      ctx.fillStyle = b.col;
+      // A flake of leaf, not a dot.
+      ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h * Math.abs(Math.cos(b.rot)));
+      ctx.restore();
+    });
+    if (alive) raf = requestAnimationFrame(frame);
+    else { ctx.clearRect(0, 0, innerWidth, innerHeight); cancelAnimationFrame(raf); }
+  })();
+}
+
+/* Shows the mark large, then sends it to `onto` — the circle it belongs
+   in — and resolves once it has landed. */
+function celebrate(onto) {
+  haptic();
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const layer = document.createElement('div');
+  layer.className = 'au-layer';
+  layer.innerHTML = `<canvas class="au-confetti"></canvas>
+    <div class="au-mark">${goldCheck(132)}</div>`;
+  document.body.appendChild(layer);
+
+  const mark = layer.querySelector('.au-mark');
+  const from = { x: innerWidth / 2, y: innerHeight * 0.42 };
+  if (!calm) confettiBurst(layer.querySelector('.au-confetti'), from.x, from.y);
+
+  return new Promise(resolve => {
+    const done = () => { layer.remove(); resolve(); };
+    if (calm) { mark.style.opacity = '1'; setTimeout(done, 900); return; }
+
+    mark.animate(
+      [{ transform: 'scale(.5)', opacity: 0 },
+       { transform: 'scale(1.12)', opacity: 1, offset: .28 },
+       { transform: 'scale(1)', opacity: 1, offset: .42 },
+       { transform: 'scale(1)', opacity: 1, offset: .74 }],
+      { duration: 1250, easing: 'cubic-bezier(.2,.9,.2,1)', fill: 'forwards' });
+
+    setTimeout(() => {
+      const box = onto && onto.getBoundingClientRect();
+      const to = box
+        ? { x: box.left + box.width / 2, y: box.top + box.height / 2, s: box.width / 132 }
+        : { x: from.x, y: from.y, s: .22 };
+      mark.animate(
+        [{ transform: 'translate(0,0) scale(1)', opacity: 1 },
+         { transform: `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.s})`,
+           opacity: box ? .9 : 0 }],
+        { duration: 620, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' })
+        .onfinish = done;
+    }, 1150);
+  });
 }
 
 /* ==================================================================

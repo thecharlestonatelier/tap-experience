@@ -62,6 +62,19 @@
   .bad { color:var(--alert); }
   .done { text-align:center; }
   .done .tick { width:54px; height:54px; margin:0 auto 14px; display:block; color:var(--ok); }
+  .done .au-check { width:76px; height:76px; margin:0 auto 12px; display:block;
+                    filter:drop-shadow(0 4px 12px rgba(137,112,57,.4)); }
+  .run { margin:16px auto 0; max-width:320px; padding:14px 16px; border-radius:16px;
+         background:var(--card); box-shadow:0 1px 2px rgba(59,46,32,.05); }
+  .run b { display:block; font-family:'Cormorant Garamond',Georgia,serif;
+           font-size:21px; font-weight:500; color:var(--espresso); }
+  .run span { font-size:12.5px; color:var(--muted); }
+  .au-layer { position:fixed; inset:0; z-index:90; pointer-events:none; }
+  .au-confetti { position:absolute; inset:0; }
+  .au-mark { position:absolute; left:50%; top:42%; margin:-66px 0 0 -66px;
+             width:132px; height:132px; opacity:0; }
+  .au-mark .au-check { width:132px; height:132px;
+                       filter:drop-shadow(0 6px 18px rgba(137,112,57,.45)); }
   .done .warn { width:54px; height:54px; margin:0 auto 14px; display:block; color:var(--alert); }
   .done h2.stop { color:var(--alert); }
   .done h2 { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
@@ -202,6 +215,16 @@ function stop(title, why, actions) {
      repeat a dose she has already taken, and the only useful thing this
      page can do is stop her. Same green in both places would read as
      "fine, carry on". */
+  /* How far she has come, said once, on the screen she is already
+     looking at. The count is of dosing days, so a rest day does not
+     break it. */
+  function runLine() {
+    const n = doseStreak();
+    const note = streakNote(n);
+    if (!n || !note) return '';
+    return `<div class="run"><b>${esc(note[0])}</b><span>${esc(note[1])}</span></div>`;
+  }
+
   function logged(already) {
     view.innerHTML = already ? `<div class="done">
       <svg class="warn" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -215,11 +238,10 @@ function stop(title, why, actions) {
       <a class="ghost" href="${esc(smsHref())}">Message the atelier</a>
       <a class="ghost" href="${esc(HOME)}">Back to my card</a>
     </div>` : `<div class="done">
-      <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/><path d="M8 12.5l2.6 2.6L16 9.5"/></svg>
+      ${goldCheck(76)}
       <h2>Logged</h2>
       <p class="lede">${esc(pen.name)}, ${dose.units} units — today is marked.</p>
+      ${runLine()}
       <p class="note">If your card is on your home screen, it will show this
         the next time you open it.</p>
       <a class="ghost" href="calendar.html?c=${encodeURIComponent(slug)}">See my calendar</a>
@@ -228,13 +250,8 @@ function stop(title, why, actions) {
   }
 
   // Already green? Say so before asking a question she has answered.
-  try {
-    const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
-    if (res.ok) {
-      const { days } = await res.json();
-      if ((days[day] || []).includes(t.id)) return logged(true);
-    }
-  } catch { /* the question still stands without it */ }
+  await loadLogged(slug);
+  if ((LOGGED[day] || []).includes(t.id)) return logged(true);
 
   // One question, two answers. Everything needed to answer it is on the
   // line underneath: whose card this is, and what to turn the pen to.
@@ -261,7 +278,15 @@ function stop(title, why, actions) {
         })
       });
       if (!res.ok) throw new Error('refused');
-      logged((await res.json()).duplicate);
+      const out = await res.json();
+      if (!out.duplicate) {
+        // The log has to be re-read before the streak can count this one.
+        await loadLogged(slug);
+        logged(false);
+        celebrate(document.querySelector('.done .au-check'));
+      } else {
+        logged(true);
+      }
     } catch {
       btn.disabled = false; btn.textContent = 'Try again';
       const p = document.createElement('p');

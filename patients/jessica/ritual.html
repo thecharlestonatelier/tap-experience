@@ -383,10 +383,47 @@
   .r-day { font-size: 10px; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
   .r-pill { height: 54px; border-radius: 999px; background: #EFE7DB; display: flex; align-items: center; justify-content: center; }
   .r-pill .fill { width: 24px; height: 24px; border-radius: 50%; background: var(--pc);
-                  display: flex; align-items: center; justify-content: center; }
+                  display: flex; align-items: center; justify-content: center;
+                  transition: background .45s ease, width .35s ease, height .35s ease; }
   .r-pill.off .fill { background: transparent; }
-  .r-pill.taken .fill { background: var(--done); }
-  .r-pill .fill .tick { width: 13px; height: 13px; color: #F6F0E7; }
+  /* A day she has done: the circle fills green and takes the mark. It is
+     bigger than an untaken day on purpose — the eye should find the run
+     of finished days before anything else on the page. */
+  .r-pill.taken .fill { background: var(--done); width: 38px; height: 38px;
+                        box-shadow: 0 2px 8px rgba(76,113,80,.34); }
+  .r-pill.taken .fill .au-check { width: 22px; height: 22px; display: block; }
+  .r-pill.landing .fill { animation: au-land .55s cubic-bezier(.34,1.56,.64,1); }
+  /* Today, so the eye knows where it is in the week. */
+  .r-col.now .r-day { color: var(--espresso); font-weight: 600; }
+  .r-col.now .r-pill { box-shadow: inset 0 0 0 1.5px var(--brass); }
+  @keyframes au-land {
+    0%   { transform: scale(.55); }
+    60%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  /* ---------- the run ---------- */
+  .streak {
+    display: flex; align-items: center; gap: 13px;
+    background: var(--card); border-radius: 16px; box-shadow: var(--shadow);
+    padding: 15px 17px; margin-bottom: 16px;
+  }
+  .streak .n {
+    flex: none; width: 46px; height: 46px; border-radius: 50%;
+    background: var(--done); color: #F6F0E7;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px;
+  }
+  .streak .t { font-size: 15px; color: var(--espresso); }
+  .streak .sb { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ---------- the celebration ---------- */
+  .au-layer { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+  .au-confetti { position: absolute; inset: 0; }
+  .au-mark { position: absolute; left: 50%; top: 42%; margin: -66px 0 0 -66px;
+             width: 132px; height: 132px; opacity: 0; }
+  .au-mark .au-check { width: 132px; height: 132px;
+                       filter: drop-shadow(0 6px 18px rgba(137,112,57,.45)); }
 
   .kv { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; font-size: 13.5px; border-top: 1px solid var(--hairline); }
   .kv:first-of-type { border-top: none; }
@@ -510,57 +547,28 @@
   <div class="actions">
     <a class="action" id="btnSubscribe" href="#">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13v5M9.5 15.5h5"/></svg>
-      Subscribe in Calendar
+      Add to Calendar
     </a>
-    <button class="action" id="btnCalendar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 3v11M8 11l4 4 4-4M4 19h16"/></svg>
-      Download once
-    </button>
-    <button class="action" id="btnUncalendar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9.5 15.5l5 0"/></svg>
-      Remove doses
-    </button>
     <button class="action" onclick="window.print()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2"/><rect x="8" y="14" width="8" height="7"/></svg>
       Print
     </button>
   </div>
   <p class="cal-note">
-    <b>Subscribe</b> keeps a calendar called &ldquo;Atelier Doses&rdquo; in step
-    with your protocol by itself &mdash; change your start day or your hour and
-    it follows, with nothing to re-add. <b>Download once</b> drops the doses
-    into your own calendar instead; they stay as they were on the day you
-    downloaded them.
+    Adds a calendar called &ldquo;Atelier Doses&rdquo; that keeps itself in step
+    with your protocol &mdash; change your start day or your hour and it
+    follows, with nothing to re-add. To remove it later, delete that calendar
+    in your Calendar app.
   </p>
 
   <p class="cal-stale" id="calStale" hidden></p>
 
-  <!-- Removal is one move, and it is not a button we can press for her:
-       no file can take an event back, so say where the switch actually is. -->
-  <div class="cal-help" id="calHelp" hidden>
-    <p><b>To remove every dose</b></p>
-    <p>If you <b>subscribed</b>: open Calendar, tap <b>Calendars</b> at the
-      bottom, tap the <b>i</b> beside <b>Atelier Doses</b>, then
-      <b>Delete Calendar</b>. Every dose goes with it.</p>
-    <p>If you <b>downloaded</b> them into a calendar of your own, they are
-      ordinary events in that calendar &mdash; delete them there, or delete
-      that calendar the same way.</p>
-    <p class="cal-help-tel">Rather not? Text us on 843&thinsp;377&thinsp;3713
-      and we will talk you through it.</p>
-  </div>
 
   <div class="tabs" role="tablist">
-    <button class="tab" role="tab" data-panel="phases"   aria-selected="true">Phases</button>
+    <button class="tab" role="tab" data-panel="rhythm"   aria-selected="true">Rhythm</button>
     <button class="tab" role="tab" data-panel="schedule" aria-selected="false">Schedule</button>
-    <button class="tab" role="tab" data-panel="rhythm"   aria-selected="false">Rhythm</button>
     <button class="tab" role="tab" data-panel="supply"   aria-selected="false">Supply</button>
   </div>
-
-  <section class="panel active" id="panel-phases">
-    <h2 class="section-title">Dosing Phases</h2>
-    <p class="section-sub">Dial settings for each phase, exactly as on your reference card.</p>
-    <div id="phaseList"></div>
-  </section>
 
   <section class="panel" id="panel-schedule">
     <h2 class="section-title">Protocol Schedule</h2>
@@ -576,9 +584,10 @@
     </div>
   </section>
 
-  <section class="panel" id="panel-rhythm">
+  <section class="panel active" id="panel-rhythm">
     <h2 class="section-title">Weekly Rhythm</h2>
-    <p class="section-sub">Your on-and-off pattern for the coming week.</p>
+    <p class="section-sub">Your week — what you have done, and what is coming.</p>
+    <div class="streak" id="streak" hidden></div>
     <div id="rhythmList"></div>
   </section>
 
@@ -711,7 +720,7 @@ function renderAll() {
   btn.hidden = false;
   btn.textContent = `Started ${fmtShort(START)} — change`;
   renderCalNotice();
-  renderToday(); renderRefills(); renderAdherence(); renderPhases();
+  renderToday(); renderRefills(); renderAdherence();
   renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
 }
 
@@ -1144,40 +1153,6 @@ function renderAdherence() {
   }
 }
 
-/* ---------- render: phases ---------- */
-function renderPhases() {
-  const t = today();
-  document.getElementById('phaseList').innerHTML = PENS.map(pen => {
-    const active = phaseOn(pen, t);
-    const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
-    return `
-      <div class="sheet c-${pen.color || 'brass'}">
-        <div class="supply-head">
-          <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
-          <div>
-            <div style="color:var(--espresso);font-size:16px">${pen.name}</div>
-            <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
-          </div>
-        </div>
-        <div class="kv"><span class="k">Frequency</span><span class="v">${freqText(pen)}</span></div>
-        <div class="kv"><span class="k">Route</span><span class="v">${pen.route}</span></div>
-        <table class="ptable" style="margin-top:14px">
-          <thead><tr><th>Phase</th><th>Units</th><th>${primaryHeader(pen)}</th></tr></thead>
-          <tbody>
-            ${pen.phases.map(ph => {
-              const ml = ph.units * ML_PER_UNIT;
-              const c = pen.components.find(x => x.dosedTo);
-              const mg = c ? (c.mg / pen.volumeMl) * ml
-                           : pen.components.reduce((s,x) => s + (x.mg/pen.volumeMl)*ml, 0);
-              return `<tr class="${active && active.name === ph.name ? 'now' : ''}">
-                <td>${ph.name}</td><td>${ph.units}</td><td>≈${round(mg, 2)} mg</td></tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-        ${pen.advisory ? `<div class="advisory">${pen.advisory}</div>` : ''}
-      </div>`;
-  }).join('');
-}
 
 const primaryHeader = pen => {
   const c = pen.components.find(x => x.dosedTo);
@@ -1235,17 +1210,34 @@ function renderDayDetail() {
 }
 
 /* ---------- render: rhythm ---------- */
+function renderStreak() {
+  const el = document.getElementById('streak');
+  if (!el) return;
+  const n = doseStreak();
+  const note = streakNote(n);
+  el.hidden = !n || !note;
+  if (n && note) el.innerHTML =
+    `<span class="n">${n}</span><div><div class="t">${note[0]}</div>
+     <div class="sb">${note[1]}</div></div>`;
+}
+
 function renderRhythm() {
+  renderStreak();
   const t = today();
   document.getElementById('rhythmList').innerHTML = PENS.map(pen => {
     const cells = [];
-    for (let i = 0; i < 7; i++) {
+    /* Three days behind, today, three ahead. The week ahead alone could
+       never show a single finished day — everything in it is still to
+       come — so the run she has already put together would be invisible
+       on the one screen meant to show it. */
+    for (let i = -3; i <= 3; i++) {
       const d = addDays(t, i);
-      cells.push(`<div class="r-col">
+      cells.push(`<div class="r-col${i === 0 ? ' now' : ''}">
         <div class="r-day">${DOW[isoDow(d)-1][0]}</div>
         <div class="r-pill${isDue(pen, d) ? '' : ' off'}${
-          isDue(pen, d) && takenOn(pen, d) ? ' taken' : ''}"><span class="fill">${
-          isDue(pen, d) && takenOn(pen, d) ? TICK_SVG : ''}</span></div>
+          isDue(pen, d) && takenOn(pen, d) ? ' taken' : ''}"
+             data-cell="${penKeyOf(pen)}.${icsDay(d)}"><span class="fill">${
+          isDue(pen, d) && takenOn(pen, d) ? goldCheck(22) : ''}</span></div>
       </div>`);
     }
     const dose = doseOn(pen, t) || doseOn(pen, addDays(t, 1));
@@ -1351,48 +1343,19 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('visible'), 2800);
 }
 
-/* ---------- calendar buttons ----------
-   The builder itself lives in protocol.js, beside the schedule it draws
-   from and the feed it publishes. */
-function saveICS(text, name) {
-  const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
-
-function downloadICS() {
-  const out = buildICS();
-  // Remember the schedule this photograph was taken of, so the card can
-  // tell her when it stops being true.
-  icsRemember(out.uids, out.seq, { sig: out.sig });
-  saveICS(out.text, `${CFG.patient.name}-protocol.ics`);
-  showToast('Calendar file created — opening it updates the doses already there.');
-  renderCalNotice();
-}
-
-/* There is no file that removes events. Say how it is actually done. */
-function removeICS() {
-  const el = document.getElementById('calHelp');
-  el.hidden = !el.hidden;
-  if (!el.hidden) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-}
-
-/* A downloaded calendar that no longer matches her schedule says nothing
-   on her phone — the events simply carry the old times. This is the only
-   place that can tell her, so it says it where she just made the change
-   and gives her the one button that fixes it. */
+/* The calendar is a subscription now: one address, always current. The
+   download and the removal instructions that went with it are gone —
+   a file that cannot update was the cause of most of the confusion. */
 function renderCalNotice() {
   const el = document.getElementById('calStale');
+  if (!el) return;
+  // Only anyone still carrying a calendar downloaded before the change.
   const stale = icsStale();
   el.hidden = !stale;
   if (stale) el.innerHTML =
-    '<b>Your calendar is out of date.</b> The doses in it still follow your ' +
-    'old schedule. Tap <b>Download once</b> above and open the file to bring ' +
-    'them up to date &mdash; or tap <b>Subscribe in Calendar</b> and it will ' +
-    'keep itself right from now on.';
+    '<b>Your calendar is out of date.</b> It was added as a one-off copy and ' +
+    'still follows your old schedule. Tap <b>Add to Calendar</b> above to ' +
+    'subscribe instead, then delete the old doses from your Calendar app.';
 }
 
 /* ---------- boot ---------- */
@@ -1447,9 +1410,29 @@ async function boot() {
   await loadLogged();
   renderAll();
   wireSubscribe();
-  // A dose tapped on a vial is logged in Safari; this page may be the
-  // installed app. Ask again whenever it comes back to the front.
-  watchLogged(renderAll);
+
+  /* A dose logged on the vial page lands here. Redrawing the circle green
+     would be correct and completely unfelt, so the mark is flown into it
+     the first time this page sees it — once, tracked by what was on
+     screen the last time it drew. */
+  // Celebrate a dose that lands while she is here, and only a dose that
+  // was not already on the page — a record arriving for another day is a
+  // correction, not an achievement.
+  const takenToday = () => PENS.filter(x => isDue(x, today()) && takenOn(x, today()))
+                                .map(penKeyOf).join(',');
+  let before = takenToday();
+  async function afterLog() {
+    await loadLogged();
+    renderAll();
+    const after = takenToday();
+    if (after === before) return;
+    const fresh = after.split(',').find(k => k && !before.split(',').includes(k));
+    before = after;
+    if (!fresh) return;
+    const cell = document.querySelector(`[data-cell="${fresh}.${icsDay(today())}"] .fill`);
+    if (cell) { celebrate(cell); cell.closest('.r-pill').classList.add('landing'); }
+  }
+  watchLogged(() => { afterLog(); });
 
   // Carry the card on every link out of this page. Without this the back
   // arrow is a bare "./", which lands on the root with no card on it and
@@ -1478,8 +1461,6 @@ document.getElementById('calPrev').addEventListener('click', () => {
 document.getElementById('calNext').addEventListener('click', () => {
   calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); renderCalendar();
 });
-document.getElementById('btnCalendar').addEventListener('click', downloadICS);
-document.getElementById('btnUncalendar').addEventListener('click', removeICS);
 
 /* webcal:// is what tells a phone to subscribe rather than download.
    The address is only known once the card has resolved, so it is set
