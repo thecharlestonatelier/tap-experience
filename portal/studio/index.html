@@ -610,18 +610,22 @@ function renderVials() {
   $('vialRows').innerHTML = (TEMPLATES.templates || [])
     .filter(t => t.id !== 'custom')
     .map(t => {
-      const url = vialUrl(t.id, lot);
+      // A template that carries its own lot — a single dispensed vial
+      // rather than a stocked pen — fills its own row, so the number that
+      // matters most is not the one being retyped.
+      const mine = lot || (t.lot || '');
+      const url = vialUrl(t.id, mine);
       return `<tr>
-        <td>${t.name}</td>
-        <td class="slug">/v/${lot ? `${t.id}.${lot}` : t.id}</td>
+        <td>${t.name}${t.beyondUse ? `<br><small style="color:var(--muted)">use by ${t.beyondUse}</small>` : ''}</td>
+        <td class="slug">/v/${mine ? `${t.id}.${mine}` : t.id}</td>
         <td class="bytes" style="white-space:nowrap">${tagBytes(url)} bytes</td>
-        <td style="text-align:right"><button class="ghost sm" data-vial="${t.id}">Copy</button></td>
+        <td style="text-align:right"><button class="ghost sm" data-vial="${t.id}" data-lot="${mine}">Copy</button></td>
       </tr>`;
     }).join('');
 
   $('vialRows').querySelectorAll('[data-vial]').forEach(b =>
     b.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(vialUrl(b.dataset.vial, lot)
+      await navigator.clipboard.writeText(vialUrl(b.dataset.vial, b.dataset.lot)
         .replace(/^https?:\/\//, ''));
       toast('Sticker address copied — paste it into NFC Tools.');
     }));

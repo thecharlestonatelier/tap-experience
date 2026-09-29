@@ -1,5 +1,5 @@
 {
-  "_note": "Protocol templates the dashboard offers. Each is a pen as dispensed: composition, volume, and the default titration. The clinician can override units and durations per patient without touching this file. Only pens with verified concentrations belong here \u2014 a pen whose mg/mL is unknown cannot compute a dose.",
+  "_note": "Protocol templates the dashboard offers. Each is a pen as dispensed: composition, volume, and the default titration. The clinician can override units and durations per patient without touching this file. Only pens with verified concentrations belong here — a pen whose mg/mL is unknown cannot compute a dose.",
   "sites": [
     "Left abdomen",
     "Right abdomen",
@@ -13,8 +13,8 @@
   ],
   "concierge": {
     "phone": "843-377-3713",
-    "messageOpener": "Hi Dr. Phelps-Polirer \u2014 ",
-    "refillOpener": "Hi Dr. Phelps-Polirer \u2014 I need a refill of my {pen}."
+    "messageOpener": "Hi Dr. Phelps-Polirer — ",
+    "refillOpener": "Hi Dr. Phelps-Polirer — I need a refill of my {pen}."
   },
   "templates": [
     {
@@ -53,8 +53,8 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 70,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 70 mg / 3 mL / 300 clicks, 2.4 mg x 5/week, pen ~5.83 weeks",
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "doseSource": "Precision Auto Pen Summary — 70 mg / 3 mL / 300 clicks, 2.4 mg x 5/week, pen ~5.83 weeks",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 80
     },
@@ -63,7 +63,7 @@
       "name": "Wolverine Blend",
       "short": "wol",
       "color": "sage",
-      "_source": "UMS order S04593: PEN - BPC-157/TB-500 (Wolverine) 10mg/10mg 3mL Pen. BPC-157 and TB-500 sit at the same 3.33 mg/mL as the Glow Blend, so an identical dial number delivers an identical dose of each \u2014 the titration below mirrors Glow. Confirm before dispensing.",
+      "_source": "UMS order S04593: PEN - BPC-157/TB-500 (Wolverine) 10mg/10mg 3mL Pen. BPC-157 and TB-500 sit at the same 3.33 mg/mL as the Glow Blend, so an identical dial number delivers an identical dose of each — the titration below mirrors Glow. Confirm before dispensing.",
       "volumeMl": 3,
       "route": "Subcutaneous, abdomen",
       "time": "Evening",
@@ -91,14 +91,14 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 20,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week, 28 days",
+      "doseSource": "Precision Auto Pen Summary — 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week, 28 days",
       "timing": "Before bedtime, at least 2 hours after your last meal",
-      "cycle": "One month \u2014 20 injections. Up to 3 cycles back to back, then a 2-month break.",
+      "cycle": "One month — 20 injections. Up to 3 cycles back to back, then a 2-month break.",
       "sideEffects": [
         "BPC-157: nausea (rare), mild fatigue in the first week, minor injection-site redness",
         "TB-500: mild lethargy in the first weeks, transient head rush just after injecting, injection-site discomfort"
       ],
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 70
     },
@@ -132,8 +132,8 @@
       "vialMg": 500,
       "diluentMl": 3,
       "timing": "In the morning",
-      "doseSource": "Dr Kendall \u2014 500 mg / 3 mL pen, 50 mg daily in the AM. DAILY.",
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "doseSource": "Dr Kendall — 500 mg / 3 mL pen, 50 mg daily in the AM. DAILY.",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 50
     },
@@ -142,17 +142,17 @@
       "name": "NAD+ (vial)",
       "short": "ndv",
       "color": "brass",
-      "_source": "Physician-specified for this patient: 2200 mg in a 10 mL vial = 220 mg/mL, drawn with a BD insulin syringe rather than a pen. 30 units = 0.30 mL = 66 mg. Distinct from the 500 mg 3 mL PEN template (id 'nad'), which stays as it is for the cards already issued against it.",
+      "_source": "Physician-specified: NAD+ 1000 mg in a 5 mL vial = 200 mg/mL, drawn with a BD insulin syringe rather than a pen. 30 units = 0.30 mL = 60 mg. The vial holds 16 whole doses. Distinct from the 500 mg 3 mL PEN template (id \"nad\"), which is 166.7 mg/mL and a different dose entirely — 30 units on the pen is 50 mg, on this vial it is 60 mg.",
       "delivery": "syringe",
       "stepsKey": "injectionStepsVial",
-      "concentrationMgPerMl": 220,
-      "volumeMl": 10,
+      "concentrationMgPerMl": 200,
+      "volumeMl": 5,
       "route": "Subcutaneous",
       "time": "Morning",
       "components": [
         {
           "name": "NAD+",
-          "mg": 2200
+          "mg": 1000
         }
       ],
       "schedule": {
@@ -162,18 +162,20 @@
       "phases": [
         {
           "name": "Standard",
-          "mg": 50.0,
-          "days": 30
+          "mg": 60.0,
+          "days": null
         }
       ],
       "storage": "Keep the vial refrigerated.",
-      "notes": "Draw with a BD insulin syringe \u2014 30 units. Rotate injection sites as needed.",
-      "vialMg": 2200,
-      "diluentMl": 10,
+      "notes": "Draw with a BD insulin syringe — 30 units. Rotate injection sites as needed.",
+      "vialMg": 1000,
+      "diluentMl": 5,
       "timing": "In the morning",
-      "doseSource": "Dr Kendall \u2014 2200 mg / 10 mL vial, 50 mg daily. Brandon only.",
-      "restricted": "Dispensed to one patient only \u2014 not a stocked pen.",
-      "store": "fridge"
+      "doseSource": "Dr Kendall — 1000 mg / 5 mL vial at 200 mg/mL, 30 units (60 mg) daily.",
+      "restricted": "Dispensed by vial, not a stocked pen. Lot 2359118, beyond-use 3 Dec 2026. One vial is 16 doses; a punctured vial is not used past its beyond-use date even if liquid remains.",
+      "store": "fridge",
+      "lot": "2359118",
+      "beyondUse": "2026-12-03"
     },
     {
       "id": "bpc",
@@ -209,13 +211,13 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 10,
       "diluentMl": 3,
-      "doseSource": "Dr Kendall \u2014 10 mg / 3 mL pen; start 8 clicks (267 mcg), maintenance 500 mcg = 15 clicks, 5 on / 2 off",
+      "doseSource": "Dr Kendall — 10 mg / 3 mL pen; start 8 clicks (267 mcg), maintenance 500 mcg = 15 clicks, 5 on / 2 off",
       "timing": "Before bedtime, at least 2 hours after your last meal",
-      "cycle": "One month \u2014 20 injections. Up to 3 cycles back to back, then a 2-month break.",
+      "cycle": "One month — 20 injections. Up to 3 cycles back to back, then a 2-month break.",
       "sideEffects": [
         "Nausea (rare), mild fatigue in the first week, minor injection-site redness"
       ],
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 40
     },
@@ -252,10 +254,10 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 50,
       "diluentMl": 3,
-      "doseSource": "Dr Kendall pen calc \u2014 50 mg / 3 mL / 300 clicks; 1 mg d1-15, 2 mg d16-30; DAILY (the one exception to 5 on / 2 off)",
+      "doseSource": "Dr Kendall pen calc — 50 mg / 3 mL / 300 clicks; 1 mg d1-15, 2 mg d16-30; DAILY (the one exception to 5 on / 2 off)",
       "timing": "30-60 minutes before bed, at least 2 hours after eating",
       "cycle": "30 days on, then a 30-day pause before repeating.",
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 40
     },
@@ -292,8 +294,8 @@
       "ratioNote": "10 / 10 mg blend",
       "vialMg": 20,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 0.2 mg x 5/week, pen ~20 weeks",
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "doseSource": "Precision Auto Pen Summary — 20 mg / 3 mL / 300 clicks, 0.2 mg x 5/week, pen ~20 weeks",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 65
     },
@@ -328,18 +330,18 @@
           "days": null
         }
       ],
-      "notes": "Rotate within your least reactive zone \u2014 see below.",
+      "notes": "Rotate within your least reactive zone — see below.",
       "timing": "30-60 minutes before bed, at least 2 hours after eating",
       "cycle": "12-16 weeks on, 2-4 weeks off.",
-      "monitoring": "IGF-1, fasting glucose, lipid panel. IGF-1 at week 8 \u2014 target high-normal; reduce the dose if IGF-1 is above 350-400 ng/mL.",
-      "escalation": "Increase to 2 mg only if tolerated \u2014 no joint aches, swelling or carpal-tunnel symptoms.",
-      "doseSource": "Dr Kendall \u2014 30 mg / 3 mL pen; 1 mg weeks 1-2 then 2 mg, daily",
+      "monitoring": "IGF-1, fasting glucose, lipid panel. IGF-1 at week 8 — target high-normal; reduce the dose if IGF-1 is above 350-400 ng/mL.",
+      "escalation": "Increase to 2 mg only if tolerated — no joint aches, swelling or carpal-tunnel symptoms.",
+      "doseSource": "Dr Kendall — 30 mg / 3 mL pen; 1 mg weeks 1-2 then 2 mg, daily",
       "vialMg": 30,
       "diluentMl": 3,
       "expect": [
         {
           "h": "Injection site reactions",
-          "p": "These build over time rather than showing up straight away, which catches most people off guard. Tesamorelin does not sting from acidity the way NAD+ does \u2014 it activates mast cells in the tissue under your skin, and the histamine they release causes the reaction.",
+          "p": "These build over time rather than showing up straight away, which catches most people off guard. Tesamorelin does not sting from acidity the way NAD+ does — it activates mast cells in the tissue under your skin, and the histamine they release causes the reaction.",
           "list": [
             "Itchy, raised welts that look like mosquito bites",
             "Redness and warmth at the site",
@@ -351,15 +353,15 @@
           "h": "What the first two months look like",
           "rows": [
             [
-              "Weeks 1\u20133",
+              "Weeks 1–3",
               "Little or nothing. It is easy to assume you are in the clear."
             ],
             [
-              "Weeks 4\u20135",
+              "Weeks 4–5",
               "The first welts appear, and are often mistaken for bad technique."
             ],
             [
-              "Weeks 6\u20138",
+              "Weeks 6–8",
               "Reactions become consistent, and some sites are clearly worse than others."
             ],
             [
@@ -367,15 +369,15 @@
               "The pattern settles. This is when the steps below start to matter."
             ]
           ],
-          "note": "This is why \u201crotate your sites\u201d on its own does not fix it. Rotating from day one does not stop the reactions appearing \u2014 the tissue is reacting to repeated tesamorelin, not to the needle."
+          "note": "This is why “rotate your sites” on its own does not fix it. Rotating from day one does not stop the reactions appearing — the tissue is reacting to repeated tesamorelin, not to the needle."
         },
         {
           "h": "An antihistamine before you inject",
-          "p": "Taken 30\u201360 minutes ahead, an H1 blocker blunts the histamine response.",
+          "p": "Taken 30–60 minutes ahead, an H1 blocker blunts the histamine response.",
           "list": [
-            "Cetirizine (Zyrtec) 10 mg \u2014 non-drowsy and long-acting",
-            "Loratadine (Claritin) 10 mg \u2014 if cetirizine makes you sleepy",
-            "Diphenhydramine (Benadryl) 25 mg \u2014 stronger but sedating, which suits a before-bed injection"
+            "Cetirizine (Zyrtec) 10 mg — non-drowsy and long-acting",
+            "Loratadine (Claritin) 10 mg — if cetirizine makes you sleepy",
+            "Diphenhydramine (Benadryl) 25 mg — stronger but sedating, which suits a before-bed injection"
           ],
           "note": "Most people find this reduces the reaction substantially, and for some it stops the welts entirely."
         },
@@ -383,11 +385,11 @@
           "h": "Inject deeper",
           "p": "A shallow injection leaves the tesamorelin against the mast-cell-rich layer just under the skin. Going deeper puts distance between them.",
           "list": [
-            "Use a \u00bd-inch needle and go in at 90\u00b0",
+            "Use a ½-inch needle and go in at 90°",
             "Pinch firmly to give yourself depth",
             "Aim for the fat pad, not just the space under the skin"
           ],
-          "note": "If the reactions persist even with good depth, message the atelier before changing anything else \u2014 there are other options and we would rather adjust it with you."
+          "note": "If the reactions persist even with good depth, message the atelier before changing anything else — there are other options and we would rather adjust it with you."
         },
         {
           "h": "Where you inject",
@@ -395,7 +397,7 @@
           "rows": [
             [
               "Lower abdomen",
-              "Worst \u2014 the densest population of mast cells"
+              "Worst — the densest population of mast cells"
             ],
             [
               "Upper abdomen",
@@ -409,7 +411,7 @@
             ],
             [
               "Outer thigh",
-              "Varies \u2014 fine for some, worse for others"
+              "Varies — fine for some, worse for others"
             ]
           ],
           "figure": "belly",
@@ -425,12 +427,12 @@
             "Welts spreading beyond the injection site",
             "Hives somewhere else on your body",
             "Reactions worsening week after week despite everything above",
-            "A site turning hard, hot, or producing pus \u2014 that is infection, not histamine"
+            "A site turning hard, hot, or producing pus — that is infection, not histamine"
           ],
-          "note": "Facial swelling, throat tightness or trouble breathing is different \u2014 call 911 first, then tell us. If reactions do not settle with an antihistamine and better technique, some people are simply sensitive to tesamorelin, and we will move you to a different GHRH analog."
+          "note": "Facial swelling, throat tightness or trouble breathing is different — call 911 first, then tell us. If reactions do not settle with an antihistamine and better technique, some people are simply sensitive to tesamorelin, and we will move you to a different GHRH analog."
         }
       ],
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 120
     },
@@ -462,8 +464,8 @@
       "notes": "Rotate injection sites as needed.",
       "vialMg": 20,
       "diluentMl": 3,
-      "doseSource": "Precision Auto Pen Summary \u2014 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week",
-      "storage": "Refrigerated, 36-46\u00b0F (2-8\u00b0C). Do not freeze.",
+      "doseSource": "Precision Auto Pen Summary — 20 mg / 3 mL / 300 clicks, 1.0 mg x 5/week",
+      "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
       "cog": 40
     },
@@ -472,7 +474,7 @@
       "name": "Tirzepatide",
       "short": "tir",
       "color": "clay",
-      "_source": "Atelier Tirzepatide Guide: 17 mg/mL, 1 mL vials. Drawn with an insulin syringe \u2014 one unit is 0.01 mL, so a unit delivers 0.17 mg.",
+      "_source": "Atelier Tirzepatide Guide: 17 mg/mL, 1 mL vials. Drawn with an insulin syringe — one unit is 0.01 mL, so a unit delivers 0.17 mg.",
       "delivery": "syringe",
       "concentrationMgPerMl": 17,
       "volumeMl": 1,
@@ -493,7 +495,7 @@
       "storage": "Keep the vial in the freezer in a light-filtering zip lock. Do not leave it out more than 24 hours.",
       "guide": [
         {
-          "name": "Weeks 1\u20132",
+          "name": "Weeks 1–2",
           "units": 17,
           "days": 14
         },
@@ -503,17 +505,17 @@
           "days": 7
         },
         {
-          "name": "Weeks 4\u20135",
+          "name": "Weeks 4–5",
           "units": 22,
           "days": 14
         },
         {
-          "name": "Weeks 6\u20137",
+          "name": "Weeks 6–7",
           "units": 25,
           "days": 14
         },
         {
-          "name": "Weeks 8\u20139",
+          "name": "Weeks 8–9",
           "units": 27,
           "days": 14
         },
@@ -525,12 +527,12 @@
       ],
       "phases": [
         {
-          "name": "Weeks 1\u20132",
+          "name": "Weeks 1–2",
           "units": 17,
           "days": 14
         }
       ],
-      "notes": "Inject on the same day each week. If nausea follows a dose increase, take one Zofran every 6\u20138 hours as needed. Weigh yourself weekly and tell the atelier if you are losing more than 3\u20134 lb a week. Increase protein so you lose fat rather than muscle.",
+      "notes": "Inject on the same day each week. If nausea follows a dose increase, take one Zofran every 6–8 hours as needed. Weigh yourself weekly and tell the atelier if you are losing more than 3–4 lb a week. Increase protein so you lose fat rather than muscle.",
       "stepsKey": "injectionStepsVial",
       "stepUpOptions": [
         0,
@@ -545,40 +547,40 @@
   "injectionStepsSyringe": [
     "Take the vial out of the freezer and let it thaw ~5 minutes",
     "Wipe the top of the vial with alcohol",
-    "Draw up to {units} units \u2014 the dashes on the syringe are units",
+    "Draw up to {units} units — the dashes on the syringe are units",
     "Wipe the skin on your lower stomach with alcohol",
-    "Pinch an inch, insert at 90\u00b0 and push the plunger",
+    "Pinch an inch, insert at 90° and push the plunger",
     "Remove the needle and place it in a sharps container"
   ],
   "injectionStepsVial": [
     "Take the vial out of the fridge and let it come to room temperature",
     "Wipe the top of the vial with alcohol",
-    "Draw up to {units} units \u2014 the dashes on the syringe are units",
+    "Draw up to {units} units — the dashes on the syringe are units",
     "Wipe the skin on your lower stomach with alcohol",
-    "Pinch an inch, insert at 90\u00b0 and push the plunger",
+    "Pinch an inch, insert at 90° and push the plunger",
     "Remove the needle and place it in a sharps container"
   ],
   "handling": {
     "needles": [
-      "A new disposable pen tip before every single use. Never reuse one \u2014 it blunts, which hurts more and damages the tissue.",
+      "A new disposable pen tip before every single use. Never reuse one — it blunts, which hurts more and damages the tissue.",
       "Take the tip off immediately after you inject. A pen stored with the tip on can leak, and it lets air into the cartridge.",
       "Put the pen cap back on, and put the pen straight back where it lives.",
       "Never share a pen, even with a new tip."
     ],
     "sharps": [
-      "Used pen tips go in a sharps container, in line with local sharps disposal rules \u2014 never the household bin, never a bottle.",
+      "Used pen tips go in a sharps container, in line with local sharps disposal rules — never the household bin, never a bottle.",
       "Bring the full container to the atelier and we will dispose of it for you."
     ],
     "travel": [
-      "Carry it on. Never check it \u2014 the hold gets cold enough to freeze a pen.",
+      "Carry it on. Never check it — the hold gets cold enough to freeze a pen.",
       "Use an insulated case with a cold pack, and keep a layer between the pack and the pen so it does not freeze against it.",
       "TSA allows medication and cold packs through security. Message us before you fly and we will send a letter on practice letterhead."
     ],
     "wrong": [
-      "Left out of the fridge \u2014 do not guess. Message us with how long and how warm, and we will tell you whether it is still good.",
-      "Frozen when it should not have been \u2014 do not use it. Freezing breaks the peptide even after it thaws.",
-      "Cloudy, discoloured, or with anything floating in it \u2014 do not use it. It should be clear.",
-      "Dropped \u2014 check the cartridge for a crack before you use it. If in doubt, message us."
+      "Left out of the fridge — do not guess. Message us with how long and how warm, and we will tell you whether it is still good.",
+      "Frozen when it should not have been — do not use it. Freezing breaks the peptide even after it thaws.",
+      "Cloudy, discoloured, or with anything floating in it — do not use it. It should be clear.",
+      "Dropped — check the cartridge for a crack before you use it. If in doubt, message us."
     ],
     "priming": {
       "why": "A new pen is primed once, before the very first dose. It clears the air out of the system, gets the medication flowing, and is what makes the dial accurate.",
@@ -591,9 +593,9 @@
         "Press the injection button all the way down"
       ],
       "check": "Look for a small bead of fluid at the tip. If nothing appears, repeat the same steps until it does. Once you see fluid, the pen is primed.",
-      "once": "Only before the first dose from a new pen \u2014 not before every injection."
+      "once": "Only before the first dose from a new pen — not before every injection."
     },
-    "storageNote": "Tirzepatide is the exception \u2014 it lives in the FREEZER, not the fridge, in a light-filtering zip lock. Everything else stays refrigerated and must never freeze.",
+    "storageNote": "Tirzepatide is the exception — it lives in the FREEZER, not the fridge, in a light-filtering zip lock. Everything else stays refrigerated and must never freeze.",
     "tutorialVideo": ""
   }
 }
