@@ -1313,6 +1313,53 @@ function buildICS() {
   return { text: lines.join('\r\n'), uids, seq, count: uids.length, sig: icsSignature() };
 }
 
+/* ==================================================================
+   WHAT HAS BEEN TAKEN
+   ------------------------------------------------------------------
+   Doses logged by tapping a vial label. The record is on the server,
+   which is what lets a dose tapped in Safari — the only place an NFC
+   tag can open on iOS — show up in the card added to the home screen,
+   which is a different browser with its own storage.
+
+   Every view that draws a day reads this: the calendar, the schedule
+   grid, the weekly rhythm. One copy, so they cannot disagree about
+   whether today is done.
+   ================================================================== */
+var LOGGED = {};
+
+async function loadLogged() {
+  const slug = (typeof CARD_SLUG !== 'undefined' && CARD_SLUG) || readSlug();
+  if (!slug) return LOGGED;                       // a card with no slug logs nothing
+  try {
+    const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (res.ok) LOGGED = (await res.json()).days || {};
+  } catch { /* a page that cannot reach the service is still a page */ }
+  return LOGGED;
+}
+
+function takenOn(pen, d) {
+  return (LOGGED[iso(d)] || []).includes(penKeyOf(pen));
+}
+
+/* Re-read whenever the page comes back to the front. A dose is logged in
+   one browser and read in another, so "did that go through" is answered
+   by asking again rather than by hoping the page was reloaded. */
+function watchLogged(redraw) {
+  let busy = false;
+  const again = async () => {
+    if (busy || document.hidden) return;
+    busy = true;
+    try { await loadLogged(); redraw(); } finally { busy = false; }
+  };
+  document.addEventListener('visibilitychange', again);
+  addEventListener('pageshow', again);
+  addEventListener('focus', again);
+}
+
+var TICK_SVG = `<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="taken"
+  role="img"><path d="M4 12.5l5 5L20 6.5"/></svg>`;
+
 /* ---------- the subscribed calendar ----------
    A downloaded file can add and update; only a calendar of its own can
    be removed. So the card publishes itself to the service, and the

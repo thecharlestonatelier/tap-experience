@@ -37,6 +37,8 @@
     --slate: #6B7A87;
     --pc:    var(--gold);
     --alert: #A4553F;
+    /* Taken — the same green the calendar page uses. */
+    --done:  #4C7150;
   }
   .c-clay { --pc: var(--clay); } .c-sage  { --pc: var(--sage); }
   .c-brass{ --pc: var(--gold); } .c-plum  { --pc: var(--plum); }
@@ -361,6 +363,11 @@
   .cal-day.sel { box-shadow: inset 0 0 0 1.5px var(--brass-soft); }
   .cal-dots { display: flex; gap: 2.5px; justify-content: center; }
   .cal-dot { width: 5.5px; height: 5.5px; border-radius: 50%; background: var(--dc); }
+  /* Taken. Same green everywhere it appears — the grid, the rhythm and
+     the calendar page all mean one thing by it. */
+  .cal-dot.taken { background: var(--done); box-shadow: 0 0 0 1.5px rgba(76,113,80,.28); }
+  .line.taken .dot { background: var(--done); }
+  .line.taken .amt { color: var(--done); }
 
   .day-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); }
   .day-detail-date { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
@@ -375,8 +382,11 @@
   .r-col { text-align: center; }
   .r-day { font-size: 10px; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
   .r-pill { height: 54px; border-radius: 999px; background: #EFE7DB; display: flex; align-items: center; justify-content: center; }
-  .r-pill .fill { width: 24px; height: 24px; border-radius: 50%; background: var(--pc); }
+  .r-pill .fill { width: 24px; height: 24px; border-radius: 50%; background: var(--pc);
+                  display: flex; align-items: center; justify-content: center; }
   .r-pill.off .fill { background: transparent; }
+  .r-pill.taken .fill { background: var(--done); }
+  .r-pill .fill .tick { width: 13px; height: 13px; color: #F6F0E7; }
 
   .kv { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; font-size: 13.5px; border-top: 1px solid var(--hairline); }
   .kv:first-of-type { border-top: none; }
@@ -1200,7 +1210,8 @@ function renderCalendar() {
       + (iso(d) === iso(t) ? ' today' : '')
       + (selectedDay && iso(d) === iso(selectedDay) ? ' sel' : '');
     b.innerHTML = `<span>${d.getDate()}</span><span class="cal-dots">${
-      due.map(p => `<span class="cal-dot" style="--dc:var(--${p.color === 'brass' ? 'gold' : p.color})"></span>`).join('')
+      due.map(p => `<span class="cal-dot${takenOn(p, d) ? ' taken' : ''}" style="--dc:var(--${
+        p.color === 'brass' ? 'gold' : p.color})"></span>`).join('')
     }</span>`;
     b.addEventListener('click', () => { selectedDay = d; renderCalendar(); renderDayDetail(); });
     grid.appendChild(b);
@@ -1214,9 +1225,12 @@ function renderDayDetail() {
     <div class="day-detail-date">${fmtLong(d)}</div>
     ${due.length ? due.map(pen => {
       const dose = doseOn(pen, d);
-      return `<div class="line c-${pen.color || 'brass'}">
+      const taken = takenOn(pen, d);
+      return `<div class="line c-${pen.color || 'brass'}${taken ? ' taken' : ''}">
         <span class="dot"></span><span class="nm">${pen.name}</span>
-        <span class="amt">Turn to ${dose.units} · ${pen.time}</span></div>`;
+        <span class="amt">${taken
+          ? '✓ Taken'
+          : `Turn to ${dose.units} · ${pen.time}`}</span></div>`;
     }).join('') : '<div class="line"><span class="nm" style="color:var(--muted)">Day off</span></div>'}`;
 }
 
@@ -1229,7 +1243,9 @@ function renderRhythm() {
       const d = addDays(t, i);
       cells.push(`<div class="r-col">
         <div class="r-day">${DOW[isoDow(d)-1][0]}</div>
-        <div class="r-pill${isDue(pen, d) ? '' : ' off'}"><span class="fill"></span></div>
+        <div class="r-pill${isDue(pen, d) ? '' : ' off'}${
+          isDue(pen, d) && takenOn(pen, d) ? ' taken' : ''}"><span class="fill">${
+          isDue(pen, d) && takenOn(pen, d) ? TICK_SVG : ''}</span></div>
       </div>`);
     }
     const dose = doseOn(pen, t) || doseOn(pen, addDays(t, 1));
@@ -1428,8 +1444,12 @@ async function boot() {
     (TRACKING ? 'Injection history is stored on this device only.<br>' : '') +
     `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.`;
 
+  await loadLogged();
   renderAll();
   wireSubscribe();
+  // A dose tapped on a vial is logged in Safari; this page may be the
+  // installed app. Ask again whenever it comes back to the front.
+  watchLogged(renderAll);
 
   // Carry the card on every link out of this page. Without this the back
   // arrow is a bare "./", which lands on the root with no card on it and

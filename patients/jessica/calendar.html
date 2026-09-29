@@ -200,34 +200,13 @@
 
 let cursor, selected;
 
-/* What the stickers have logged: day -> the pens taken that day. Read once
-   on load, from the card's own address — the same thing that opens this
-   page. A card that has never been tapped, or a legacy card with no slug,
-   simply leaves it empty and the month reads as it always did. */
-let LOGGED = {};
+/* The logged days, the "has this pen been taken" test and the tick are
+   all in protocol.js now, so this page, the schedule grid and the weekly
+   rhythm cannot disagree about whether today is done. */
+const TICK = TICK_SVG;
 
+/* Which pen a pill belongs to, as a colour class. */
 const cls = pen => `c-${pen.color || 'brass'}`;
-
-/* A pen on a card is identified by the template it came from; that is the
-   id the vial sticker carries. */
-const penKey = pen => pen.template || pen.id;
-
-function takenOn(pen, d) {
-  return (LOGGED[iso(d)] || []).includes(penKey(pen));
-}
-
-async function loadLogged() {
-  const slug = (typeof CARD_SLUG !== 'undefined' && CARD_SLUG) || null;
-  if (!slug) return;
-  try {
-    const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
-    if (res.ok) LOGGED = (await res.json()).days || {};
-  } catch { /* the calendar is still a calendar without it */ }
-}
-
-const TICK = `<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-  stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="taken"
-  role="img"><path d="M4 12.5l5 5L20 6.5"/></svg>`;
 
 function render() {
   const grid = document.getElementById('grid');
@@ -338,19 +317,7 @@ function renderLegend() {
   renderLegend();
   applyCardLinks();
 
-  /* A dose is logged on whichever browser the NFC tag opened — on iOS
-     that is Safari, never the installed app. The record is on the server,
-     so the only thing standing between them is this page not asking
-     again. Ask every time it comes back to the front. */
-  let refreshing = false;
-  async function refreshLogged() {
-    if (refreshing || document.hidden) return;
-    refreshing = true;
-    try { await loadLogged(); render(); } finally { refreshing = false; }
-  }
-  document.addEventListener('visibilitychange', refreshLogged);
-  addEventListener('pageshow', refreshLogged);
-  addEventListener('focus', refreshLogged);
+  watchLogged(render);
 
   document.getElementById('prev').addEventListener('click', () => {
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1); render();
