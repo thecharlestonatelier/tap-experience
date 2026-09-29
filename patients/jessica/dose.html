@@ -95,9 +95,15 @@ const view = document.getElementById('view');
 
 let HOME = '/';   // her card, once we know which one it is
 
-function stop(title, why, showOpen) {
+/* `actions` is a list of [label, href-or-null]; a null href means the
+   button forgets whose card this phone is holding. */
+function stop(title, why, actions) {
   view.innerHTML = `<h1>${esc(title)}</h1><p class="lede">${esc(why)}</p>` +
-    (showOpen ? `<a class="ghost" href="${esc(HOME)}">Open my card</a>` : '');
+    (actions || []).map(([label, href], i) => href
+      ? `<a class="ghost" href="${esc(href)}">${esc(label)}</a>`
+      : `<button class="ghost" data-forget="${i}">${esc(label)}</button>`).join('');
+  view.querySelectorAll('[data-forget]').forEach(b =>
+    b.addEventListener('click', () => { forgetCard(); location.reload(); }));
 }
 
 (async function boot() {
@@ -108,6 +114,36 @@ function stop(title, why, showOpen) {
   const t = (templates.templates || []).find(x => x.id === V.template);
   if (!t) return stop('Unknown label', 'This vial is not one the atelier recognises. Please message us before injecting.');
 
+  /* THE ATELIER'S OWN PHONE
+     A vial tap logs against whichever card this phone last opened. On a
+     patient's phone that is exactly right. On the atelier's it is not:
+     checking a patient's card leaves that patient remembered, and every
+     tag tapped afterwards reads as hers — a Glow label answering "not
+     part of your protocol" and offering to open somebody else's portal.
+     So a phone signed in to Card Studio is told what the label says and
+     nothing is logged. */
+  try {
+    const ses = await fetch('/api/session', { cache: 'no-store' }).then(r => r.json());
+    if (ses && ses.signedIn) {
+      const mem = recallCard();
+      view.innerHTML = `
+        <p class="eyebrow">Atelier</p>
+        <h1>${esc(t.name)}</h1>
+        <p class="lede">This tag is written correctly.${V.lot ? ` Lot ${esc(V.lot)}.` : ''}</p>
+        <div class="card">
+          <p class="line">You are signed in to Card Studio, so nothing has been logged.
+            A dose is recorded on the patient&rsquo;s own phone, from her own card.</p>
+          ${mem && mem.slug ? `<p class="line" style="margin-top:10px">This phone is currently
+            holding <b>/${esc(mem.slug)}</b> &mdash; any vial tapped here would log against it.</p>
+            <button class="act" data-forget="0">Forget that card</button>` : ''}
+          <a class="ghost" href="/studio/">Open Card Studio</a>
+        </div>`;
+      view.querySelectorAll('[data-forget]').forEach(b =>
+        b.addEventListener('click', () => { forgetCard(); location.reload(); }));
+      return;
+    }
+  } catch { /* not reachable: carry on as a patient would */ }
+
   // Identity comes from the card this phone has already opened. Without
   // it there is nobody to log against, and guessing is not an option.
   const mem = recallCard();
@@ -115,7 +151,7 @@ function stop(title, why, showOpen) {
   if (slug) HOME = '/' + slug;
   if (!slug) {
     return stop('Open your card first',
-      'Tap your Atelier card, then tap this vial again. The label knows the vial, not who is holding it.', true);
+      'Tap your Atelier card, then tap this vial again. The label knows the vial, not who is holding it.');
   }
 
   let CFGX;
@@ -124,7 +160,8 @@ function stop(title, why, showOpen) {
     if (!res.ok) throw new Error('gone');
     CFGX = hydrateRecord(await res.json(), templates);
   } catch {
-    return stop('Could not reach your card', 'Please try again, or message the atelier.', true);
+    return stop('Could not reach your card', 'Please try again, or message the atelier.',
+      [['Open my card', HOME]]);
   }
 
   // The dose is whatever her own protocol says for this pen today — not
@@ -136,8 +173,13 @@ function stop(title, why, showOpen) {
 
   const pen = PENS.find(x => x.template === t.id || x.id === t.id);
   if (!pen) {
-    return stop('Not on your card',
-      `${t.name} is not part of your protocol. Please message the atelier before injecting.`, true);
+    // Name the card it checked. Without that this reads as "the atelier
+    // has lost your protocol", when the truth is usually that the phone
+    // is holding somebody else's card.
+    const who = (CFG.patient && CFG.patient.name) || 'this card';
+    return stop(`Not on ${who}'s card`,
+      `${t.name} is not part of ${who}'s protocol. If this is not your phone's card, forget it and tap your own.`,
+      [[`Open ${who}'s card`, HOME], ['Not my card — forget it', null]]);
   }
 
   const when = today();
@@ -145,7 +187,8 @@ function stop(title, why, showOpen) {
   const dose = doseOn(pen, when);
   if (!dose) {
     return stop('Not scheduled today',
-      `Today is a rest day for ${t.name}. Message the atelier if you think that is wrong.`, true);
+      `Today is a rest day for ${t.name}. Message the atelier if you think that is wrong.`,
+      [['Open my card', HOME]]);
   }
 
   /* The green square, once it is green. Shown after a yes, and also on a
