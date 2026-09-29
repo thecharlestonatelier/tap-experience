@@ -137,24 +137,63 @@ function stop(title, why, actions) {
      part of your protocol" and offering to open somebody else's portal.
      So a phone signed in to Card Studio is told what the label says and
      nothing is logged. */
+  /* Having chosen a patient by name, she is logging as that patient for
+     this one dose. The flag lasts the browsing session and is dropped the
+     moment the dose is in, so the next tag tapped on this phone goes back
+     to refusing to guess. */
+  const LOGFOR = 'tca.logfor';
+  const chosen = (() => { try { return sessionStorage.getItem(LOGFOR); } catch { return null; } })();
+  const dropChosen = () => { try { sessionStorage.removeItem(LOGFOR); } catch {} };
+
   try {
     const ses = await fetch('/api/session', { cache: 'no-store' }).then(r => r.json());
-    if (ses && ses.signedIn) {
+    if (ses && ses.signedIn && !chosen) {
       const mem = recallCard();
       view.innerHTML = `
         <p class="eyebrow">Atelier</p>
         <h1>${esc(t.name)}</h1>
         <p class="lede">This tag is written correctly.${V.lot ? ` Lot ${esc(V.lot)}.` : ''}</p>
         <div class="card">
-          <p class="line">You are signed in to Card Studio, so nothing has been logged.
-            A dose is recorded on the patient&rsquo;s own phone, from her own card.</p>
-          ${mem && mem.slug ? `<p class="line" style="margin-top:10px">This phone is currently
-            holding <b>/${esc(mem.slug)}</b> &mdash; any vial tapped here would log against it.</p>
-            <button class="act" data-forget="0">Forget that card</button>` : ''}
+          <p class="line">Signed in to Card Studio, so nothing has been logged.
+            A dose belongs to a patient, not to a tag.</p>
+          ${mem && mem.slug ? `<p class="line" style="margin-top:10px">This phone is holding
+            <b>/${esc(mem.slug)}</b> &mdash; a vial tapped here would log against it.</p>
+            <button class="ghost" data-forget="0">Forget that card</button>` : ''}
+          <button class="act" id="pick">Log for a patient</button>
           <a class="ghost" href="/studio/">Open Card Studio</a>
-        </div>`;
+        </div>
+        <div id="who"></div>`;
       view.querySelectorAll('[data-forget]').forEach(b =>
         b.addEventListener('click', () => { forgetCard(); location.reload(); }));
+
+      /* Choosing a patient by name is a different act from inheriting
+         whichever card the phone happened to open last, which is why
+         this is a button and not a default. It is also the only way to
+         log a dose given in the room rather than at home. */
+      document.getElementById('pick').addEventListener('click', async e => {
+        e.currentTarget.disabled = true;
+        let cards = [];
+        try { cards = (await (await fetch('/api/cards', { cache:'no-store' })).json()).cards || []; }
+        catch { return; }
+        const onIt = cards.filter(c => c.name &&
+          (c.pens || []).some(x => x.template === t.id));
+        const el = document.getElementById('who');
+        if (!onIt.length) {
+          el.innerHTML = `<p class="note">No card has ${esc(t.name)} on it yet.
+            Add it in Card Studio first.</p>`;
+          return;
+        }
+        el.innerHTML = `<p class="note">Whose dose is this?</p>` + onIt.map(c =>
+          `<button class="ghost" data-slug="${esc(c.slug)}">${esc(c.name)}</button>`).join('');
+        el.querySelectorAll('[data-slug]').forEach(b =>
+          b.addEventListener('click', () => {
+            // Remember it the same way a tapped card would, then run the
+            // ordinary patient flow against it.
+            rememberCard({ card: null, slug: b.dataset.slug, legacy: false, start: null });
+            try { sessionStorage.setItem(LOGFOR, b.dataset.slug); } catch {}
+            location.reload();
+          }));
+      });
       return;
     }
   } catch { /* not reachable: carry on as a patient would */ }
@@ -166,7 +205,8 @@ function stop(title, why, actions) {
   if (slug) HOME = '/' + slug;
   if (!slug) {
     return stop('Open your card first',
-      'Tap your Atelier card, then tap this vial again. The label knows the vial, not who is holding it.');
+      'Tap your Atelier card — or open it from your home screen — and then tap this ' +
+      'vial again. The label knows which pen it is, not who is holding it.');
   }
 
   let CFGX;
@@ -279,6 +319,7 @@ function stop(title, why, actions) {
       });
       if (!res.ok) throw new Error('refused');
       const out = await res.json();
+      dropChosen();
       if (!out.duplicate) {
         // The log has to be re-read before the streak can count this one.
         await loadLogged(slug);
