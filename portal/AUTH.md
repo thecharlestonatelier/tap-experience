@@ -4,6 +4,7 @@ A specification for putting real accounts behind Card Studio, and for
 deciding — deliberately — what stays open.
 
 Status: proposal. Nothing in here is built.
+Build order and tests: `portal/AUTH-PLAN.md`. Starting with Google.
 
 ---
 
@@ -292,6 +293,10 @@ question from "small exposure, confirm anyway" to a genuine prerequisite:
 
 ## 10. Migration
 
+**The build order, with the test that proves each phase, is in
+`portal/AUTH-PLAN.md`.** What follows is the shape; that document is the
+work.
+
 Each phase is independently deployable and reversible.
 
 **Phase 1 — stand it up, change nothing.**
@@ -372,24 +377,34 @@ photographs the QR over her shoulder claims her card.
 
 ### What a patient signs in with
 
-**Three, in this order on the screen: Apple, Google, then an email link.**
+**Google first, and only Google to begin with.** Apple follows once the
+developer membership is bought; the email link follows with it. The order
+on the finished screen is Apple, Google, email link — but nothing waits on
+that, and shipping one provider well beats shipping three at once.
 
-Apple leads because this is an iPhone practice. Sign in with Apple on an
-iPhone is Face ID and one tap — no address typed, nothing to check in
-another app, no leaving the page. It is faster than anything else
-available and it is the one most patients will use.
+Google is the right one to start with for three reasons: it needs no paid
+membership, it returns a real email address rather than a relay, and
+almost every patient here has one even if they live on an iPhone.
 
-Google second, for the patients who live in Gmail.
+**Still coming, not cancelled:**
 
-**Email magic link stays** as the fallback, and it is not optional: it is
-what a patient with neither account uses, and it is what everyone falls
-back to when a provider is having a bad morning. No password to forget,
-and the reset flow and the sign-in flow are the same thing.
+- **Apple** — $99/year developer membership, and then it leads the screen,
+  because on an iPhone it is Face ID and one tap. Everything below about
+  private relay and two-provider accounts applies the day it ships, which
+  is why `owner.provider` is recorded from the first Google claim: the
+  data has to be ready before the second provider exists, not after.
+- **Email magic link** — the fallback for a patient with no Google
+  account. Until it ships, that patient is claimed by you from Studio
+  rather than turned away.
 
-SMS is still rejected — phone numbers in the auth system, a cost per
-message, and silent failure on a landline.
+SMS stays rejected — phone numbers in the auth system, a cost per message,
+and silent failure on a landline.
 
-#### Apple: what it costs and what it does to the record
+**The Safari problem below is not an Apple problem.** It breaks Google
+redirect sign-in exactly the same way, and it is the first real piece of
+work in the build.
+
+#### Apple, when it comes: what it costs and what it does to the record
 
 **It needs a paid Apple Developer Program membership — $99 a year.** Sign
 in with Apple is configured with a Services ID and a signing key from the
@@ -440,7 +455,7 @@ Popup sign-in (`signInWithPopup`) sidesteps the problem and is the better
 default on desktop, but iOS Safari blocks popups often enough that the
 redirect path has to work.
 
-#### One patient, two providers
+#### One patient, two providers — a problem Apple brings, prepared for now
 
 A patient who uses Apple today and Google tomorrow gets **two Firebase
 accounts** unless they are linked. Firebase links accounts sharing a
