@@ -341,7 +341,9 @@ One field on the card record:
 ```js
   owner: {
     uid:       'firebase-uid',      // the account that holds this card
-    email:     'patient@example.com',
+    email:     'patient@example.com',   // may be an Apple relay address
+    provider:  'apple',             // so the signed-out screen can say
+                                    // "you used Apple last time"
     claimedAt: '2026-10-07T14:12:00.000Z',
     claimedBy: 'kendall@…'          // the staff account present at the claim
   }
@@ -370,15 +372,98 @@ photographs the QR over her shoulder claims her card.
 
 ### What a patient signs in with
 
-**Email magic link.** No password to forget, no password to reset, and the
-reset flow and the sign-in flow are the same thing. Firebase handles it.
+**Three, in this order on the screen: Apple, Google, then an email link.**
 
-SMS is the alternative and is worse here: it puts phone numbers into the
-auth system, costs per message, and fails silently on a landline.
+Apple leads because this is an iPhone practice. Sign in with Apple on an
+iPhone is Face ID and one tap — no address typed, nothing to check in
+another app, no leaving the page. It is faster than anything else
+available and it is the one most patients will use.
 
-Rejected: Google and Apple sign-in. They are faster for the patients who
-have them and a dead end for the ones who do not, and this cohort is not
-uniformly on either.
+Google second, for the patients who live in Gmail.
+
+**Email magic link stays** as the fallback, and it is not optional: it is
+what a patient with neither account uses, and it is what everyone falls
+back to when a provider is having a bad morning. No password to forget,
+and the reset flow and the sign-in flow are the same thing.
+
+SMS is still rejected — phone numbers in the auth system, a cost per
+message, and silent failure on a landline.
+
+#### Apple: what it costs and what it does to the record
+
+**It needs a paid Apple Developer Program membership — $99 a year.** Sign
+in with Apple is configured with a Services ID and a signing key from the
+developer portal; there is no free tier. This is the same membership Apple
+Wallet passes were blocked on, so one payment unlocks both. **If that
+membership is not bought, Apple sign-in cannot ship** and the screen is
+Google plus email link.
+
+**Private relay changes what you see.** A patient can choose "Hide My
+Email", and Apple hands over `something@privaterelay.appleid.com` instead
+of her real address. Consequences worth knowing before the first patient
+does it:
+
+- `owner.email` on her card will read as a relay address. You will not
+  recognise her from it in the card list — so the card list should show
+  **the patient's name from the card record**, which you typed, and treat
+  the auth email as an identifier rather than a label.
+- Mail sent to a relay address does reach her, forwarded by Apple, for as
+  long as she allows it.
+- She can revoke it later from her Apple ID settings, at which point
+  forwarding stops. The account still works; only mail to it stops.
+
+**Apple gives the patient's name once.** It is returned on the very first
+authorization and never again. Since the name on the card comes from what
+you typed in Studio, this does not matter here — noted so nobody later
+builds something that depends on it.
+
+#### The Safari problem, which is the real integration work
+
+Firebase's sign-in handler normally lives on `your-project.firebaseapp.com`.
+**Safari partitions third-party storage, and that breaks redirect sign-in** —
+the patient goes to Apple, comes back, and arrives signed out. On an
+iPhone-only patient base this is not an edge case, it is the default path.
+
+The fix is to serve the auth handler from the same origin as the portal:
+
+```
+  tap.thecharlestonatelier.com/__/auth/*   →  the Firebase auth handler
+```
+
+On Cloud Run that means proxying `/__/auth/` through `server.js`, or
+putting the custom domain on Firebase Hosting and sending everything else
+to Cloud Run. Either way it must be settled **before** the first patient
+claims a card, because the symptom — sign-in that silently does nothing —
+is indistinguishable from the patient doing it wrong.
+
+Popup sign-in (`signInWithPopup`) sidesteps the problem and is the better
+default on desktop, but iOS Safari blocks popups often enough that the
+redirect path has to work.
+
+#### One patient, two providers
+
+A patient who uses Apple today and Google tomorrow gets **two Firebase
+accounts** unless they are linked. Firebase links accounts sharing a
+*verified* email automatically — but Apple's private relay address is not
+her Google address, so for the patients most likely to use Apple, it will
+not link.
+
+The card is bound to a uid. A second account means a second uid, which
+means her own card answering **"This card is not yours"** — the single
+most alarming message this application can show, to the person least able
+to diagnose it.
+
+Three things keep that from happening:
+
+1. **Record the provider at claim time** — `owner.provider: 'apple'` — and
+   have the signed-out screen say *"You signed in with Apple last time"*
+   above the buttons. Most of this problem is solved by remembering.
+2. **Offer linking, not a dead end.** When a signed-in account does not own
+   the card, the page should offer *"Link this sign-in to my card"*, which
+   emails a link to the address on the original account. Firebase supports
+   linking providers onto one account.
+3. **You can re-bind from Studio** (below), which is the floor under all of
+   it.
 
 ### What happens on a tap, after this
 
@@ -392,8 +477,8 @@ uniformly on either.
         │
         ├─ signed in as someone else → "This card is not yours"
         │
-        └─ signed out ─────────────→ "Welcome back" + one tap to send a
-                                      sign-in link to her email
+        └─ signed out ─────────────→ "Welcome back" + the provider she
+                                      used last, offered first
 ```
 
 The vial page gets simpler, not harder: the uid in the token *is* the
@@ -461,12 +546,16 @@ not merge the two.
 3. **Google-only sign-in, or email/password as a fallback?**
    Recommendation: Google only.
 4. **Is authorship (§8) enough, or is a tamper-proof audit log required?**
-4a. **Patient sign-in: email magic link, confirmed?** (§11 recommends it
-    over SMS and over Google/Apple.)
+4a. **Apple Developer Program membership — buy it?** $99/year, and Apple
+    sign-in cannot ship without it. The same membership unlocks Wallet
+    passes. If no, the screen is Google plus email link.
 4b. **What happens to a card handed over unclaimed?** Recommendation: it
     cannot be — the claim is part of issuing it, in the room.
 4c. **Does the calendar feed keep URL-as-credential?** Recommendation: yes;
     Apple's servers fetch it with no token and nothing can change that.
+4d. **Custom auth domain: proxy `/__/auth/` through Cloud Run, or put the
+    domain on Firebase Hosting?** Must be settled before the first claim —
+    redirect sign-in does not work on Safari without it.
 5. **Does the test service share the auth tenant, or get its own?**
    Recommendation: share it, with the claims granted separately, so test
    access does not imply production access.
@@ -482,8 +571,9 @@ not merge the two.
 | 3 — watch | a week of elapsed time, no work |
 | 4 — retire | an hour |
 | 5 — authorship | an hour |
-| 6 — patient accounts | two to three days, plus a fortnight watching one patient |
+| 6 — patient accounts | three to four days, plus a fortnight watching one patient. The extra day is the custom auth domain and provider linking, not the sign-in buttons. |
 | 7 — the rest | minutes per patient, at their visits |
 
 Cost: free under 50,000 monthly active users at the Identity Platform tier.
-At this practice's size, nothing.
+At this practice's size, nothing — **plus $99 a year** for the Apple
+Developer Program, without which Apple sign-in cannot be offered.
