@@ -13,7 +13,10 @@
    recorded dose.
    ================================================================== */
 
-const COLLECTION = 'administrations';
+/* The test service points this at its own collection (administrations-test)
+   so a rehearsal dose never lands among a real patient's administrations.
+   Production leaves the default. */
+const COLLECTION = process.env.DOSE_COLLECTION || 'administrations';
 
 function nowIso() { return new Date().toISOString(); }
 
