@@ -37,36 +37,53 @@ Card Studio, the dose log, the deploy panel, the patient list. Everything
 behind `requireClinician` today becomes a Firebase-authenticated session
 with a named human attached.
 
-### Patients — no, and this is deliberate
+### Patients — yes, claimed at issue
 
-A patient taps a card and sees her dose. There is no sign-in, and there
-should not be. The card's address *is* the credential: a long, unguessable
-slug written to a tag she keeps in her wallet.
+**Decided: a card is claimed by a patient account before it shows anything.**
+Card Studio creates the card; the patient signs in once and that account is
+bound to that address. §11 is the design.
 
-Putting a login in front of that would mean a patient standing at her
-bathroom counter at 8pm, holding a pen, being asked for a password she set
-up six weeks ago. Adherence is the entire point of this product, and a
-login is the single most effective way to damage it.
+This reverses the recommendation this document originally made, so the
+reasoning it overrides is kept rather than deleted — a later reader should
+know the cost was weighed, not missed.
 
-The security model it replaces is not "nothing" — it is **capability by
-URL**, the same model as a Google Doc shared by link or a password-reset
-email. But it is weaker than that comparison suggests, and the spec should
-say so: a slug is `first4.lastinitial` plus **three characters from a
-27-character alphabet — 19,683 combinations**. That defeats someone typing
-`/john.s` on a whim. It does not defeat anyone willing to make twenty
-thousand requests, which is a few minutes of work.
+**What it costs.** A login sits between a patient and her dose. The moment
+that matters is a patient at her bathroom counter at 8pm holding a pen; if
+she is signed out, she is doing email verification instead of injecting.
+Adherence is the product, and this is the most direct way to damage it.
+§11 is built around keeping that moment from happening — claim in the
+room, sessions that persist, and a fallback when they do not.
 
-Two things follow, neither of which is Firebase Auth's job:
+**What it buys**, and it is not only security:
+
+- **Identity stops being guesswork.** The vial-tag flow currently infers
+  who is holding the phone from localStorage, then a cookie, and tells her
+  to "open your card first" when both are empty. That has gone wrong for a
+  real patient. An account answers the question outright.
+- **The card survives a new phone.** Today the memory is per-browser and
+  per-device. An account follows her.
+- **A card can be unbound.** A tag lost with a protocol on it can be
+  revoked. Today the address is the credential and that is final.
+- **The addressing weakness below stops mattering**, because the address
+  alone stops being enough.
+
+### The addressing weakness, which was the finding worth most
+
+The model being replaced is **capability by URL** — the same as a Google
+Doc shared by link. Weaker than that comparison suggests: a slug is
+`first4.lastinitial` plus **three characters from a 27-character
+alphabet — 19,683 combinations**. That defeats someone typing `/john.s` on
+a whim. It does not defeat anyone willing to make twenty thousand requests,
+which is a few minutes of work.
+
+Patient accounts close this for claimed cards. Two things are still worth
+doing, because neither depends on Firebase and both protect the window
+before a card is claimed:
 
 - **Rate-limit `/api/card/:slug`.** Unknown slugs should be slow and
-  counted. This is the single highest-value security change available to
-  this application, and it is independent of everything in this document.
-- **Lengthen the suffix** for cards issued from here on. Six characters
-  takes it from 19,683 to 387 million at no cost to legibility.
-
-**If you ever decide patients should sign in**, that is a product decision
-with a measurable adherence cost, not a security upgrade to be slipped in.
-It needs its own discussion, and §11 sketches what it would involve.
+  counted.
+- **Lengthen the suffix** on new cards. Six characters takes it from
+  19,683 to 387 million at no cost to legibility.
 
 ---
 
@@ -258,8 +275,18 @@ If it turns out not to be covered, **IAP with Google Workspace accounts is
 the fallback**, since that keeps identity inside Workspace, which your BAA
 already covers.
 
-Nothing in this design puts patient data in the auth system. No patient
-accounts, no patient email addresses, no protocol data in a token.
+**Patient accounts change the weight of this.** With §11 in scope, the auth
+system holds **patient email addresses** — an identifier, and therefore PHI
+in combination with the fact of being a patient here. This moves the BAA
+question from "small exposure, confirm anyway" to a genuine prerequisite:
+
+- Identity Platform must be confirmed in scope under your BAA **before any
+  patient claims a card**, not before staff sign-in.
+- No protocol data goes in a token or a display name. The auth record holds
+  an email and a uid; everything clinical stays in Firestore.
+- If Identity Platform turns out not to be covered, staff can fall back to
+  IAP (§5) — but **patient accounts have no fallback** and would not be
+  built.
 
 ---
 
@@ -288,30 +315,143 @@ and the `STUDIO_PASSPHRASE` secret. Keep the local-development bypass.
 **Phase 5 — authorship.**
 Add `updatedBy` and show it in the card list.
 
+**Phase 6 — patient accounts, one patient first.**
+Build the claim flow (§11) and bind **one** card — ideally your own test
+card, then one patient who is comfortable being first and who you will see
+again soon. Watch it for a fortnight before any more. The failure modes
+here land on a patient at 8pm, not on a dashboard, and that asymmetry
+deserves a slow rollout.
+
+**Phase 7 — the rest, at their next visit.**
+Claim each remaining card in the room rather than by email campaign. The
+unclaimed cards keep working until they are claimed, which is what makes
+this phase unhurried.
+
 Rollback at any point before Phase 4 is: deploy the previous revision.
 Cloud Run keeps them, and traffic can be moved back in one command.
 
 ---
 
-## 11. If patients ever do sign in
+## 11. Patient accounts
 
-Not recommended (§2), recorded so the shape is known.
+### The binding
 
-Passwordless email link or SMS sign-in, Firebase handles both. The card's
-first tap would offer "this is my card" and bind the slug to the account.
-Thereafter the vial page would know who is holding the phone without the
-localStorage-and-cookie dance it does today, which would genuinely fix the
-one failure patients hit — "Open your card first".
+One field on the card record:
 
-The cost: every patient needs an account, every lost phone is a support
-call, patient email addresses and phone numbers enter the auth system
-(which makes §9 materially harder), and the tap-and-go experience is gone.
+```js
+  owner: {
+    uid:       'firebase-uid',      // the account that holds this card
+    email:     'patient@example.com',
+    claimedAt: '2026-10-07T14:12:00.000Z',
+    claimedBy: 'kendall@…'          // the staff account present at the claim
+  }
+```
 
-A middle path, if the identity problem keeps biting: keep the portal open,
-but let a patient optionally claim her card, and have the vial page use the
-account when one exists and fall back to today's behaviour when it does not.
+A card with no `owner` is **unclaimed**. A card with one serves its protocol
+only to a request carrying that uid's token.
 
----
+### Claim in the room, not at home
+
+This is the decision the rest of the design hangs on.
+
+Card Studio creates the card and shows a **claim screen** — a QR code and a
+short link — while the patient is still sitting there. She scans it on her
+own phone, signs in, and the card is bound before she leaves. One minute,
+with you present to help.
+
+The alternative is to let her claim it later at home. Rejected: the first
+time she taps her card would be a sign-up form, alone, at the moment she is
+least patient with one. The support calls would all land on you anyway, and
+later rather than now.
+
+The claim link is single-use and short-lived — a signed token naming the
+slug, good for 30 minutes, invalidated once used. Without that, anyone who
+photographs the QR over her shoulder claims her card.
+
+### What a patient signs in with
+
+**Email magic link.** No password to forget, no password to reset, and the
+reset flow and the sign-in flow are the same thing. Firebase handles it.
+
+SMS is the alternative and is worse here: it puts phone numbers into the
+auth system, costs per message, and fails silently on a landline.
+
+Rejected: Google and Apple sign-in. They are faster for the patients who
+have them and a dead end for the ones who do not, and this cohort is not
+uniformly on either.
+
+### What happens on a tap, after this
+
+```
+  Tag tapped  →  /phil.h
+        │
+        ├─ card unclaimed ─────────→ "Ask the atelier to set this up"
+        │                             (it should never be handed over unclaimed)
+        │
+        ├─ signed in as the owner ─→ her protocol, as today
+        │
+        ├─ signed in as someone else → "This card is not yours"
+        │
+        └─ signed out ─────────────→ "Welcome back" + one tap to send a
+                                      sign-in link to her email
+```
+
+The vial page gets simpler, not harder: the uid in the token *is* the
+patient, so `recallCard()`, the `ca_card` cookie and the whole
+"Open your card first" branch can go.
+
+### The session, and the problem Safari creates
+
+Firebase keeps a web session in IndexedDB. **Safari's ITP evicts that after
+seven days without interaction** — the same mechanism that caused the
+localStorage bug this application already hit.
+
+What that means in practice:
+
+- A patient dosing daily interacts daily, the clock keeps resetting, and
+  she never sees a login again.
+- **A patient who lapses for a week gets a sign-in wall at exactly the
+  moment she is trying to restart.** That is the worst possible placement
+  and it is Apple's behaviour, not something the design can remove.
+
+Mitigations, in order of value:
+
+1. **A card added to the home screen is exempt** — an installed web app's
+   storage is not subject to ITP eviction the way a Safari tab's is. This
+   turns "add to home screen" from a nicety into part of the claim flow.
+2. **The sign-in link is one tap**, pre-filled with her address. Not a
+   form — a button that says "Email me a link".
+3. **The server-set cookie already built** (`ca_card`) stays as a hint, so
+   a signed-out patient is greeted by name rather than by a blank form.
+
+### What the clinician can still do
+
+- **Re-bind a card** — wrong person claimed it, or she changed email.
+- **Unbind** — lost tag, revoking the protocol on it.
+- **See who holds what** — `owner.email` beside each card in the list.
+- **Log a dose for a patient** — the Studio-side flow already built stays,
+  and matters more now, because it is the path when a patient's phone will
+  not cooperate in the room.
+
+### What this does not fix
+
+The home-screen app and Safari are still separate browsers with separate
+storage, so a patient who uses both signs in to both. Accounts make that
+recoverable rather than mysterious — she can sign in again — but they do
+not merge the two.
+
+### Scope
+
+- `cards/{slug}.owner` on the record, and the claim token.
+- A claim screen in Card Studio with the QR.
+- A sign-in page on the patient side, and the signed-out state on every
+  patient route.
+- `/api/card/:slug` and the other slug-scoped routes gain an owner check.
+  That is the part to be careful with: `/ics/:slug` is fetched by Apple's
+  servers with no token at all, so the calendar feed either keeps its
+  URL-as-credential model or stops working. **Recommendation: the feed
+  keeps it**, with the suffix lengthened, and that exception is documented
+  rather than forgotten.
 
 ## 12. Decisions needed
 
@@ -321,6 +461,12 @@ account when one exists and fall back to today's behaviour when it does not.
 3. **Google-only sign-in, or email/password as a fallback?**
    Recommendation: Google only.
 4. **Is authorship (§8) enough, or is a tamper-proof audit log required?**
+4a. **Patient sign-in: email magic link, confirmed?** (§11 recommends it
+    over SMS and over Google/Apple.)
+4b. **What happens to a card handed over unclaimed?** Recommendation: it
+    cannot be — the claim is part of issuing it, in the room.
+4c. **Does the calendar feed keep URL-as-credential?** Recommendation: yes;
+    Apple's servers fetch it with no token and nothing can change that.
 5. **Does the test service share the auth tenant, or get its own?**
    Recommendation: share it, with the claims granted separately, so test
    access does not imply production access.
@@ -336,6 +482,8 @@ account when one exists and fall back to today's behaviour when it does not.
 | 3 — watch | a week of elapsed time, no work |
 | 4 — retire | an hour |
 | 5 — authorship | an hour |
+| 6 — patient accounts | two to three days, plus a fortnight watching one patient |
+| 7 — the rest | minutes per patient, at their visits |
 
 Cost: free under 50,000 monthly active users at the Identity Platform tier.
 At this practice's size, nothing.
