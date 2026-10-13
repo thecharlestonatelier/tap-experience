@@ -1166,14 +1166,14 @@ function renderCalendar() {
   document.getElementById('calMonth').textContent =
     calCursor.toLocaleDateString(undefined, { month:'long', year:'numeric' });
 
-  DOW.forEach(d => {
+  WEEK_DOW.forEach(d => {
     const h = document.createElement('div');
     h.className = 'cal-dow'; h.textContent = d[0];
     grid.appendChild(h);
   });
 
   const first = new Date(calCursor.getFullYear(), calCursor.getMonth(), 1);
-  const start = addDays(first, -(isoDow(first) - 1));
+  const start = weekStart(first);
   const t = today();
 
   for (let i = 0; i < 42; i++) {

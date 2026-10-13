@@ -23,6 +23,19 @@ var OPEN_PHASE_HORIZON = 730;        // how far to project an open-ended phase.
                                      // bound, not a protocol length.
 
 var DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+/* ---------- how a month is drawn, which is not how it is counted ----------
+   isoDow() below numbers Monday 1 to Sunday 7, and the dosing schedule
+   depends on it: a weekly pen carries `schedule.day` in those numbers, so
+   tirzepatide on day 1 is Monday. That numbering must not move.
+
+   Which column a month starts in is a separate question, and the answer
+   here is Sunday — an American calendar. These two are kept apart on
+   purpose: changing the grid must never change anybody's dosing day. */
+var WEEK_DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+/* The Sunday that begins the week containing `d`. */
+function weekStart(d) { return addDays(d, -d.getDay()); }
 var TIME_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
 
 /* ---------- dates (local, no timezone drift) ---------- */

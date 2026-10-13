@@ -332,6 +332,9 @@ async function route(req, res) {
   if (p.startsWith('/v/')) {
     const payload = decodeURIComponent(p.slice('/v/'.length));
     if (/^[A-Za-z0-9._-]{1,48}$/.test(payload)) {
+      // A sticker written for one patient carries ?c=<slug>. The page reads
+      // it from the address; the cookie stays as the fallback for a generic
+      // sticker, and the page prefers whichever of the two is present.
       if (serveStatic(res, '/dose.html',
                       { vial: payload, remember: readCardCookie(req) })) return;
     }

@@ -104,10 +104,10 @@
     },
     {
       "id": "nad",
-      "name": "NAD+",
+      "name": "NAD+ (pen, retired)",
       "short": "nad",
       "color": "brass",
-      "_source": "UMS order S04593: PEN - NAD+ 500mg 3mL Pen. 500 mg in 3 mL = 166.7 mg/mL, so one unit delivers 1.67 mg. Dose and frequency set by the physician: 30 units (50 mg), 5 days on / 2 off.",
+      "_source": "RETIRED. The atelier dispenses NAD+ as a 5 mL vial (id \"nadvial\"), not as a pen. Kept so cards issued against it still render; it is hidden from the template picker, the sticker list and the pen deck. Any card still carrying it should be moved to the vial, which is a different concentration — 166.7 mg/mL here against 200 — so the dial number changes with it.",
       "volumeMl": 3,
       "route": "Subcutaneous",
       "time": "Morning",
@@ -135,14 +135,15 @@
       "doseSource": "Dr Kendall — 500 mg / 3 mL pen, 50 mg daily in the AM. DAILY.",
       "storage": "Refrigerated, 36-46°F (2-8°C). Do not freeze.",
       "store": "fridge",
-      "cog": 50
+      "cog": 50,
+      "retired": true
     },
     {
       "id": "nadvial",
-      "name": "NAD+ (vial)",
-      "short": "ndv",
+      "name": "NAD+",
+      "short": "nad",
       "color": "brass",
-      "_source": "Physician-specified: NAD+ 1000 mg in a 5 mL vial = 200 mg/mL, drawn with a BD insulin syringe rather than a pen. 30 units = 0.30 mL = 60 mg. The vial holds 16 whole doses. Distinct from the 500 mg 3 mL PEN template (id \"nad\"), which is 166.7 mg/mL and a different dose entirely — 30 units on the pen is 50 mg, on this vial it is 60 mg.",
+      "_source": "NAD+ 1000 mg in a 5 mL vial = 200 mg/mL, drawn with a BD insulin syringe. 30 units = 0.30 mL = 60 mg, five days on and two off. The vial holds 16 whole doses, which is 22 calendar days on that rhythm. Supersedes the 3 mL pen template (id \"nad\"), which the atelier no longer dispenses.",
       "delivery": "syringe",
       "stepsKey": "injectionStepsVial",
       "concentrationMgPerMl": 200,
@@ -156,8 +157,8 @@
         }
       ],
       "schedule": {
-        "on": 7,
-        "off": 0
+        "on": 5,
+        "off": 2
       },
       "phases": [
         {
@@ -171,7 +172,7 @@
       "vialMg": 1000,
       "diluentMl": 5,
       "timing": "In the morning",
-      "doseSource": "Dr Kendall — 1000 mg / 5 mL vial at 200 mg/mL, 30 units (60 mg) daily.",
+      "doseSource": "Dr Kendall — 1000 mg / 5 mL vial at 200 mg/mL, 30 units (60 mg), 5 days on / 2 off.",
       "restricted": "Dispensed by vial, not a stocked pen. Lot 2359118, beyond-use 3 Dec 2026. One vial is 16 doses; a punctured vial is not used past its beyond-use date even if liquid remains.",
       "store": "fridge",
       "lot": "2359118",

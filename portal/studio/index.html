@@ -319,7 +319,17 @@
           <label for="vialLot">Lot (optional)</label>
           <input id="vialLot" placeholder="e.g. K2607" autocomplete="off">
         </div>
+        <div style="flex:0 0 240px">
+          <label for="vialFor">For one patient (optional)</label>
+          <select id="vialFor"><option value="">Anyone — a generic roll</option></select>
+        </div>
       </div>
+      <p class="hint" style="margin:-4px 0 14px">
+        Naming a patient puts her card in the sticker, so tapping it works on
+        any phone with nothing remembered &mdash; no &ldquo;open your card
+        first&rdquo;. Use it for a vial dispensed to one person. Leave it blank
+        for a roll that goes on whatever comes out of the fridge.
+      </p>
       <table>
         <thead><tr><th>Pen</th><th>Sticker address</th><th>On tag</th><th></th></tr></thead>
         <tbody id="vialRows"></tbody>
@@ -539,7 +549,7 @@ async function start() {
   renderVials();
   renderDeploy();
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
-    TEMPLATES.templates.filter(t => t.id !== 'custom')
+    TEMPLATES.templates.filter(t => t.id !== 'custom' && !t.retired)
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
   await refresh();
   updatePreview();
@@ -602,33 +612,42 @@ $('checkDeploy').addEventListener('click', async () => {
    never a patient. That is what lets a roll be written in one sitting and
    stuck on whatever comes out of the fridge: the phone supplies the person,
    the sticker supplies the drug. */
-function vialUrl(id, lot) {
-  return `${ORIGIN}/v/${lot ? `${id}.${lot}` : id}`;
+function vialUrl(id, lot, slug) {
+  // ?c= names the patient. A sticker carrying it works on any phone in any
+  // state — nothing is read from storage — which is right for a vial
+  // dispensed to one person and wrong for a roll of generic stickers.
+  return `${ORIGIN}/v/${lot ? `${id}.${lot}` : id}${slug ? `?c=${encodeURIComponent(slug)}` : ''}`;
 }
 
 function renderVials() {
   const lot = ($('vialLot').value || '').trim().replace(/[^A-Za-z0-9-]/g, '');
+  const forSlug = $('vialFor').value || '';
+  const forName = forSlug
+    ? (CARDS.find(c => c.slug === forSlug) || {}).name || forSlug : '';
   $('vialRows').innerHTML = (TEMPLATES.templates || [])
-    .filter(t => t.id !== 'custom')
+    .filter(t => t.id !== 'custom' && !t.retired)
     .map(t => {
       // A template that carries its own lot — a single dispensed vial
       // rather than a stocked pen — fills its own row, so the number that
       // matters most is not the one being retyped.
       const mine = lot || (t.lot || '');
-      const url = vialUrl(t.id, mine);
+      const url = vialUrl(t.id, mine, forSlug);
       return `<tr>
         <td>${t.name}${t.beyondUse ? `<br><small style="color:var(--muted)">use by ${t.beyondUse}</small>` : ''}</td>
-        <td class="slug">/v/${mine ? `${t.id}.${mine}` : t.id}</td>
+        <td class="slug">/v/${mine ? `${t.id}.${mine}` : t.id}${
+          forSlug ? `<b style="color:var(--brass)">?c=${forSlug}</b>` : ''}</td>
         <td class="bytes" style="white-space:nowrap">${tagBytes(url)} bytes</td>
-        <td style="text-align:right"><button class="ghost sm" data-vial="${t.id}" data-lot="${mine}">Copy</button></td>
+        <td style="text-align:right"><button class="ghost sm" data-vial="${t.id}" data-lot="${mine}" data-for="${forSlug}">Copy</button></td>
       </tr>`;
     }).join('');
 
   $('vialRows').querySelectorAll('[data-vial]').forEach(b =>
     b.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(vialUrl(b.dataset.vial, b.dataset.lot)
-        .replace(/^https?:\/\//, ''));
-      toast('Sticker address copied — paste it into NFC Tools.');
+      await navigator.clipboard.writeText(
+        vialUrl(b.dataset.vial, b.dataset.lot, b.dataset.for).replace(/^https?:\/\//, ''));
+      toast(b.dataset.for
+        ? `Copied — this sticker is ${forName}'s, and only hers.`
+        : 'Sticker address copied — paste it into NFC Tools.');
     }));
 }
 
@@ -643,6 +662,13 @@ async function refresh() {
     : '';
   $('noCards').hidden = CARDS.length > 0;
   renderStats();
+
+  // The sticker picker offers the cards that have a name on them.
+  const sel = $('vialFor'), keep = sel.value;
+  sel.innerHTML = '<option value="">Anyone — a generic roll</option>' +
+    CARDS.filter(c => c.name).map(c =>
+      `<option value="${c.slug}">${c.name}</option>`).join('');
+  sel.value = keep;
 
   $('rows').innerHTML = CARDS.map(c => {
     const pens = (c.pens || []).map(p => {
@@ -715,6 +741,7 @@ function updatePreview() {
 
 ['first', 'last'].forEach(id => $(id).addEventListener('input', updatePreview));
 $('vialLot').addEventListener('input', () => { if (TEMPLATES) renderVials(); });
+$('vialFor').addEventListener('change', () => { if (TEMPLATES) renderVials(); });
 $('unique').addEventListener('change', updatePreview);
 
 $('create').addEventListener('click', async () => {
@@ -1013,7 +1040,7 @@ function mgLine(t, phases) {
    corrects the patient's card. Nothing is copied in. */
 function renderDeck() {
   const pens = (TEMPLATES.templates || [])
-    .filter(t => t.cog && !t.setup && (t.phases || []).length)
+    .filter(t => t.cog && !t.setup && !t.retired && (t.phases || []).length)
     .map(t => {
       const L = penLife(t, t.phases);
       const weeks = L.days / 7;
@@ -1168,7 +1195,7 @@ function renderPens() {
       return `<div class="pen-row">
         <div class="pen-head">
           <span class="pen-name">${t.name}</span>
-          <button type="button" class="x" data-drop="${pi}" title="Remove">×</button>
+          <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
         </div>
         <p class="setup-note">The patient chooses her vial size, regimen and injection day
         the first time she taps this card.</p>
@@ -1178,7 +1205,7 @@ function renderPens() {
     return `<div class="pen-row">
       <div class="pen-head">
         <span class="pen-name">${t.name || pen.template}</span>
-        <button type="button" class="x" data-drop="${pi}" title="Remove">×</button>
+        <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
       </div>
       ${phases.length ? `<div class="phase phase-head">
         <span>Phase</span><span>Units</span><span>Days</span><span></span>
@@ -1216,7 +1243,18 @@ function renderPens() {
     }));
 
   list.querySelectorAll('[data-drop]').forEach(b =>
-    b.addEventListener('click', () => { editing.pens.splice(b.dataset.drop, 1); renderPens(); }));
+    b.addEventListener('click', () => {
+      const pen = editing.pens[b.dataset.drop];
+      const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
+      // Taking a pen off a card takes it off her phone on the next tap.
+      // Worth one question, since the usual reason is that it was added
+      // by mistake and the usual cost of getting it wrong is a dose.
+      if (!confirm(`Remove ${t.name || pen.template} from this card?\n\n` +
+                   `It disappears from her protocol the next time she opens it. ` +
+                   `Nothing is saved until you press Save.`)) return;
+      editing.pens.splice(b.dataset.drop, 1);
+      renderPens();
+    }));
 
   list.querySelectorAll('[data-dropphase]').forEach(b =>
     b.addEventListener('click', () => {
