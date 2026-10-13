@@ -176,7 +176,8 @@
       "restricted": "Dispensed by vial, not a stocked pen. Lot 2359118, beyond-use 3 Dec 2026. One vial is 16 doses; a punctured vial is not used past its beyond-use date even if liquid remains.",
       "store": "fridge",
       "lot": "2359118",
-      "beyondUse": "2026-12-03"
+      "beyondUse": "2026-12-03",
+      "cog": 85
     },
     {
       "id": "bpc",
