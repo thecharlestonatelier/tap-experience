@@ -954,7 +954,22 @@ function wizBack() {
 const logKey = () => `tca.ritual.${CFG.patient.id}.v2`;
 const loadLogs = () => { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch { return []; } };
 const saveLogs = () => { try { localStorage.setItem(logKey(), JSON.stringify(LOGS)); } catch {} };
-const isLogged = (id, date) => LOGS.some(l => l.pen === id && l.date === iso(date));
+/* Whether a dose has been taken is now one question with one answer.
+
+   This page used to keep its own list in localStorage and the vial tag
+   used to write to the server, and neither knew about the other: logging
+   here produced no green circle, no streak and nothing on the atelier's
+   dashboard, and a vial tapped in Safari left this page still offering
+   to log a dose she had already taken.
+
+   The server record is the truth. The local list stays for the one thing
+   the server did not carry — which site she used — and is kept in step
+   so the rotation suggestion still works. */
+function isLogged(id, date) {
+  const pen = PENS.find(p => p.id === id);
+  if (pen && takenOn(pen, date)) return true;
+  return LOGS.some(l => l.pen === id && l.date === iso(date));
+}
 
 function addLog(id, date, site) {
   if (isLogged(id, date)) return;
@@ -1305,8 +1320,11 @@ function openLog(id) {
   pendingLog = pen;
 
   document.getElementById('modalTitle').textContent = `Log today's ${pen.name}?`;
+  // "Turn your pen to" on a vial is the wrong instruction in the one place
+  // she is about to act on it. dialLead() already knows which it is.
   document.getElementById('modalBody').textContent =
-    `Turn your pen to ${dose.units} · ${round(dose.ml,2)} mL — ${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
+    `${dialLead(pen)} ${dose.units} · ${round(dose.ml,2)} mL — ` +
+    `${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
 
   const sites = CFG.protocol.sites || [];
   const suggested = sites.length ? sites[LOGS.length % sites.length] : null;
@@ -1324,13 +1342,54 @@ function openLog(id) {
 
 const closeLog = () => { document.getElementById('scrim').classList.remove('open'); pendingLog = null; };
 
-function confirmLog() {
-  if (pendingLog) {
-    addLog(pendingLog.id, today(), chosenSite);
-    showToast(`${pendingLog.name} logged${chosenSite ? ` — ${chosenSite}` : ''}.`);
-  }
+async function confirmLog() {
+  const pen = pendingLog;
+  const site = chosenSite;
   closeLog();
-  renderToday(); renderAdherence(); renderCalendar(); renderSupply(); renderRhythm();
+  if (!pen) return;
+
+  const t = today();
+  const dose = doseOn(pen, t);
+  addLog(pen.id, t, site);                 // the site, locally, as before
+
+  // The same record a tapped vial writes, from the same patient's card.
+  // Logged by hand or by tag, the day is the day.
+  const slug = CARD_SLUG || readSlug();
+  let ok = false;
+  if (slug && dose) {
+    try {
+      const res = await fetch('/api/dose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug, template: penKeyOf(pen), pen: pen.name, frequency: freqText(pen),
+          units: dose.units, mg: round(dose.totalMg, 3), site: site || '',
+          at: new Date().toISOString(), day: iso(t)
+        })
+      });
+      ok = res.ok;
+      if (ok) await loadLogged();
+    } catch { /* the local record still stands */ }
+  }
+
+  renderAll();
+
+  if (ok) {
+    // Logged by hand earns the same burst as logged by tag. The circle it
+    // lands in is the one for today.
+    // Only fly the mark into the circle if the circle is actually on
+    // screen — logging from the Schedule tab would otherwise send it to
+    // a hidden element, which is the top-left corner of nothing.
+    const cell = document.querySelector(`[data-cell="${penKeyOf(pen)}.${icsDay(t)}"] .fill`);
+    const box = cell && cell.getBoundingClientRect();
+    if (box && box.width > 0) { cell.closest('.r-pill').classList.add('landing'); celebrate(cell); }
+    else celebrate();
+    const n = doseStreak(), note = streakNote(n);
+    if (note) setTimeout(() => showToast(`${note[0]} — ${note[1]}`), 1500);
+  } else {
+    showToast(`${pen.name} logged on this phone${site ? ` — ${site}` : ''}.` +
+              (slug ? ' It will reach the atelier when you are back online.' : ''));
+  }
 }
 
 let toastTimer;

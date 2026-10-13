@@ -207,8 +207,12 @@ function doseOn(pen, date) {
 }
 
 function primaryOf(dose) {
-  return dose.components.find(c => c.primary) ||
-    { name: 'total peptide', mg: dose.components.reduce((s, c) => s + c.mg, 0) };
+  const marked = dose.components.find(c => c.primary);
+  if (marked) return marked;
+  // One ingredient is its own headline — "total peptide 60 mg" is an odd
+  // way to say "NAD+ 60 mg" when NAD+ is all that is in it.
+  if (dose.components.length === 1) return dose.components[0];
+  return { name: 'total peptide', mg: dose.components.reduce((s, c) => s + c.mg, 0) };
 }
 
 /* ---------- supply ----------
@@ -538,7 +542,14 @@ function buildConfig(name, pens, templates, startDate) {
       // With no date on the card the patient sets her own on first open.
       startDate: startDate || fallback,
       delivery: 'pen',
-      tracking: false,
+      /* Logging a dose by hand, from the card itself.
+
+         This was off because the only thing it did was write to the
+         phone: no green circle, nothing on the atelier's dashboard, and
+         a second list that disagreed with the one the vial tags were
+         filling. It writes the same record a tapped vial writes now, so
+         the reason for switching it off has gone. */
+      tracking: true,
       injectionSteps: templates.injectionSteps,
       injectionStepsSyringe: templates.injectionStepsSyringe,
       injectionStepsVial: templates.injectionStepsVial,

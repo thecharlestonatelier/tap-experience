@@ -33,6 +33,9 @@ function sanitizeDose(input) {
     lot: String(input.lot || '').slice(0, 24),
     // How the pen is taken, so the log reads on its own.
     frequency: String(input.frequency || '').slice(0, 40),
+    // Which site she used, when she logged it by hand and chose one.
+    // A tapped vial does not ask, so this is often empty.
+    site: String(input.site || '').slice(0, 40),
     units: Number.isFinite(units) && units > 0 ? Math.round(units) : 0,
     mg: Number.isFinite(Number(input.mg)) ? Number(input.mg) : null,
     at: /^\d{4}-\d{2}-\d{2}T/.test(input.at || '') ? input.at : nowIso(),
