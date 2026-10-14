@@ -311,10 +311,16 @@ function stop(title, why, actions) {
 
   // One question, two answers. Everything needed to answer it is on the
   // line underneath: whose card this is, and what to turn the pen to.
+  //
+  // A vial states the mark and nothing else, the same as her card does.
+  // The milligram figure is not printed on the barrel, and a second
+  // number beside a draw-up instruction is a second candidate for the
+  // line to stop at.
   view.innerHTML = `
     <h1>Log today's dose of ${esc(pen.name)}?</h1>
     <div class="card">
-      <p class="line">${esc(CFG.patient.name)} · <b>${dose.units}</b> units · ${round(dose.totalMg, 2)} mg</p>
+      <p class="line">${esc(CFG.patient.name)} · <b>${dose.units}</b> units${
+        isSyringe(pen) ? '' : ` · ${round(dose.totalMg, 2)} mg`}</p>
       <button class="act" id="go">Yes</button>
       <a class="ghost" href="${esc(HOME)}">No</a>
     </div>
