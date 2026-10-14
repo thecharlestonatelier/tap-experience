@@ -380,6 +380,78 @@ function dialLead(pen) {
   return isSyringe(pen) ? 'Draw up to' : 'Turn your pen to';
 }
 
+/* ---------- syringe draw-up figure ----------
+   A pen has a dial that stops on the number. A vial does not: she is
+   holding a barrel with sixty little lines on it and a number to find
+   among them, in the dark, at eight at night. So draw the syringe.
+
+   The scale is UNITS, which is what is printed on an insulin syringe.
+   A 50-unit syringe holds half a millilitre, so the unit number and the
+   millilitre number differ by a hundredfold and only one of them is on
+   the barrel in her hand. The figure shows that one and nothing else —
+   a millilitre or a milligram printed next to a draw-up mark is an
+   invitation to draw up to the wrong line. */
+var SYRINGE_UNITS = 50;
+
+function syringeFigure(units, cap) {
+  const max = cap || SYRINGE_UNITS;
+  const u = Math.max(0, Math.min(max, Number(units) || 0));
+  const X0 = 60, X1 = 280, PX = (X1 - X0) / max;
+  const at = n => X0 + n * PX;
+  const mark = at(u);
+
+  let ticks = '', nums = '';
+  for (let i = 0; i <= max; i++) {
+    const big = i % 5 === 0;
+    ticks += `<line x1="${at(i).toFixed(1)}" y1="32" x2="${at(i).toFixed(1)}" y2="${big ? 43 : 38}"/>`;
+  }
+  for (let i = 0; i <= max; i += 10)
+    nums += `<text x="${at(i).toFixed(1)}" y="23">${i}</text>`;
+
+  return `<svg class="syr" viewBox="0 0 320 98" role="img"
+    aria-label="A ${max} unit insulin syringe drawn up to the ${u} unit mark">
+    <style>
+      .syr .s-barrel { fill:#FFFCF6; stroke:var(--hairline); stroke-width:1.5; }
+      .syr .s-fill   { fill:var(--brass); opacity:.32; }
+      .syr .s-metal  { fill:none; stroke:var(--muted); stroke-width:1.5;
+                       stroke-linecap:round; }
+      .syr .s-rod    { fill:#EFE7DB; stroke:var(--hairline); stroke-width:1.2; }
+      .syr .s-stop   { fill:var(--espresso); }
+      .syr .s-tick   { stroke:var(--muted); stroke-width:1; opacity:.75; }
+      .syr .s-tick line:nth-child(5n+1) { opacity:1; }
+      .syr .s-num    { fill:var(--muted); font-family:'Jost',sans-serif;
+                       font-size:10px; letter-spacing:.04em; text-anchor:middle; }
+      .syr .s-lead   { stroke:var(--brass); stroke-width:1.6; stroke-dasharray:3 3; }
+      .syr .s-point  { fill:var(--brass); }
+      .syr .s-mark   { fill:var(--brass); font-family:'Jost',sans-serif;
+                       font-size:21px; font-weight:600; text-anchor:middle; }
+    </style>
+
+    <!-- needle and hub -->
+    <line x1="8" y1="46" x2="34" y2="46" class="s-metal"/>
+    <path d="M34 40 L46 42 L46 50 L34 52 Z" class="s-barrel"/>
+
+    <!-- barrel, then what is drawn into it -->
+    <rect x="46" y="31" width="242" height="30" rx="4" class="s-barrel"/>
+    <rect x="52" y="34" width="${Math.max(0, mark - 52).toFixed(1)}" height="24"
+          rx="2" class="s-fill"/>
+
+    <g class="s-tick">${ticks}</g>
+    <g class="s-num">${nums}</g>
+
+    <!-- the plunger sits where the liquid stops -->
+    <rect x="${(mark - 3).toFixed(1)}" y="32" width="7" height="28" rx="1.5" class="s-stop"/>
+    <rect x="${(mark + 4).toFixed(1)}" y="43"
+          width="${Math.max(6, 296 - mark).toFixed(1)}" height="6" rx="3" class="s-rod"/>
+    <rect x="296" y="28" width="7" height="36" rx="3" class="s-rod"/>
+
+    <!-- and the mark she is looking for -->
+    <path d="M${mark.toFixed(1)} 64 l-5 7 l10 0 Z" class="s-point"/>
+    <line x1="${mark.toFixed(1)}" y1="71" x2="${mark.toFixed(1)}" y2="77" class="s-lead"/>
+    <text x="${Math.min(X1, Math.max(X0, mark)).toFixed(1)}" y="95" class="s-mark">${u}</text>
+  </svg>`;
+}
+
 /* What the medication actually comes in — a pen she dials, or a vial she draws
    from. The copy follows the thing in her hand. */
 function vessel(pen) { return isSyringe(pen) ? 'vial' : 'pen'; }

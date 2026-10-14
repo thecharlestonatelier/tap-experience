@@ -124,6 +124,12 @@
   }
   .dial-sub { font-size: 12.5px; color: var(--muted); margin-top: 9px; }
 
+  /* The syringe, drawn to the mark. It sits straight under the number so
+     the two read as one instruction: this number, that line. */
+  .syr-wrap { margin-top: 12px; }
+  .syr-wrap .dial-sub { margin-top: 2px; }
+  .syr { display: block; width: 100%; max-width: 330px; height: auto; margin: 0 auto; }
+
   /* The vial is spent after today. Offer the next one here rather than
      letting the schedule simply stop with no explanation. */
   .last-vial {
@@ -243,8 +249,18 @@
     -webkit-tap-highlight-color: transparent;
   }
   .btn:active { transform: scale(.985); }
+  .btn:disabled { cursor: default; }
+  .btn:disabled:active { transform: none; }
   .btn-primary { background: var(--espresso); color: #F6F0E7; }
   .btn-ghost { background: transparent; color: var(--espresso-soft); border: 1px solid var(--hairline); }
+  /* A spent button, not a dead one: the dose is done and the card should
+     look pleased about it, so this keeps full contrast rather than the
+     greyed-out look a disabled control usually gets. */
+  .btn-done {
+    background: var(--done); color: #F6F0E7; opacity: 1;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-done .au-check { width: 18px; height: 18px; flex: none; }
 
   .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
   .logged svg { width: 16px; height: 16px; flex: none; }
@@ -376,6 +392,14 @@
   .line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc); flex: none; }
   .line .nm { color: var(--espresso); }
   .line .amt { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .line-log {
+    flex: none; margin-left: 10px; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--brass); background: transparent; color: var(--brass);
+    font-family: 'Jost', sans-serif; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .line-log:active { transform: scale(.96); }
 
   /* ---------- Weekly rhythm ---------- */
   .rhythm { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
@@ -393,6 +417,17 @@
                         box-shadow: 0 2px 8px rgba(76,113,80,.34); }
   .r-pill.taken .fill .au-check { width: 22px; height: 22px; display: block; }
   .r-pill.landing .fill { animation: au-land .55s cubic-bezier(.34,1.56,.64,1); }
+  /* A circle she can fill in. It is a real button so it answers a tap and
+     a keyboard alike; these strip the browser's own button off it. */
+  button.r-pill {
+    border: none; padding: 0; width: 100%; font: inherit; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .14s ease, box-shadow .2s ease;
+  }
+  .r-pill.can-log { box-shadow: inset 0 0 0 1.5px rgba(169,136,68,.38); }
+  .r-pill.can-log .fill { opacity: .5; }
+  button.r-pill:active { transform: scale(.93); }
+  .rhythm-hint { margin-top: 10px; font-size: 11.5px; color: var(--muted); text-align: center; }
   /* Today, so the eye knows where it is in the week. */
   .r-col.now .r-day { color: var(--espresso); font-weight: 600; }
   .r-col.now .r-pill { box-shadow: inset 0 0 0 1.5px var(--brass); }
@@ -602,9 +637,10 @@
 
 <div class="scrim" id="scrim">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <p class="modal-eyebrow">Confirm injection</p>
+    <p class="modal-eyebrow" id="modalEyebrow">Confirm injection</p>
     <h2 class="modal-title" id="modalTitle">Log today's dose?</h2>
     <p class="modal-body" id="modalBody"></p>
+    <div id="modalFig" hidden></div>
     <div class="site-pick" id="sitePick"></div>
     <div class="btn-row">
       <button class="btn btn-ghost" id="modalCancel">Not now</button>
@@ -657,7 +693,7 @@
    Injection logs are stored ON THIS DEVICE only (localStorage).
    ================================================================== */
 
-let LOGS, TRACKING, calCursor, selectedDay, pendingLog, chosenSite;
+let LOGS, TRACKING, calCursor, selectedDay, pendingLog, pendingDay, chosenSite;
 
 /* ---------- start day ----------
    The patient sets the day she actually began. Phases, the on/off rhythm,
@@ -1062,7 +1098,12 @@ function renderToday() {
         <span class="dial-lead">${dialLead(pen)}</span>
         <span class="dial-num">${dose.units}</span>
       </div>
-      <div class="dial-sub">${round(dose.totalMg, 2)} mg &middot; ${round(dose.ml, 2)} mL per dose</div>
+      ${isSyringe(pen) ? `
+        <div class="syr-wrap">
+          ${syringeFigure(dose.units)}
+          <div class="dial-sub">on a ${SYRINGE_UNITS}-unit insulin syringe</div>
+        </div>`
+      : `<div class="dial-sub">${round(dose.totalMg, 2)} mg &middot; ${round(dose.ml, 2)} mL per dose</div>`}
       ${onLastDose(pen, selectedDay) && pen.setup ? `
         <div class="last-vial">
           <div class="last-vial-head">This is the last dose in your vial.</div>
@@ -1077,6 +1118,13 @@ function renderToday() {
           `<li>${s.replace('{units}', `<strong>${dose.units}</strong>`)}</li>`).join('')}
       </ol>
 
+      ${/* A vial card states one number: the mark to draw up to. A
+            milligram figure a few lines below a draw-up instruction is a
+            second number on the same screen that looks just as much like
+            the one to dial — and both syringe templates hold a single
+            peptide, so this panel was only ever restating the dose in a
+            unit that is not printed on the barrel. */
+        isSyringe(pen) ? '' : `
       <div class="delivers">
         <div class="delivers-head">Delivers</div>
         ${dose.components.map(c => `
@@ -1084,7 +1132,7 @@ function renderToday() {
             <span class="cn">${c.name}</span>
             <span class="cv">${round(c.mg, 2)} mg</span>
           </div>`).join('')}
-      </div>
+      </div>`}
 
       ${supply ? `
       <div class="gauge">
@@ -1100,9 +1148,15 @@ function renderToday() {
       ${pen.storage ? `<div class="advisory">${pen.storage}</div>` : ''}
       ${pen.advisory ? `<div class="advisory">${pen.advisory}</div>` : ''}
 
-      ${!TRACKING ? '' : done ? `<div class="logged">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        Logged today</div>`
+      ${/* One control, two states, same place on the card. Tapping the
+            vial writes to the same record this button writes to, so a
+            tapped dose comes back and spends the button — it says what
+            happened and cannot be pressed a second time. A line of grey
+            text where a button used to be reads like the button failed. */
+        !TRACKING ? ''
+        : done ? `<div class="btn-row">
+        <button class="btn btn-done" disabled aria-disabled="true">
+          ${goldCheck(18)} Already logged</button></div>`
       : `<div class="btn-row"><button class="btn btn-primary" data-log="${pen.id}">Log this dose</button></div>`}
     `;
     stack.appendChild(card);
@@ -1216,12 +1270,19 @@ function renderDayDetail() {
     ${due.length ? due.map(pen => {
       const dose = doseOn(pen, d);
       const taken = takenOn(pen, d);
+      // The rhythm strip only reaches three days back. Anything older she
+      // finds here, on the month, so the day she missed is loggable from
+      // the place she went looking for it.
+      const open = canLog(pen, d);
       return `<div class="line c-${pen.color || 'brass'}${taken ? ' taken' : ''}">
         <span class="dot"></span><span class="nm">${pen.name}</span>
         <span class="amt">${taken
           ? '✓ Taken'
-          : `Turn to ${dose.units} · ${pen.time}`}</span></div>`;
+          : `${isSyringe(pen) ? 'Draw up to' : 'Turn to'} ${dose.units} · ${pen.time}`}</span>
+        ${open ? `<button type="button" class="line-log"
+          data-logday="${pen.id}|${iso(d)}">Log it</button>` : ''}</div>`;
     }).join('') : '<div class="line"><span class="nm" style="color:var(--muted)">Day off</span></div>'}`;
+  wireLogDays(document.getElementById('dayDetail'));
 }
 
 /* ---------- render: rhythm ---------- */
@@ -1247,12 +1308,23 @@ function renderRhythm() {
        on the one screen meant to show it. */
     for (let i = -3; i <= 3; i++) {
       const d = addDays(t, i);
+      /* A scheduled day she has not marked yet, and which has already
+         happened, is a circle she can tap to fill in. Today included —
+         that is the same act as the button on the card. A day off, a
+         day already green and a day still to come are not buttons:
+         there is nothing to say about them and a dose cannot be logged
+         before it is given. */
+      const due = isDue(pen, d);
+      const taken = due && takenOn(pen, d);
+      const open = canLog(pen, d);
+      const tag = open ? 'button' : 'div';
       cells.push(`<div class="r-col${i === 0 ? ' now' : ''}">
         <div class="r-day">${DOW[isoDow(d)-1][0]}</div>
-        <div class="r-pill${isDue(pen, d) ? '' : ' off'}${
-          isDue(pen, d) && takenOn(pen, d) ? ' taken' : ''}"
+        <${tag} class="r-pill${due ? '' : ' off'}${taken ? ' taken' : ''}${open ? ' can-log' : ''}"
+             ${open ? `type="button" data-logday="${pen.id}|${iso(d)}"
+             aria-label="Log ${pen.name} for ${fmtLong(d)}"` : ''}
              data-cell="${penKeyOf(pen)}.${icsDay(d)}"><span class="fill">${
-          isDue(pen, d) && takenOn(pen, d) ? goldCheck(22) : ''}</span></div>
+          taken ? goldCheck(22) : ''}</span></${tag}>
       </div>`);
     }
     const dose = doseOn(pen, t) || doseOn(pen, addDays(t, 1));
@@ -1265,13 +1337,31 @@ function renderRhythm() {
           <div class="dose-meta">${freqShort(pen)} · ${pen.time}</div></div>
         </div>
         <div class="rhythm">${cells.join('')}</div>
+        ${/* The ring on a circle has to mean something, and it only appears
+              when there is something to do. */
+          cells.some(c => c.indexOf('can-log') !== -1)
+            ? '<div class="rhythm-hint">Tap a ringed day to log a dose you took.</div>' : ''}
         <div style="margin-top:16px">
           <div class="kv"><span class="k">Current phase</span><span class="v">${dose ? dose.phase.name : '—'}</span></div>
-          <div class="kv"><span class="k">Turn pen to</span><span class="v">${dose ? dose.units : '—'}</span></div>
-          ${supply ? `<div class="kv"><span class="k">Doses left in pen</span><span class="v">${supply.dosesLeft}</span></div>` : ''}
+          <div class="kv"><span class="k">${dialLead(pen)}</span><span class="v">${dose ? dose.units : '—'}</span></div>
+          ${supply ? `<div class="kv"><span class="k">Doses left in ${vessel(pen)}</span><span class="v">${supply.dosesLeft}</span></div>` : ''}
         </div>
       </div>`;
   }).join('');
+  wireLogDays(document.getElementById('rhythmList'));
+}
+
+/* Every circle and every "Log it" that names a pen and a day goes through
+   the same sheet, so the confirmation, the record and the mark are the
+   same wherever she taps. */
+function wireLogDays(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-logday]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const [id, day] = b.dataset.logday.split('|');
+      openLog(id, parse(day));
+    }));
 }
 
 /* ---------- render: supply ---------- */
@@ -1308,26 +1398,63 @@ function renderSupply() {
   }).join('');
 }
 
-/* ---------- log sheet ---------- */
-function openLog(id) {
+/* ---------- log sheet ----------
+   `when` is the day being logged, and defaults to today. Any other day is
+   a back-fill: she took it on Monday and is only now saying so, which is
+   an ordinary thing to need and used to be impossible.
+
+   A back-fill is a different act from logging a dose she is about to
+   give, so the sheet says so — past tense, the date spelled out, and no
+   draw-up figure, because there is nothing left to draw up. */
+function canLog(pen, d) {
+  if (!pen || !TRACKING) return false;
+  if (d > today()) return false;          // a dose she has not taken yet
+  if (d < START) return false;            // before the protocol began
+  return isDue(pen, d) && !isLogged(pen.id, d);
+}
+
+function openLog(id, when) {
   const pen = PENS.find(p => p.id === id);
   const t = today();
+  const d = when || t;
+  const past = iso(d) !== iso(t);
   if (!pen) return;
-  if (isLogged(pen.id, t)) { showToast(`${pen.name} is already logged today.`); return; }
-  if (!isDue(pen, t)) { showToast(`${pen.name} isn't scheduled today.`); return; }
+  if (isLogged(pen.id, d)) {
+    showToast(`${pen.name} is already logged for ${past ? fmtShort(d) : 'today'}.`); return;
+  }
+  if (!isDue(pen, d)) { showToast(`${pen.name} isn't scheduled ${past ? `on ${fmtShort(d)}` : 'today'}.`); return; }
+  if (d > t) { showToast('You can only log a dose you have already taken.'); return; }
+  if (d < START) { showToast('That day is before your protocol started.'); return; }
 
-  const dose = doseOn(pen, t);
+  const dose = doseOn(pen, d);
   pendingLog = pen;
+  pendingDay = d;
 
-  document.getElementById('modalTitle').textContent = `Log today's ${pen.name}?`;
+  document.getElementById('modalEyebrow').textContent =
+    past ? 'Add a missing dose' : 'Confirm injection';
+  document.getElementById('modalTitle').textContent =
+    past ? `Log ${pen.name} for ${fmtLong(d)}?` : `Log today's ${pen.name}?`;
   // "Turn your pen to" on a vial is the wrong instruction in the one place
   // she is about to act on it. dialLead() already knows which it is.
-  document.getElementById('modalBody').textContent =
-    `${dialLead(pen)} ${dose.units} · ${round(dose.ml,2)} mL — ` +
-    `${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
+  // A vial's dose is stated as the mark and nothing else — see the card.
+  document.getElementById('modalBody').textContent = past
+    ? `This marks ${fmtLong(d)} as taken. Only do this if you did take it.`
+    : isSyringe(pen)
+      ? `${dialLead(pen)} ${dose.units}`
+      : `${dialLead(pen)} ${dose.units} · ${round(dose.ml,2)} mL — ` +
+        `${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
+
+  const fig = document.getElementById('modalFig');
+  fig.innerHTML = (!past && isSyringe(pen)) ? syringeFigure(dose.units) : '';
+  fig.hidden = !fig.innerHTML;
+
+  document.getElementById('modalConfirm').textContent = past ? 'Submit' : 'Log it';
 
   const sites = CFG.protocol.sites || [];
-  const suggested = sites.length ? sites[LOGS.length % sites.length] : null;
+  // The rotation suggestion is for the dose she is about to give. Filling in
+  // a past day, the site is whatever she remembers, so nothing is preselected
+  // rather than a guess being recorded as fact.
+  const suggested = (!past && sites.length) ? sites[LOGS.length % sites.length] : null;
   chosenSite = suggested;
   document.getElementById('sitePick').innerHTML = sites.map(s =>
     `<button class="site" data-site="${s}" aria-pressed="${s === suggested}">${s}</button>`).join('');
@@ -1340,17 +1467,21 @@ function openLog(id) {
   document.getElementById('scrim').classList.add('open');
 }
 
-const closeLog = () => { document.getElementById('scrim').classList.remove('open'); pendingLog = null; };
+const closeLog = () => {
+  document.getElementById('scrim').classList.remove('open');
+  pendingLog = null; pendingDay = null;
+};
 
 async function confirmLog() {
   const pen = pendingLog;
   const site = chosenSite;
+  const d = pendingDay || today();
+  const past = iso(d) !== iso(today());
   closeLog();
   if (!pen) return;
 
-  const t = today();
-  const dose = doseOn(pen, t);
-  addLog(pen.id, t, site);                 // the site, locally, as before
+  const dose = doseOn(pen, d);
+  addLog(pen.id, d, site);                 // the site, locally, as before
 
   // The same record a tapped vial writes, from the same patient's card.
   // Logged by hand or by tag, the day is the day.
@@ -1364,7 +1495,13 @@ async function confirmLog() {
         body: JSON.stringify({
           slug, template: penKeyOf(pen), pen: pen.name, frequency: freqText(pen),
           units: dose.units, mg: round(dose.totalMg, 3), site: site || '',
-          at: new Date().toISOString(), day: iso(t)
+          // For today, `at` is the moment she pressed the button, which is
+          // the injection. For a day she is filling in afterwards we do not
+          // know the moment, so it is that day at the hour the dose was
+          // scheduled — the server stamps `recordedAt` separately, so the
+          // dashboard can always tell a back-fill from a live log.
+          at: past ? scheduledInstant(pen, d) : new Date().toISOString(),
+          day: iso(d)
         })
       });
       ok = res.ok;
@@ -1374,15 +1511,23 @@ async function confirmLog() {
 
   renderAll();
 
-  if (ok) {
+  const cell = document.querySelector(`[data-cell="${penKeyOf(pen)}.${icsDay(d)}"] .fill`);
+  const box = cell && cell.getBoundingClientRect();
+  const onScreen = !!(box && box.width > 0);
+
+  if (ok && past) {
+    // A day filled in afterwards gets the mark, not the fanfare. The
+    // confetti is for the dose she just gave herself.
+    if (onScreen) cell.closest('.r-pill').classList.add('landing');
+    haptic();
+    showToast(`${pen.name} marked for ${fmtLong(d)}.`);
+  } else if (ok) {
     // Logged by hand earns the same burst as logged by tag. The circle it
     // lands in is the one for today.
     // Only fly the mark into the circle if the circle is actually on
     // screen — logging from the Schedule tab would otherwise send it to
     // a hidden element, which is the top-left corner of nothing.
-    const cell = document.querySelector(`[data-cell="${penKeyOf(pen)}.${icsDay(t)}"] .fill`);
-    const box = cell && cell.getBoundingClientRect();
-    if (box && box.width > 0) { cell.closest('.r-pill').classList.add('landing'); celebrate(cell); }
+    if (onScreen) { cell.closest('.r-pill').classList.add('landing'); celebrate(cell); }
     else celebrate();
     const n = doseStreak(), note = streakNote(n);
     if (note) setTimeout(() => showToast(`${note[0]} — ${note[1]}`), 1500);
@@ -1390,6 +1535,17 @@ async function confirmLog() {
     showToast(`${pen.name} logged on this phone${site ? ` — ${site}` : ''}.` +
               (slug ? ' It will reach the atelier when you are back online.' : ''));
   }
+}
+
+/* The hour a dose was meant to be given, on a given day, as an instant.
+   Built from the local clock so an eight-in-the-evening dose in Charleston
+   stays an eight-in-the-evening dose — the same reasoning that keeps the
+   calendar off floating times. */
+function scheduledInstant(pen, d) {
+  const hm = String(timeFor(pen) || '09:00').split(':');
+  const at = new Date(d.getFullYear(), d.getMonth(), d.getDate(),
+                      Number(hm[0]) || 0, Number(hm[1]) || 0, 0, 0);
+  return at.toISOString();
 }
 
 let toastTimer;

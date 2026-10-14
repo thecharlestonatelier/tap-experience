@@ -63,3 +63,21 @@ CARD_STORE=file STUDIO_PASSPHRASE=testpassphrase PORT=8094 \
 # create a card at rem.t and a blank at blank.q, then:
 node tests/push-ui.mjs
 ```
+
+## logging.mjs
+
+The five ways a dose gets marked, in a real browser against a real server:
+the syringe drawn to the mark, the draw-up instruction stated as a number
+and nothing else, a button under every pen due today, that button spent by
+a tapped vial without touching the other pen, and a circle in the schedule
+filled in after the fact — asked first, written to the server on the right
+day, and never offered for a dose she has not taken yet.
+
+It mints its own card each run, so it can be run twice.
+
+```bash
+cd portal
+CARD_STORE=file CARD_FILE=.data-test/cards.json DOSE_FILE=.data-test/doses.json \
+  PORT=8099 node server.js &
+node tests/logging.mjs
+```
