@@ -225,6 +225,24 @@ function readCardCookie(req) {
   return isValidSlug(slug) ? slug : null;
 }
 
+/* The cookie was only being set by the card's own address, `/<slug>`. But
+   almost nothing a patient actually opens is that address: a home-screen
+   shortcut, a reminder, a link inside a calendar event and every link
+   between pages all carry the card as `?c=<slug>` on a page. So a patient
+   could use her card every day for a month and still leave the vial tag
+   nothing to find.
+
+   Any page served with a card in the address renews the cookie. Pages
+   only — a stylesheet does not need to re-sign the browser each time. */
+async function queryCard(url, pathname) {
+  if (pathname !== '/' && !/\.html$/.test(pathname)) return undefined;
+  const c = url.searchParams.get('c');
+  if (!c) return undefined;
+  const slug = normalizeSlug(c);
+  if (!isValidSlug(slug)) return undefined;
+  return (await store.get(slug)) ? slug : undefined;
+}
+
 function serveStatic(res, urlPath, { inject, vial, remember, setCard } = {}) {
   const rel = decodeURIComponent(urlPath).replace(/^\/+/, '');
   const full = path.join(WEB_ROOT, rel);
@@ -630,10 +648,10 @@ async function route(req, res) {
   }
 
   if (p === '/' ) {
-    if (serveStatic(res, '/index.html')) return;
+    if (serveStatic(res, '/index.html', { setCard: await queryCard(url, p) })) return;
     return send(res, 404, 'Not found');
   }
-  if (serveStatic(res, p)) return;
+  if (serveStatic(res, p, { setCard: await queryCard(url, p) })) return;
 
   /* --- a card address --- */
   const candidate = normalizeSlug(p);
