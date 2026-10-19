@@ -81,3 +81,20 @@ CARD_STORE=file CARD_FILE=.data-test/cards.json DOSE_FILE=.data-test/doses.json 
   PORT=8099 node server.js &
 node tests/logging.mjs
 ```
+
+## protocol-change.mjs
+
+A card left open, the way a home-screen card is: iOS hands the page back
+exactly as it was left and nothing re-runs. The atelier adds a peptide,
+then removes one, and the patient simply returns to the app — no reload.
+Also checks that coming back with nothing changed redraws nothing.
+
+## added-pens.mjs
+
+The `+` on Today's Ritual. A peptide a patient adds reaches the record
+without touching what was prescribed, comes back on a phone that has
+never seen it, and can be taken off again by her. A prescribed pen
+carries no remove control and `removePen()` refuses it.
+
+Both need a service with a Studio session; see logging.mjs for the setup,
+and mint a session cookie from STUDIO_PASSPHRASE.

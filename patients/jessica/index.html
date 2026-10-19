@@ -732,6 +732,9 @@ async function setupReminders() {
   renderName();
   renderButtons();
   renderNav();
+  // Reopened from the home screen, this page is handed back as it was
+  // left. Ask the server whether the protocol has moved since.
+  watchCard(() => { renderName(); renderButtons(); renderNav(); applyCardLinks(document); });
   applyCardLinks(document);
   setupHomeScreen();
   setupReminders();

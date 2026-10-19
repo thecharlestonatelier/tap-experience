@@ -801,8 +801,23 @@ function loadAdded() {
   try { return JSON.parse(localStorage.getItem(addedKey())) || []; } catch { return []; }
 }
 
+/* Written to the phone first, so the card redraws immediately and keeps
+   working with no signal, then to the record, so the atelier sees it and
+   a phone that has been wiped gets it back.
+
+   Only `added` travels. The prescribed pens are not the card's to touch. */
 function saveAdded(list) {
   try { localStorage.setItem(addedKey(), JSON.stringify(list)); } catch {}
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return;                        // a fragment card has no record
+  try {
+    fetch(`/api/added/${encodeURIComponent(slug)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ added: list }),
+      keepalive: true
+    }).catch(() => {});
+  } catch {}
 }
 
 function penFromTemplate(tpl, id, startDate) {
@@ -812,6 +827,20 @@ function penFromTemplate(tpl, id, startDate) {
   pen.startDate = startDate;
   pen.addedByPatient = true;
   return pen;
+}
+
+/* The record's copy of what she added is the one that survives a cleared
+   phone or a second device, so it is folded into this phone's list rather
+   than the other way round. Nothing is removed here — a pen taken off on
+   this phone is removed through removePen(), which tells the record. */
+function adoptAdded(rec) {
+  const theirs = (rec && rec.added) || [];
+  if (!theirs.length) return;
+  const mine = loadAdded();
+  const have = new Set(mine.map(r => r.id));
+  let grew = false;
+  theirs.forEach(r => { if (!have.has(r.id)) { mine.push(r); grew = true; } });
+  if (grew) { try { localStorage.setItem(addedKey(), JSON.stringify(mine)); } catch {} }
 }
 
 function applyAdded(templates) {
@@ -833,12 +862,20 @@ function addPen(tpl) {
   return pen;
 }
 
+/* A patient can take off what she put on. She cannot take off what was
+   prescribed — that used to appear to work and then come back on the
+   next load, which is the worst of both: she believes it is gone, the
+   record says otherwise, and nothing told either of them.
+
+   Returns false for a prescribed pen so the card can say who to ask. */
 function removePen(pen) {
+  if (!pen || !pen.addedByPatient) return false;
   saveAdded(loadAdded().filter(r => r.id !== pen.id));
   try { localStorage.removeItem(setupKey(pen)); } catch {}
   const i = PENS.indexOf(pen);
   if (i >= 0) PENS.splice(i, 1);
   _supplyCache.clear();
+  return true;
 }
 
 /* ---------- stored cards ----------
@@ -1053,6 +1090,8 @@ async function loadProtocol() {
     if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
     const rec = await res.json();
     CFG = hydrateRecord(rec, templates);
+    _cardSig = cardSignature(rec);
+    adoptAdded(rec);
     // Anything the atelier set for her, before the start day is read.
     _tookSettings = applySettings(rec.settings);
     noteTap(CARD_SLUG);
@@ -1084,6 +1123,77 @@ async function loadProtocol() {
   publishFeed();
 
   return CFG;
+}
+
+/* ---------- the card, re-read ----------
+   A card added to the home screen is not reloaded when it is reopened.
+   iOS brings the page back exactly as it was left, sometimes days later,
+   and nothing re-runs. So a peptide added in Card Studio reached the
+   server, reached the record, and then sat there: the one screen it was
+   added for went on showing the old protocol until something happened to
+   reload the page, which for most patients is never.
+
+   Every time the card comes back to the front it asks the server what it
+   should be showing. Nothing on screen moves unless the answer differs
+   from what is already there, so a patient who simply switches apps all
+   day sees nothing at all. */
+var _cardSig = null;
+var _recheckBusy = false;
+
+function cardSignature(rec) {
+  return JSON.stringify([
+    rec.name || '', rec.startDate || '', rec.status || '',
+    rec.pens || [], rec.added || [], (rec.settings && rec.settings.rev) || 0
+  ]);
+}
+
+async function recheckCard() {
+  const slug = CARD_SLUG || readSlug();
+  // A fragment card carries its own protocol and has no record to re-read.
+  if (!slug || _recheckBusy) return false;
+  _recheckBusy = true;
+  try {
+    const res = await fetch(`/api/card/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (!res.ok) return false;
+    const rec = await res.json();
+
+    const sig = cardSignature(rec);
+    if (sig === _cardSig) return false;
+    _cardSig = sig;
+
+    const templates = await loadTemplates();
+    CFG = hydrateRecord(rec, templates);
+    adoptAdded(rec);
+    const took = applySettings(rec.settings);
+    PENS = CFG.protocol.pens || [];
+    START = parse(loadStart() || CFG.protocol.startDate);
+    applyAdded(templates);
+    applySetups();
+    _supplyCache.clear();
+
+    // The atelier should see that the change landed, and her reminders
+    // and calendar should follow it without another tap.
+    reportState(true);
+    refreshReminders();
+    publishFeed();
+    return true;
+  } catch {
+    return false;                 // offline: what is on screen still stands
+  } finally {
+    _recheckBusy = false;
+  }
+}
+
+/* Pages call this once, with whatever redraws them. */
+function watchCard(redraw) {
+  const check = async () => {
+    if (document.visibilityState !== 'visible') return;
+    if (await recheckCard()) { try { redraw(); } catch {} }
+  };
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('focus', check);
+  // Safari's back-forward cache hands the page back without running it.
+  window.addEventListener('pageshow', e => { if (e.persisted) check(); });
 }
 
 /* Carry the card across in-portal links, so every page of a tapped card

@@ -373,6 +373,25 @@ async function route(req, res) {
     return json(res, 200, { ok: true, duplicate });
   }
 
+  /* --- what the patient put on her own card ---
+     The `+` on Today's Ritual used to write to localStorage and stop
+     there: the atelier never saw a peptide a patient added, and a phone
+     whose storage was cleared lost it. Now it lands on the record, in
+     its own list, so the dashboard shows it and another phone finds it.
+
+     Public, like /api/dose, because the card address is the credential a
+     patient has. It can only ever touch `added` — the prescribed pens are
+     behind the passphrase and a tap cannot reach them. */
+  if (p.startsWith('/api/added/') && req.method === 'POST') {
+    const slug = assertSlug(p.slice('/api/added/'.length));
+    const rec = await store.get(slug);
+    if (!rec) return json(res, 404, { error: 'not_found' });
+    const body = await readBody(req);
+    if (!Array.isArray(body && body.added)) return json(res, 400, { error: 'bad_request' });
+    const saved = await store.put(sanitize({ added: body.added }, rec));
+    return json(res, 200, { ok: true, added: saved.added || [] });
+  }
+
   /* --- the calendar she can subscribe to ---
      Written by her card, because the card is what knows the schedule.
      Served to whatever her phone's calendar uses to fetch it, which is

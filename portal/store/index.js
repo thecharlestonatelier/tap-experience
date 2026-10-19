@@ -143,6 +143,12 @@ function sanitize(input, existing = null) {
     pens: Array.isArray(input.pens)
       ? input.pens.slice(0, 8).map(sanitizePen).filter(Boolean)
       : (existing ? existing.pens : []),
+    // What the patient put on her own card. Kept apart from `pens` on
+    // purpose: `pens` is what the atelier prescribed, and a tapped card
+    // must never be able to rewrite that. This list she owns.
+    added: Array.isArray(input.added)
+      ? input.added.slice(0, 8).map(sanitizeAdded).filter(Boolean)
+      : (existing ? (existing.added || []) : []),
     createdAt: existing ? existing.createdAt : nowIso(),
     updatedAt: nowIso()
   };
@@ -153,6 +159,18 @@ function sanitize(input, existing = null) {
   if (!rec.status) rec.status = (rec.name || rec.pens.length) ? 'active' : 'blank';
   if (!rec.name && rec.pens.length === 0 && rec.status === 'active') rec.status = 'blank';
   return carryCounters(rec, existing);
+}
+
+/* A peptide the patient added herself. She chose it from the library on
+   her own card, so it carries only what the card needs to draw it back:
+   which template, under which id, from which day. No phases — a pen she
+   added runs the template's own titration. */
+function sanitizeAdded(rec) {
+  if (!rec || typeof rec.template !== 'string' || typeof rec.id !== 'string') return null;
+  if (!/^[A-Za-z0-9+._-]{1,48}$/.test(rec.id)) return null;
+  const out = { id: rec.id, template: rec.template.slice(0, 24) };
+  if (rec.startDate && /^\d{4}-\d{2}-\d{2}$/.test(rec.startDate)) out.startDate = rec.startDate;
+  return out;
 }
 
 function sanitizePen(pen) {
@@ -187,6 +205,7 @@ function publicView(rec) {
     status: rec.status,
     startDate: rec.startDate || null,
     pens: rec.pens || [],
+    added: rec.added || [],
     // Her own settings, so the card can adopt anything the atelier
     // changed for her. Not the state report — that came from her phone
     // and it has no use for it back.

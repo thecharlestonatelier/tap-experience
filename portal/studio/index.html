@@ -1180,13 +1180,32 @@ function ago(iso) {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
+/* Peptides the patient chose on her own card. They are not prescribed and
+   are not edited here — she can take them off herself — but the atelier
+   should not have to hear about them on the phone. */
+function addedByHer() {
+  const list = editing.added || [];
+  if (!list.length) return '';
+  return `<div class="pen-row" style="border-color:var(--brass)">
+    <div class="pen-head"><span class="pen-name">Added on her own card</span></div>
+    <p class="setup-note">${list.map(a => {
+      const t = TEMPLATES.templates.find(x => x.id === a.template) || {};
+      return `${t.name || a.template}${a.startDate ? ` — since ${a.startDate}` : ''}`;
+    }).join('<br>')}</p>
+    <p class="setup-note" style="margin-top:8px">She chose these from the library
+    and can remove them herself. They are not part of what you prescribed.</p>
+  </div>`;
+}
+
 function renderPens() {
   const list = $('penList');
+  const hers = addedByHer();
   if (!editing.pens || !editing.pens.length) {
-    list.innerHTML = '<p class="hint" style="margin:0">Nothing on this card yet.</p>';
+    list.innerHTML = hers ||
+      '<p class="hint" style="margin:0">Nothing on this card yet.</p>';
     return;
   }
-  list.innerHTML = editing.pens.map((pen, pi) => {
+  list.innerHTML = hers + editing.pens.map((pen, pi) => {
     const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
     const phases = pen.phases || t.phases || [];
 

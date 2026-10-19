@@ -262,6 +262,15 @@
   }
   .btn-done .au-check { width: 18px; height: 18px; flex: none; }
 
+  /* Small, beside the name, and only on a peptide she added herself. */
+  .pen-x {
+    margin-left: 8px; width: 22px; height: 22px; padding: 0; line-height: 1;
+    border-radius: 50%; border: 1px solid var(--hairline); background: transparent;
+    color: var(--muted); font-size: 15px; cursor: pointer; vertical-align: middle;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pen-x:active { transform: scale(.92); }
+
   .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
   .logged svg { width: 16px; height: 16px; flex: none; }
 
@@ -1087,7 +1096,9 @@ function renderToday() {
       <div class="dose-top">
         <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
         <div style="flex:1">
-          <div class="dose-name">${pen.name}</div>
+          <div class="dose-name">${pen.name}${pen.addedByPatient
+            ? `<button type="button" class="pen-x" data-drop="${pen.id}"
+                 title="Remove ${pen.name}" aria-label="Remove ${pen.name}">&times;</button>` : ''}</div>
           <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
           <div class="dose-meta">${pen.time} · ${prettyTime(timeFor(pen))} · ${pen.route}</div>
           <span class="phase-pill">${dose.phase.name}</span>
@@ -1161,6 +1172,21 @@ function renderToday() {
     `;
     stack.appendChild(card);
   });
+
+  /* Only a peptide she added herself carries this. What the atelier
+     prescribed is theirs to take off, and removePen() refuses it. */
+  stack.querySelectorAll('[data-drop]').forEach(b =>
+    b.addEventListener('click', () => {
+      const pen = PENS.find(p => p.id === b.dataset.drop);
+      if (!pen) return;
+      if (!confirm(`Take ${pen.name} off your schedule?\n\n` +
+                   `Doses you have already logged are kept.`)) return;
+      if (!removePen(pen)) {
+        return showToast(`${pen.name} was added by the atelier — message them to change it.`);
+      }
+      renderAll();
+      showToast(`${pen.name} removed from your schedule.`);
+    }));
 
   stack.querySelectorAll('[data-log]').forEach(b =>
     b.addEventListener('click', () => openLog(b.dataset.log)));
@@ -1625,6 +1651,15 @@ async function boot() {
   await loadLogged();
   renderAll();
   wireSubscribe();
+
+  /* A peptide the atelier adds should appear the next time she looks at
+     her card, not the next time something happens to reload the page —
+     which on a home-screen card is close to never. */
+  watchCard(() => {
+    document.getElementById('protocolName').textContent = CFG.protocol.name;
+    renderAll();
+    wireSubscribe();
+  });
 
   /* A dose logged on the vial page lands here. Redrawing the circle green
      would be correct and completely unfelt, so the mark is flown into it
