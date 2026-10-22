@@ -98,3 +98,8 @@ carries no remove control and `removePen()` refuses it.
 
 Both need a service with a Studio session; see logging.mjs for the setup,
 and mint a session cookie from STUDIO_PASSPHRASE.
+
+## studio-pens.mjs
+
+The atelier's side of a stopped prescription: Card Studio says she has
+stopped it, offers to put it back, and saving puts it back on her card.

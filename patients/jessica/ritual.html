@@ -262,17 +262,37 @@
   }
   .btn-done .au-check { width: 18px; height: 18px; flex: none; }
 
-  /* Small, beside the name, and only on a peptide she added herself. */
+  /* The card's own corner. Outside .dose-name on purpose — the name of a
+     peptide should read as the name of a peptide, not the name with a
+     control stuck to the end of it. */
   .pen-x {
-    margin-left: 8px; width: 22px; height: 22px; padding: 0; line-height: 1;
-    border-radius: 50%; border: 1px solid var(--hairline); background: transparent;
-    color: var(--muted); font-size: 15px; cursor: pointer; vertical-align: middle;
+    flex: none; align-self: flex-start; width: 26px; height: 26px; padding: 0;
+    line-height: 1; border-radius: 50%; border: 1px solid var(--hairline);
+    background: transparent; color: var(--muted); font-size: 16px; cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
   .pen-x:active { transform: scale(.92); }
 
   .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
   .logged svg { width: 16px; height: 16px; flex: none; }
+
+  /* What she has taken off. Quiet, below everything she is still doing,
+     but always there — a pen stopped and forgotten is the one that never
+     gets restarted. */
+  .stopped { margin-top: 18px; padding: 16px 18px; border-radius: 16px;
+             border: 1px dashed var(--hairline); }
+  .stopped h3 { margin: 0 0 4px; font-size: 11px; letter-spacing: .12em;
+                text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .stopped .sub { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+  .stopped .row { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
+  .stopped .row .nm { color: var(--espresso-soft); }
+  .stopped .row button {
+    margin-left: auto; flex: none; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--brass); background: transparent; color: var(--brass);
+    font-family: 'Jost', sans-serif; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   .rest { background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 28px 22px; text-align: center; }
   .rest-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; color: var(--espresso); margin-bottom: 6px; }
@@ -582,6 +602,8 @@
 
   <div class="stack" id="todayStack"></div>
 
+  <div class="stopped" id="stopped" hidden></div>
+
   <div class="adherence" id="adherence" hidden>
     <div><div class="stat-num" id="statStreak">0</div><div class="stat-label">Day streak</div></div>
     <div><div class="stat-num" id="statPct">—</div><div class="stat-label">Adherence</div></div>
@@ -765,7 +787,7 @@ function renderAll() {
   btn.hidden = false;
   btn.textContent = `Started ${fmtShort(START)} — change`;
   renderCalNotice();
-  renderToday(); renderRefills(); renderAdherence();
+  renderToday(); renderStopped(); renderRefills(); renderAdherence();
   renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
 }
 
@@ -1036,6 +1058,38 @@ function supplyView(pen) {
   };
 }
 
+/* Everything she has taken off, with the way back. A prescribed pen that
+   simply vanished when she stopped it would leave her nothing to undo and
+   nothing to recognise — and the one she most needs to find again is the
+   one she stopped because a week was difficult. */
+function renderStopped() {
+  const el = document.getElementById('stopped');
+  if (!el) return;
+  const off = DROPPED_PENS || [];
+  el.hidden = !off.length;
+  if (!off.length) return;
+
+  el.innerHTML = `<h3>Not on your schedule</h3>
+    <p class="sub">You took ${off.length === 1 ? 'this' : 'these'} off. The atelier
+      can see it. Put ${off.length === 1 ? 'it' : 'them'} back whenever you like.</p>
+    ${off.map(p => `<div class="row"><span class="nm">${p.name}</span>
+      <button type="button" data-restore="${p.id}">Put it back</button></div>`).join('')}`;
+
+  el.querySelectorAll('[data-restore]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const id = b.dataset.restore;
+      const name = (DROPPED_PENS.find(p => p.id === id) || {}).name || 'It';
+      b.disabled = true;
+      if (!await restorePen(id)) { b.disabled = false; return; }
+      // The pen comes back out of the record, so re-read rather than
+      // trying to put the object back by hand.
+      await loadProtocol();
+      await loadLogged();
+      renderAll();
+      showToast(`${name} is back on your schedule.`);
+    }));
+}
+
 function renderToday() {
   const t = today();
   document.getElementById('todayDate').textContent = fmtLong(t);
@@ -1096,13 +1150,14 @@ function renderToday() {
       <div class="dose-top">
         <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
         <div style="flex:1">
-          <div class="dose-name">${pen.name}${pen.addedByPatient
-            ? `<button type="button" class="pen-x" data-drop="${pen.id}"
-                 title="Remove ${pen.name}" aria-label="Remove ${pen.name}">&times;</button>` : ''}</div>
+          <div class="dose-name">${pen.name}</div>
           <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
           <div class="dose-meta">${pen.time} · ${prettyTime(timeFor(pen))} · ${pen.route}</div>
           <span class="phase-pill">${dose.phase.name}</span>
         </div>
+        <button type="button" class="pen-x" data-drop="${pen.id}"
+          title="Take ${pen.name} off my schedule"
+          aria-label="Take ${pen.name} off my schedule">&times;</button>
       </div>
 
       <div class="dial">
@@ -1173,19 +1228,24 @@ function renderToday() {
     stack.appendChild(card);
   });
 
-  /* Only a peptide she added herself carries this. What the atelier
-     prescribed is theirs to take off, and removePen() refuses it. */
+  /* Any pen can come off her own schedule. A prescribed one says so, and
+     says the atelier will see it — stopping a prescription without
+     telling anyone is the thing worth one extra sentence. */
   stack.querySelectorAll('[data-drop]').forEach(b =>
     b.addEventListener('click', () => {
       const pen = PENS.find(p => p.id === b.dataset.drop);
       if (!pen) return;
-      if (!confirm(`Take ${pen.name} off your schedule?\n\n` +
-                   `Doses you have already logged are kept.`)) return;
-      if (!removePen(pen)) {
-        return showToast(`${pen.name} was added by the atelier — message them to change it.`);
-      }
+      const prescribed = !pen.addedByPatient;
+      if (!confirm(
+        `Take ${pen.name} off your schedule?\n\n` +
+        (prescribed
+          ? 'This was prescribed for you. The atelier will see that you have ' +
+            'stopped it, and you can put it back here whenever you like.\n\n'
+          : '') +
+        'Doses you have already logged are kept.')) return;
+      removePen(pen);
       renderAll();
-      showToast(`${pen.name} removed from your schedule.`);
+      showToast(`${pen.name} taken off your schedule.`);
     }));
 
   stack.querySelectorAll('[data-log]').forEach(b =>
@@ -1622,25 +1682,37 @@ async function boot() {
 
   PENS = CFG.protocol.pens || [];
 
+  /* Set before the empty-protocol branch, not after it. A patient who has
+     taken everything off lands in that branch and can put a pen back from
+     it, which redraws the whole page — and the page cannot be drawn from
+     a state the branch skipped setting up. */
+  TRACKING = CFG.protocol.tracking !== false;
+  LOGS = loadLogs();
+  calCursor = today();
+  selectedDay = today();
+
   // Same rule as the portal: no protocol is not a rest day.
   if (!PENS.length) {
-    document.getElementById('todaySummary').textContent =
-      'This card has no protocol on it yet.';
-    document.getElementById('todayStack').innerHTML = `<div class="rest">
+    // Unless she is the one who emptied it. A patient who takes off
+    // everything she was prescribed must still be able to put it back,
+    // and "this card has no protocol on it yet" is both wrong and a dead
+    // end — the protocol is there, she has stood it down.
+    const hers = (DROPPED_PENS || []).length;
+    document.getElementById('todaySummary').textContent = hers
+      ? 'Nothing on your schedule right now.'
+      : 'This card has no protocol on it yet.';
+    document.getElementById('todayStack').innerHTML = hers ? '' : `<div class="rest">
       <div class="rest-title">Nothing to show</div>
       <div class="rest-sub">Show this screen to the atelier and we will put it
       right — your dosing has not changed.</div></div>`;
     document.getElementById('protocolName').textContent = CFG.protocol.name || 'Protocol';
+    renderStopped();
     applyCardLinks(document);
     return;
   }
 
-  TRACKING = CFG.protocol.tracking !== false;
   const saved = loadStart();
   START = parse(saved || CFG.protocol.startDate);
-  LOGS = loadLogs();
-  calCursor = today();
-  selectedDay = today();
 
   document.getElementById('protocolName').textContent = CFG.protocol.name;
   document.title = `Today's Ritual — ${CFG.patient.name}`;

@@ -1197,9 +1197,33 @@ function addedByHer() {
   </div>`;
 }
 
+/* Prescriptions the patient has stopped on her own card. This is the one
+   thing on this screen the atelier most needs to see unprompted: the pen
+   is still prescribed, she is not taking it, and nothing else would say
+   so. Putting it back here puts it back on her card. */
+function stoppedByHer() {
+  const off = editing.dropped || [];
+  if (!off.length) return '';
+  const name = id => {
+    const base = String(id).split('#')[0];
+    const pen = (editing.pens || []).find(p => p.template === base);
+    const t = TEMPLATES.templates.find(x => x.id === (pen ? pen.template : base));
+    return (t && t.name) || base;
+  };
+  return `<div class="pen-row" style="border-color:var(--alert,#9B4A3C)">
+    <div class="pen-head"><span class="pen-name">She has stopped these</span></div>
+    <p class="setup-note">Still prescribed, not on her schedule. She took
+    ${off.length === 1 ? 'it' : 'them'} off her own card.</p>
+    ${off.map(id => `<div class="phase" style="grid-template-columns:1fr auto">
+      <span class="pen-name" style="font-size:13px">${name(id)}</span>
+      <button type="button" class="ghost sm" data-undrop="${id}">Put it back</button>
+    </div>`).join('')}
+  </div>`;
+}
+
 function renderPens() {
   const list = $('penList');
-  const hers = addedByHer();
+  const hers = stoppedByHer() + addedByHer();
   if (!editing.pens || !editing.pens.length) {
     list.innerHTML = hers ||
       '<p class="hint" style="margin:0">Nothing on this card yet.</p>';
@@ -1259,6 +1283,12 @@ function renderPens() {
       if (mgEl) mgEl.textContent = mgLine(t, pen.phases);
       const lifeEl = list.querySelector(`[data-life="${p}"]`);
       if (lifeEl) lifeEl.innerHTML = lifeLine(t, pen.phases);
+    }));
+
+  list.querySelectorAll('[data-undrop]').forEach(b =>
+    b.addEventListener('click', () => {
+      editing.dropped = (editing.dropped || []).filter(id => id !== b.dataset.undrop);
+      renderPens();
     }));
 
   list.querySelectorAll('[data-drop]').forEach(b =>

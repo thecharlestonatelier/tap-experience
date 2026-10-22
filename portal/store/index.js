@@ -149,6 +149,14 @@ function sanitize(input, existing = null) {
     added: Array.isArray(input.added)
       ? input.added.slice(0, 8).map(sanitizeAdded).filter(Boolean)
       : (existing ? (existing.added || []) : []),
+    // Prescribed pens the patient has taken off her own schedule. Her
+    // removal is recorded here rather than by deleting from `pens`, so
+    // what was prescribed stays legible and the atelier can see what she
+    // stopped and put it back.
+    dropped: Array.isArray(input.dropped)
+      ? input.dropped.slice(0, 8)
+          .map(id => String(id || '')).filter(id => /^[A-Za-z0-9#._-]{1,48}$/.test(id))
+      : (existing ? (existing.dropped || []) : []),
     createdAt: existing ? existing.createdAt : nowIso(),
     updatedAt: nowIso()
   };
@@ -206,6 +214,7 @@ function publicView(rec) {
     startDate: rec.startDate || null,
     pens: rec.pens || [],
     added: rec.added || [],
+    dropped: rec.dropped || [],
     // Her own settings, so the card can adopt anything the atelier
     // changed for her. Not the state report — that came from her phone
     // and it has no use for it back.

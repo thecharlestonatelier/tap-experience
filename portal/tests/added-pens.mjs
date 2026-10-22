@@ -35,27 +35,41 @@ check('a wiped phone gets it back',
 
 // --- she can take off what she added ---
 const xs=await p.locator('#todayStack [data-drop]').count();
-check('her own peptide carries a remove control', xs===1, `${xs} control(s)`);
-const pres=await p.evaluate(()=>PENS.filter(x=>!x.addedByPatient).map(x=>x.id));
-check('a prescribed peptide carries none', pres.length>0 &&
-      !(await p.evaluate(ids=>ids.some(i=>!!document.querySelector(`[data-drop="${i}"]`)), pres)),
-      pres.join(', '));
+check('every peptide carries a remove control', xs===2, `${xs} control(s)`);
 
-await p.locator('#todayStack [data-drop]').first().click();
+await p.locator('#todayStack .dose-card:has-text("BPC") [data-drop]').first().click();
 await p.waitForTimeout(900);
-check('removing it clears the card', !(await p.evaluate(()=>PENS.some(x=>x.addedByPatient))));
+check('removing hers clears it from the card', !(await p.evaluate(()=>PENS.some(x=>x.addedByPatient))));
 const r2=await rec();
 check('and the atelier sees it gone', (r2.added||[]).length===0, JSON.stringify(r2.added));
 
-await p.reload(); await p.waitForFunction(()=>typeof PENS!=='undefined',null,{timeout:15000});
-check('it stays gone after a reload', !(await p.evaluate(()=>PENS.some(x=>x.addedByPatient))),
-      (await p.evaluate(()=>PENS.map(x=>x.id))).join(', '));
+// --- and she can take off a PRESCRIBED one ---
+await p.locator('#todayStack [data-drop]').first().click();
+await p.waitForTimeout(900);
+check('a prescribed peptide comes off too',
+      !(await p.evaluate(()=>PENS.some(x=>x.id==='ghk'))),
+      (await p.evaluate(()=>PENS.map(x=>x.id))).join(', ')||'(none left)');
+const r3=await rec();
+check('recorded as stopped, not deleted',
+      (r3.dropped||[]).includes('ghk') &&
+      JSON.stringify(r3.pens)===JSON.stringify([{template:'ghk'}]),
+      `dropped ${JSON.stringify(r3.dropped)} · pens ${JSON.stringify(r3.pens)}`);
 
-// --- a prescribed pen cannot be removed by a tap ---
-check('removePen refuses a prescribed pen',
-      (await p.evaluate(()=>removePen(PENS.find(x=>!x.addedByPatient))))===false);
-check('and it is still on the record',
-      JSON.stringify((await rec()).pens)===JSON.stringify([{template:'ghk'}]));
+await p.reload(); await p.waitForFunction(()=>typeof PENS!=='undefined',null,{timeout:15000});
+check('it stays off after a reload', !(await p.evaluate(()=>PENS.some(x=>x.id==='ghk'))));
+check('the card names what she stopped, with a way back',
+      (await p.locator('#stopped [data-restore]').count())===1,
+      (await p.locator('#stopped').innerText()).split('\n').join(' | '));
+
+// --- and she can put it back ---
+await p.locator('#stopped [data-restore]').first().click();
+await p.waitForTimeout(1500);
+check('putting it back restores it', await p.evaluate(()=>PENS.some(x=>x.id==='ghk')),
+      (await p.evaluate(()=>PENS.map(x=>x.id))).join(', '));
+check('and the record agrees', ((await rec()).dropped||[]).length===0,
+      JSON.stringify((await rec()).dropped));
+await p.reload(); await p.waitForFunction(()=>typeof PENS!=='undefined',null,{timeout:15000});
+check('and it survives a reload', await p.evaluate(()=>PENS.some(x=>x.id==='ghk')));
 
 await br.close();
 console.log(bad?`\n${bad} failing`:'\nall good');

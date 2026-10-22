@@ -820,6 +820,58 @@ function saveAdded(list) {
   } catch {}
 }
 
+/* ---------- pens she has taken off ----------
+   A prescribed pen she stops is recorded by id, not deleted: `pens` goes
+   on saying what was prescribed, the atelier can see what she stopped,
+   and putting it back is one click rather than a re-prescription. */
+function droppedKey() { return `tca.dropped.${CFG.patient.id}`; }
+
+function loadDropped() {
+  try { return JSON.parse(localStorage.getItem(droppedKey())) || []; } catch { return []; }
+}
+
+/* Returns the write, so a caller that is about to re-read the record can
+   wait for it. adoptDropped() takes the record as the truth, so re-reading
+   before this lands would quietly undo what she just did. */
+function saveDropped(list) {
+  try { localStorage.setItem(droppedKey(), JSON.stringify(list)); } catch {}
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return Promise.resolve();
+  try {
+    return fetch(`/api/added/${encodeURIComponent(slug)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dropped: list }),
+      keepalive: true
+    }).catch(() => {});
+  } catch { return Promise.resolve(); }
+}
+
+/* The record is the one that survives a cleared phone, and it is also the
+   one the atelier edits: a pen put back in Card Studio must come back
+   here, so this follows the record exactly rather than merging. */
+function adoptDropped(rec) {
+  if (!rec || !Array.isArray(rec.dropped)) return;
+  try { localStorage.setItem(droppedKey(), JSON.stringify(rec.dropped)); } catch {}
+}
+
+/* Applied after the added pens, so one list of ids covers both. What it
+   takes out is kept, so the card can name what she stopped and offer it
+   back — a list of ids she cannot read is not an offer. */
+var DROPPED_PENS = [];
+
+function applyDropped() {
+  const off = loadDropped();
+  DROPPED_PENS = off.length ? PENS.filter(p => off.indexOf(p.id) !== -1) : [];
+  // In place, not a new array. PENS is the same array as CFG.protocol.pens
+  // and pages re-read that after loading, so a replacement here is quietly
+  // thrown away — which is exactly what happened: the pen went, the page
+  // redrew, and the next load brought it back.
+  for (let i = PENS.length - 1; i >= 0; i--) {
+    if (off.indexOf(PENS[i].id) !== -1) PENS.splice(i, 1);
+  }
+}
+
 function penFromTemplate(tpl, id, startDate) {
   const pen = JSON.parse(JSON.stringify(tpl));
   pen.id = id;
@@ -862,18 +914,44 @@ function addPen(tpl) {
   return pen;
 }
 
-/* A patient can take off what she put on. She cannot take off what was
-   prescribed — that used to appear to work and then come back on the
-   next load, which is the worst of both: she believes it is gone, the
-   record says otherwise, and nothing told either of them.
+/* A patient can take any pen off her own schedule — one she added and one
+   that was prescribed alike. The two are recorded differently: hers comes
+   out of `added` because it was never prescribed, and a prescribed one
+   goes into `dropped` because `pens` has to go on saying what was
+   prescribed. Either way the record follows the phone, so the atelier
+   sees it and can put a prescribed pen back.
 
-   Returns false for a prescribed pen so the card can say who to ask. */
+   This used to refuse, and before that it used to appear to work and then
+   put the pen back on the next load — she believed it was gone, the
+   record said otherwise, and nothing told either of them. */
 function removePen(pen) {
-  if (!pen || !pen.addedByPatient) return false;
-  saveAdded(loadAdded().filter(r => r.id !== pen.id));
+  if (!pen) return false;
+  if (pen.addedByPatient) {
+    saveAdded(loadAdded().filter(r => r.id !== pen.id));
+  } else {
+    const off = loadDropped();
+    if (off.indexOf(pen.id) === -1) saveDropped(off.concat([pen.id]));
+    // Kept here as well as on the record, so the way back appears on the
+    // same redraw that takes the pen away. DROPPED_PENS is otherwise only
+    // filled when the card loads, which would have left her with a pen
+    // gone and nothing offering it back until she next opened the app.
+    if (!DROPPED_PENS.some(p => p.id === pen.id)) DROPPED_PENS.push(pen);
+  }
   try { localStorage.removeItem(setupKey(pen)); } catch {}
   const i = PENS.indexOf(pen);
   if (i >= 0) PENS.splice(i, 1);
+  _supplyCache.clear();
+  return true;
+}
+
+/* Putting a prescribed pen back, from her own card. The pen itself was
+   never deleted, so this only forgets that she stopped it. Awaited,
+   because the caller re-reads the record straight afterwards. */
+async function restorePen(id) {
+  const off = loadDropped();
+  if (off.indexOf(id) === -1) return false;
+  await saveDropped(off.filter(x => x !== id));
+  DROPPED_PENS = DROPPED_PENS.filter(p => p.id !== id);
   _supplyCache.clear();
   return true;
 }
@@ -1092,6 +1170,7 @@ async function loadProtocol() {
     CFG = hydrateRecord(rec, templates);
     _cardSig = cardSignature(rec);
     adoptAdded(rec);
+    adoptDropped(rec);
     // Anything the atelier set for her, before the start day is read.
     _tookSettings = applySettings(rec.settings);
     noteTap(CARD_SLUG);
@@ -1108,6 +1187,7 @@ async function loadProtocol() {
   PENS = CFG.protocol.pens || [];
   START = parse(loadStart() || CFG.protocol.startDate);
   applyAdded(templates);
+  applyDropped();
   applySetups();
   _supplyCache.clear();
 
@@ -1164,10 +1244,12 @@ async function recheckCard() {
     const templates = await loadTemplates();
     CFG = hydrateRecord(rec, templates);
     adoptAdded(rec);
+    adoptDropped(rec);
     const took = applySettings(rec.settings);
     PENS = CFG.protocol.pens || [];
     START = parse(loadStart() || CFG.protocol.startDate);
     applyAdded(templates);
+    applyDropped();
     applySetups();
     _supplyCache.clear();
 
