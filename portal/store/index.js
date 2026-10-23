@@ -45,6 +45,9 @@ function carryCounters(out, existing) {
   // What her phone last reported. It is hers, not the dashboard's, so a
   // save from Card Studio must never overwrite it.
   if (existing.state) out.state = existing.state;
+  // Who activated the card. Set once by /api/activate, never by the
+  // dashboard — a save from Card Studio must not wipe the link.
+  if (existing.activatedBy) out.activatedBy = existing.activatedBy;
   return out;
 }
 
@@ -203,8 +206,9 @@ function sanitizePen(pen) {
   return out;
 }
 
-/* What a tapped card is allowed to see. The clinician's note and the
-   record's history stay on the clinician's side of the wire. */
+/* What a tapped card is allowed to see. The clinician's note, the
+   record's history, and who activated the card stay on the clinician's
+   side of the wire — the card itself has no use for its own uid. */
 function publicView(rec) {
   if (!rec) return null;
   return {
@@ -267,6 +271,26 @@ function firestoreStore() {
     // saved must not undo the save.
     async setState(slug, state) {
       await col.doc(normalizeSlug(slug)).set({ state }, { merge: true });
+    },
+    // Link a card to a Google account, exactly once. A second POST with
+    // the same uid verifies and writes nothing; a different uid is
+    // refused and the card is never taken from its owner. A transaction
+    // rather than a plain merge, so two first taps racing cannot both
+    // claim the card.
+    async activate(slug, activatedBy) {
+      const doc = col.doc(normalizeSlug(slug));
+      return await db.runTransaction(async tx => {
+        const snap = await tx.get(doc);
+        const existing = snap.exists ? snap.data() : null;
+        if (!existing) return { result: 'missing' };
+        if (existing.activatedBy) {
+          return existing.activatedBy.uid === activatedBy.uid
+            ? { result: 'verified' }
+            : { result: 'blocked' };
+        }
+        tx.set(doc, { activatedBy }, { merge: true });
+        return { result: 'linked' };
+      });
     }
   };
 }
@@ -320,6 +344,18 @@ function fileStore(file) {
       if (!all[s]) return;
       all[s].state = state;
       writeAll(all);
+    },
+    async activate(slug, activatedBy) {
+      const all = readAll(), s = normalizeSlug(slug), rec = all[s];
+      if (!rec) return { result: 'missing' };
+      if (rec.activatedBy) {
+        return rec.activatedBy.uid === activatedBy.uid
+          ? { result: 'verified' }
+          : { result: 'blocked' };
+      }
+      rec.activatedBy = activatedBy;
+      writeAll(all);
+      return { result: 'linked' };
     }
   };
 }

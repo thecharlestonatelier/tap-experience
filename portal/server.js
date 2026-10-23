@@ -63,6 +63,26 @@ const subs = openSubs();
 const feeds = openFeeds();
 const STARTED_AT = new Date().toISOString();
 
+/* Firebase Admin, for verifying the Google ID token a card posts. Loaded
+   lazily, like Firestore: a laptop without the dependency still serves,
+   and the first /api/activate call is where a missing credential fails. */
+let adminAuthInstance = null;
+function adminAuth() {
+  if (!adminAuthInstance) {
+    const admin = require('firebase-admin');
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        // On Cloud Run the default credential identifies the project;
+        // GOOGLE_CLOUD_PROJECT is set explicitly so the Auth emulator
+        // path works on a laptop too.
+        projectId: process.env.GOOGLE_CLOUD_PROJECT || undefined
+      });
+    }
+    adminAuthInstance = admin.auth();
+  }
+  return adminAuthInstance;
+}
+
 /* ---------- the reminder sweep ----------
    Called by Cloud Scheduler every quarter hour. For each phone, ask
    whether one of the instants it posted has just come round; if so, send
@@ -444,6 +464,52 @@ async function route(req, res) {
     if (!store.setState) return json(res, 501, { error: 'not_supported' });
     await store.setState(slug, state);
     res.writeHead(204); return res.end();
+  }
+
+  /* --- who this card belongs to ---
+     The first tap of a newly assigned card asks for a Google sign-in and
+     posts the ID token here. The token is verified with the Admin SDK —
+     the browser can mint nothing, so the link can only ever be made by a
+     real Google account. It is written exactly once: a later POST with
+     the same uid verifies and writes nothing, a different uid is refused,
+     and the card is never taken away from its owner. */
+  if (p.startsWith('/api/activate/') && req.method === 'POST') {
+    const slug = assertSlug(p.slice('/api/activate/'.length));
+    const rec = await store.get(slug);
+    if (!rec) return json(res, 404, { error: 'not_found' });
+    if (!store.activate) return json(res, 501, { error: 'not_supported' });
+    const body = await readBody(req);
+    if (typeof body.idToken !== 'string' || !body.idToken) {
+      return json(res, 400, { error: 'bad_request' });
+    }
+    let decoded;
+    try {
+      decoded = await adminAuth().verifyIdToken(body.idToken);
+    } catch (err) {
+      // Codes the card itself could produce: a malformed, expired, revoked
+      // or disabled-account token. Anything else — missing credential,
+      // unreachable Auth — is ours and must not look like hers, or a
+      // broken deploy reads as "every card is wrong".
+      const clientSide = new Set([
+        'auth/argument-error', 'auth/id-token-expired',
+        'auth/id-token-revoked', 'auth/user-disabled'
+      ]);
+      if (err && clientSide.has(err.code)) {
+        return json(res, 400, { error: 'bad_request' });
+      }
+      console.error('activate: token verification failed', err && err.message);
+      return json(res, 503, { error: 'auth_unavailable' });
+    }
+    const activatedBy = {
+      uid: String(decoded.uid || '').slice(0, 64),
+      provider: String((decoded.firebase && decoded.firebase.sign_in_provider) || 'unknown').slice(0, 24),
+      name: String(decoded.name || '').trim().slice(0, 60),
+      at: new Date().toISOString()
+    };
+    const outcome = await store.activate(slug, activatedBy);
+    if (outcome.result === 'missing') return json(res, 404, { error: 'not_found' });
+    if (outcome.result === 'blocked') return json(res, 409, { error: 'uid_mismatch' });
+    return json(res, 200, { ok: true, result: outcome.result });
   }
 
   /* --- which days are green, for the patient's own calendar ---
