@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPEC-001 · First-Tap Authentication — Change Report</title>
+<style>
+  :root{
+    --bg:#F3EBE1; --card:#F8F2EA; --espresso:#3B2E20; --espresso-soft:#4A3B2C;
+    --brass:#8A7350; --brass-soft:#A38C69; --hairline:rgba(138,115,80,.18);
+    --ok:#5c7a5e; --alert:#a4553f; --blue:#1565c0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Jost',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--espresso-soft);line-height:1.55}
+  header{background:linear-gradient(120deg,#5f7250,#8a9a7b);color:#fff;padding:34px 28px 28px}
+  header .kicker{font-size:12px;letter-spacing:.18em;text-transform:uppercase;opacity:.85}
+  header h1{font-size:30px;font-weight:600;margin-top:6px}
+  header p{max-width:760px;margin-top:10px;font-size:15px;opacity:.95}
+  nav{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--hairline);display:flex;gap:4px;flex-wrap:wrap;padding:8px 20px;z-index:10}
+  nav a{font-size:13px;color:var(--espresso-soft);text-decoration:none;padding:6px 12px;border-radius:999px}
+  nav a:hover{background:rgba(138,115,80,.1)}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 90px}
+  section{margin-top:40px}
+  h2{font-size:22px;font-weight:600;color:var(--espresso);border-bottom:2px solid var(--brass-soft);padding-bottom:8px;margin-bottom:16px}
+  .stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .stat{background:var(--card);border:1px solid var(--hairline);border-radius:14px;padding:14px 20px;flex:1;min-width:150px}
+  .stat b{display:block;font-size:26px;color:var(--espresso)}
+  .stat span{font-size:12.5px;color:var(--brass)}
+  ul.tight{margin:8px 0 0 18px}
+  ul.tight li{margin-bottom:6px;font-size:14px}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 10px;border-radius:99px;margin-right:6px}
+  .tag.new{background:#dbe7f5;color:#1565c0}
+  .tag.defer{background:#f6f2e8;color:#6b5f45}
+  .tag.fix{background:#e3ecdf;color:#2e7d32}
+  .muted{color:#7a7466;font-size:12.5px}
+  code{background:rgba(138,115,80,.12);padding:1px 6px;border-radius:5px;font-size:12.5px}
+
+  /* ---- flow: before -> after ---- */
+  .ba{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center}
+  @media (max-width:900px){ .ba{grid-template-columns:1fr;grid-auto-rows:auto}
+    .ba .arrowbox{transform:rotate(90deg);justify-self:center} }
+  .before,.after{border-radius:18px;padding:20px;display:flex;flex-direction:column;background:var(--card)}
+  .before{border:2px solid #d9c9a8}
+  .after{border:2px solid #a9c39b}
+  .bahead{font-size:13px;letter-spacing:.22em;font-weight:700;text-transform:uppercase;margin-bottom:12px}
+  .before .bahead{color:#a07b2f}
+  .after .bahead{color:#4f7a45}
+  .arrowbox{display:flex;align-items:center;justify-content:center}
+  .bigarrow{font-size:64px;color:var(--brass);font-weight:300;line-height:1;animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{transform:translateX(0);opacity:.75}50%{transform:translateX(6px);opacity:1}}
+  .flow{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+  .step{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--hairline);border-radius:10px;padding:9px 12px;font-size:13.5px}
+  .step .n{width:22px;height:22px;border-radius:50%;background:#ece7da;color:#6b5f45;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:11px;flex:0 0 auto}
+  .step.gate .n{background:#1565c0;color:#fff}
+  .step.block .n{background:#ef6c00;color:#fff}
+  .step b{color:var(--espresso)}
+
+  /* patient: phones side by side (works well) */
+  .shotwrap{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+  .shot{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .shot .cap{font-size:12.5px;font-weight:600;color:var(--espresso);max-width:270px;text-align:center}
+  .phoneframe{width:262px;background:#0e120c;border-radius:30px;padding:11px;box-shadow:0 16px 34px rgba(59,46,32,.28)}
+  .phoneframe iframe{width:240px;height:520px;border:none;border-radius:20px;background:#fffdf8}
+
+  /* studio: full-width, stacked — one page at a time, no scroll-squeeze */
+  .deskstage{margin-top:26px}
+  .deskstage h3{font-size:16px;font-weight:600;color:var(--espresso);margin-bottom:10px}
+  .deskpage{background:var(--card);border-radius:18px;padding:18px}
+  .deskpage.before{border:2px solid #d9c9a8}
+  .deskpage.after{border:2px solid #a9c39b}
+  .browserframe{width:100%;background:#e8e4dc;border-radius:14px;overflow:hidden;border:1px solid #d5cfc2;box-shadow:0 16px 34px rgba(59,46,32,.28)}
+  .browserbar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#efece4;border-bottom:1px solid #d9d3c6}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .browserbar .url{flex:1;background:#fff;border:1px solid #d9d3c6;border-radius:6px;font-size:11px;color:#6b6558;padding:3px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .browserframe iframe{width:100%;height:760px;border:none;background:#fff}
+  .downarrow{text-align:center;color:var(--brass);font-size:44px;font-weight:300;line-height:1;padding:10px 0;animation:drop 1.6s infinite}
+  @keyframes drop{0%,100%{transform:translateY(0);opacity:.75}50%{transform:translateY(6px);opacity:1}}
+  .pair h3{font-size:16px;font-weight:600;color:var(--espresso);margin-bottom:10px}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--hairline);border-radius:12px;overflow:hidden;font-size:13.5px}
+  th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--hairline)}
+  th{background:rgba(138,115,80,.12);color:var(--espresso);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  td.g{color:var(--ok);font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">The Charleston Atelier · SPEC-001 · feature/first-tap-auth</div>
+  <h1>First-Tap Authentication — Change Report</h1>
+  <p>When a new card is generated, the first tap now asks for a Google sign-in. The card links to that account exactly once, later taps skip the gate, the atelier sees who activated each card, and a wrong link can be cleared.</p>
+</header>
+
+<nav>
+  <a href="#summary">Summary</a>
+  <a href="#flow">The flow</a>
+  <a href="#patient">The phone</a>
+  <a href="#studio">The Studio</a>
+  <a href="#tests">Tests</a>
+  <a href="#decisions">Decisions</a>
+</nav>
+
+<div class="wrap">
+
+<section id="summary">
+  <h2>Summary</h2>
+  <div class="stats">
+    <div class="stat"><b>12</b><span>commits on the branch</span></div>
+    <div class="stat"><b>17</b><span>test suites, all green</span></div>
+    <div class="stat"><b>2</b><span>new endpoints</span></div>
+    <div class="stat"><b>1</b><span>field: activatedBy</span></div>
+    <div class="stat"><b>0</b><span>gate-bypass paths</span></div>
+  </div>
+  <ul class="tight" style="margin-top:18px">
+    <li><span class="tag new">NEW</span>The patient side gains a full-screen welcome gate, driven by <code>patients/jessica/assets/auth-gate.js</code> (Firebase Auth SDK from the CDN, no build step).</li>
+    <li><span class="tag new">NEW</span><code>POST /api/activate/&lt;slug&gt;</code> verifies the Google ID token with <code>firebase-admin</code> and writes <code>activatedBy {uid, provider, name, at}</code> exactly once.</li>
+    <li><span class="tag new">NEW</span>Card Studio shows a LINKED / NOT LINKED pill with a detail line, plus a confirmed Unlink action (<code>POST /api/cards/&lt;slug&gt;/unlink</code>, passphrase-protected).</li>
+    <li><span class="tag defer">DEFERRED</span>Sign in with Apple — out of scope; the sign-in UI keeps a simple provider list so it is an additive change later.</li>
+    <li><span class="tag fix">FIXED</span>The doses suite no longer hard-codes dose-card numbers; it derives every dial from the same dosing math and the same <code>templates.json</code>, so it cannot rot again.</li>
+  </ul>
+</section>
+
+<section id="flow">
+  <h2>The user flow — before → after</h2>
+  <div class="ba">
+    <div class="before">
+      <div class="bahead">Before</div>
+      <div class="flow">
+        <div class="step"><div class="n">1</div><div>Tap the NFC card → <code>redirect/</code> → <code>patients/jessica/?slug=…</code></div></div>
+        <div class="step"><div class="n">2</div><div><code>loadProtocol()</code> boots: reads the record, hydrates the protocol, counts the tap</div></div>
+        <div class="step"><div class="n">3</div><div>Today's Ritual opens — no identity asked, nothing linked</div></div>
+        <div class="step"><div class="n">4</div><div>The atelier sees taps and lastSeen, but <b>never who</b> activated the card</div></div>
+      </div>
+    </div>
+    <div class="arrowbox"><div class="bigarrow">→</div></div>
+    <div class="after">
+      <div class="bahead">After</div>
+      <div class="flow">
+        <div class="step"><div class="n">1</div><div>Tap → boot → <code>loadProtocol()</code> reaches the gate for an assigned stored card</div></div>
+        <div class="step gate"><div class="n">2</div><div><b>First tap:</b> full-screen welcome → "Sign in with Google" (redirect, never popup)</div></div>
+        <div class="step gate"><div class="n">3</div><div>ID token → <code>POST /api/activate</code> → verified server-side → <code>activatedBy</code> written <b>once</b></div></div>
+        <div class="step"><div class="n">4</div><div>Experience opens. <b>Later taps:</b> remembered session skips the gate and only verifies</div></div>
+        <div class="step block"><div class="n">5</div><div><b>Different account:</b> quiet stuck screen, "Message the atelier" (sms:) — never overwritten</div></div>
+        <div class="step block"><div class="n">6</div><div><b>No Google account:</b> same sms: fallback · <b>Session wiped (ITP):</b> gate returns, same account re-verifies, nothing rewritten</div></div>
+        <div class="step gate"><div class="n">7</div><div><b>Wrong first link:</b> atelier clears it in Studio (Unlink) → next sign-in links again</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="patient">
+  <h2>The phone — before → after</h2>
+  <p class="muted">The real pages, captured from a running instance and rendered here as they are. Gold <b>NEW</b> badges mark what this feature added. The before screen is a fragment card — the exact pre-feature behavior.</p>
+  <div class="pair" style="margin-top:18px">
+    <div class="ba">
+      <div class="before">
+        <div class="bahead">Before</div>
+        <div class="shotwrap">
+          <div class="shot">
+            <div class="phoneframe"><iframe src="assets/phone-before.html" title="Today's Ritual before the gate"></iframe></div>
+            <div class="cap">Today's Ritual — straight to the protocol</div>
+          </div>
+        </div>
+      </div>
+      <div class="arrowbox"><div class="bigarrow">→</div></div>
+      <div class="after">
+        <div class="bahead">After</div>
+        <div class="shotwrap">
+          <div class="shot">
+            <div class="phoneframe"><iframe src="assets/phone-welcome.html" title="Full-screen welcome gate"></iframe></div>
+            <div class="cap">First tap — welcome gate</div>
+          </div>
+          <div class="shot">
+            <div class="phoneframe"><iframe src="assets/phone-stuck.html" title="Already activated screen"></iframe></div>
+            <div class="cap">Different account — stuck screen</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="studio">
+  <h2>The Studio — before → after</h2>
+  <p class="muted">One page at a time, full width. The before page is the actual pre-feature page from the base commit, served and rendered against the same data as the after — the dashed marker shows where the pill lands. Gold <b>NEW</b> badges mark everything the feature added.</p>
+
+  <div class="deskstage">
+    <h3>Before</h3>
+    <div class="deskpage before">
+      <div class="browserframe">
+        <div class="browserbar">
+          <span class="dot" style="background:#e5674d"></span>
+          <span class="dot" style="background:#e8c44d"></span>
+          <span class="dot" style="background:#7ec06a"></span>
+          <div class="url">tap.thecharlestonatelier.com/studio</div>
+        </div>
+        <iframe src="assets/studio-before.html" title="Card Studio before the feature"></iframe>
+      </div>
+      <p class="muted" style="margin-top:10px;text-align:center">Taps and lastSeen only — no idea who any card belongs to.</p>
+    </div>
+    <div class="downarrow">↓</div>
+    <h3>After</h3>
+    <div class="deskpage after">
+      <div class="browserframe">
+        <div class="browserbar">
+          <span class="dot" style="background:#e5674d"></span>
+          <span class="dot" style="background:#e8c44d"></span>
+          <span class="dot" style="background:#7ec06a"></span>
+          <div class="url">tap.thecharlestonatelier.com/studio</div>
+        </div>
+        <iframe src="assets/studio-after.html" title="Card Studio after the feature"></iframe>
+      </div>
+      <p class="muted" style="margin-top:10px;text-align:center">The LINKED / NOT LINKED pill — the detail line for the linked card is open, showing the name, provider, uid, timestamp, and the Unlink action.</p>
+    </div>
+  </div>
+</section>
+
+<section id="tests">
+  <h2>The test matrix — all green on the final tree</h2>
+  <table>
+    <tr><th>Suite</th><th>Result</th><th>What it proves</th></tr>
+    <tr><td>activate.mjs</td><td class="g">13 ok</td><td>link once, verify same uid, 409 different uid, hidden from publicView, carried on saves</td></tr>
+    <tr><td>gate.mjs</td><td class="g">7 ok</td><td>welcome gate for stored cards only; sms: fallback; fragment/legacy never gate</td></tr>
+    <tr><td>gate-edge.mjs</td><td class="g">11 ok</td><td>blocked strangers, remembered sessions, verify-only re-links after an ITP wipe</td></tr>
+    <tr><td>unlink.mjs</td><td class="g">8 ok</td><td>clinician reset, 401 without session, 404 unknown, next sign-in re-links</td></tr>
+    <tr><td>studio-link.mjs</td><td class="g">11 ok</td><td>pill, detail line fields, no email, confirmed Unlink, pill follows</td></tr>
+    <tr><td>empty-card · click-every-link · added-pens · protocol-change · studio-pens · push-ui</td><td class="g">green</td><td>existing behaviors, now through real sign-in sessions</td></tr>
+    <tr><td>doses · tirzepatide · card-links · logging</td><td class="g">green</td><td>dosing math, fragment flows, logging — unchanged and re-verified</td></tr>
+    <tr><td>push-crypto · push-flow</td><td class="g">17 ok · 11 ok</td><td>web push unchanged</td></tr>
+  </table>
+  <p class="muted" style="margin-top:8px">Plus: <code>grep -R "GATE_OFF|__NO_GATE__"</code> returns nothing — no bypass exists anywhere.</p>
+</section>
+
+<section id="decisions">
+  <h2>Decisions recorded in the spec</h2>
+  <ul class="tight">
+    <li><b>Identity links to the card.</b> After sign-in the uid (and the patient's name, from the Google token) is written to the card record — the atelier can see who activated it. No email is stored.</li>
+    <li><b>Link exactly once.</b> Later sign-ins verify only; a different account is blocked, never overwritten. Session persistence is best-effort (Safari ITP), and the flow tolerates it.</li>
+    <li><b>First signer wins for existing cards</b> — the migration section covers every pre-feature card, and a wrong first link has a clinician remedy (Unlink).</li>
+    <li><b>Apple deferred.</b> Google only; the provider list is the single place a second provider joins later.</li>
+    <li><b>No bypass anywhere.</b> Tests authenticate like patients; the five stored-card suites migrated to real sessions instead of a gate-off switch.</li>
+    <li><b>Netlify is inactive.</b> Authorized domains: <code>tap.thecharlestonatelier.com</code> + <code>localhost</code>.</li>
+    <li><b>Deploy prerequisites</b> (DEPLOY.md §8): register the web app apiKey, enable the Google provider, set authorized domains.</li>
+  </ul>
+</section>
+
+</div>
+</body>
+</html>
