@@ -264,7 +264,8 @@ function showEmailForm() {
     if (!okName) invalid(name, 'Tell us your name.');
     if (okEmail && okPassword && okName) {
       formError.style.display = 'none';
-      submitEmailForm(mode, email.input.value.trim(), password.input.value, name.input.value.trim());
+      submitEmailForm(mode, email.input.value.trim(), password.input.value, name.input.value.trim(),
+        { toggle, formError, emailErr: email.err, passwordErr: password.err });
     }
   });
 
@@ -274,13 +275,52 @@ function showEmailForm() {
 }
 
 /* The SDK flows behind the form — create or sign in, then link the card.
-   Wired in the next phase. */
-function submitEmailForm(mode, email, password, name) {
-  void mode; void email; void password; void name;
+   Errors map to the field or the form, never to the server: a wrong
+   password and an unknown email look the same on purpose (email
+   enumeration protection), and only the create path's
+   email-already-in-use proves an account exists. */
+async function submitEmailForm(mode, emailValue, passwordValue, nameValue, ui) {
+  const { toggle, formError, emailErr, passwordErr } = ui;
+  const fieldMsg = (which, msg) => { which.textContent = msg; which.style.display = 'block'; };
+  const formMsg = (msg) => { formError.textContent = msg; formError.style.display = 'block'; };
+
+  try {
+    let user;
+    if (mode === 'signup') {
+      const cred = await createUserWithEmailAndPassword(auth, emailValue, passwordValue);
+      // The name has to travel in the ID token's name claim, and the token
+      // minted at creation predates this write — force a refresh before the
+      // card links, or the atelier stores an empty name.
+      await updateProfile(cred.user, { displayName: nameValue });
+      user = cred.user;
+    } else {
+      user = (await signInWithEmailAndPassword(auth, emailValue, passwordValue)).user;
+    }
+    const outcome = await linkCard(currentSlug, user, mode === 'signup');
+    finishEmailFlow(outcome);
+  } catch (err) {
+    const code = err && err.code;
+    if (code === 'auth/email-already-in-use') {
+      // Switch to sign-in and keep the typed email in the box.
+      toggle.click();
+      formMsg('This email already has an account \u2014 sign in instead.');
+    } else if (code === 'auth/weak-password') {
+      fieldMsg(passwordErr, 'That password is too weak \u2014 use at least 8 characters.');
+    } else if (code === 'auth/invalid-email') {
+      fieldMsg(emailErr, 'Enter a valid email address.');
+    } else if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' ||
+               code === 'auth/user-not-found') {
+      formMsg('That email or password is wrong, or this email has no account here. Check and try again, or create an account.');
+    } else {
+      formMsg('We couldn\u2019t reach the service \u2014 try again, or message the atelier.');
+    }
+  }
 }
 
 /* The quiet stuck screen: one message, one action. Shown when the card
-   already belongs to a different account, which is never overwritten. */
+   already belongs to a different account, which is never overwritten.
+   The copy is provider-agnostic on purpose — the service does not tell
+   the card which method owns it, so the patient is pointed at both. */
 function showStuck() {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:14px; max-width:320px;';
@@ -290,7 +330,7 @@ function showStuck() {
   title.style.cssText = 'font-size:22px; font-weight:600; color:var(--espresso,#3B2E20);';
 
   const copy = document.createElement('p');
-  copy.textContent = 'It belongs to a different account. If this is your card, message us \u2014 we\u2019ll sort it out.';
+  copy.textContent = 'It belongs to a different account. If you used Google before, sign in with Google; if you used email, sign in with that email. If this is your card and neither works, message us \u2014 we\u2019ll sort it out.';
   copy.style.cssText = 'font-size:15px; line-height:1.55; color:var(--espresso-soft,#4A3B2C);';
 
   const btn = document.createElement('a');
@@ -307,6 +347,20 @@ function showStuck() {
 }
 
 /* ---------- the handshake ---------- */
+
+/* Which card this page is gating, and the resolver the email flow uses
+   to let the boot continue once the link lands in-page (Google finishes
+   through a redirect instead). */
+let currentSlug = null;
+let resolveEmailFlow = null;
+
+function finishEmailFlow(outcome) {
+  if (resolveEmailFlow) {
+    const resolve = resolveEmailFlow;
+    resolveEmailFlow = null;
+    resolve(outcome);
+  }
+}
 
 /* Who is signed in right now. A sign-in that just completed comes back
    as a redirect result; an account that exists under another provider
@@ -327,18 +381,11 @@ async function signedInUser() {
    redirect brings a fresh page load back. */
 function forever() { return new Promise(() => {}); }
 
-async function ensureActivated({ slug }) {
-  const user = await signedInUser();
-  if (user === 'blocked') {
-    showStuck();
-    return 'blocked';
-  }
-  if (!user) {
-    showWelcome();
-    await forever();
-  }
-
-  const idToken = await user.getIdToken().catch(() => null);
+/* Post the ID token and let the service decide: linked, verified, or
+   blocked. Force-refresh after a fresh email sign-up so the name claim
+   makes the trip. */
+async function linkCard(slug, user, forceRefresh = false) {
+  const idToken = await user.getIdToken(forceRefresh).catch(() => null);
   if (!idToken) {
     showWelcome();
     await forever();
@@ -364,6 +411,23 @@ async function ensureActivated({ slug }) {
   }
   hideGate();
   return 'open';
+}
+
+async function ensureActivated({ slug }) {
+  currentSlug = slug;
+  const user = await signedInUser();
+  if (user === 'blocked') {
+    showStuck();
+    return 'blocked';
+  }
+  if (user) {
+    return linkCard(slug, user, false);
+  }
+
+  // No session. The Google path navigates away and comes back as a fresh
+  // load; the email path completes in-page and resolves this promise.
+  showWelcome();
+  return await new Promise(resolve => { resolveEmailFlow = resolve; });
 }
 
 window.__authGate = { ensureActivated };
