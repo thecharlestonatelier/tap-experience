@@ -72,6 +72,10 @@
   .pill.blank { color:var(--brass); }
   .pill.retired { color:var(--alert); border-color:rgba(164,85,63,.35); }
   .pill.warn { color:var(--alert); border-color:rgba(164,85,63,.45); background:rgba(164,85,63,.06); }
+  .pill.link { cursor:pointer; }
+  .pill.link.linked { color:var(--ok); border-color:rgba(92,122,94,.45); background:rgba(92,122,94,.08); }
+  tr.link-detail td { background:rgba(138,115,80,.05); font-size:12px; color:var(--muted); }
+  tr.link-detail td b { color:var(--espresso); font-weight:600; }
 
   .url { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--sunk);
          border:1px solid var(--line); border-radius:9px; padding:9px 11px;
@@ -698,15 +702,46 @@ async function refresh() {
         // was never handed over, or a tag that does not read.
         (c.name && c.status === 'active' && !taps)
           ? ' <span class="pill warn" title="Assigned but never opened">never opened</span>'
-          : ''}</td>
+          : ''}
+        <span class="pill link${c.activatedBy ? ' linked' : ''}" data-link="${c.slug}"
+              title="Who activated this card">${c.activatedBy ? '✓ Linked' : 'Not linked'}</span></td>
       <td style="text-align:right"><button class="ghost sm" data-copy="${c.slug}">Copy URL</button></td>
-    </tr>`;
+    </tr>
+    <tr class="link-detail" data-slug="${c.slug}" hidden><td colspan="8"></td></tr>`;
   }).join('');
 
   $('rows').querySelectorAll('tr').forEach(tr =>
     tr.addEventListener('click', e => {
+      if (tr.classList.contains('link-detail')) return;
+      if (e.target.closest('[data-link]')) return;
       if (e.target.dataset.copy) return;
       openEditor(tr.dataset.slug);
+    }));
+
+  /* The LINKED / NOT LINKED pill opens the detail line under the row: who
+     activated the card, and — for a linked card — the one action that can
+     undo a wrong first link. A fresh record is fetched each time, so the
+     line never shows a stale link. */
+  $('rows').querySelectorAll('[data-link]').forEach(pill =>
+    pill.addEventListener('click', async e => {
+      e.stopPropagation();
+      const slug = pill.dataset.link;
+      const detail = $('rows').querySelector(`tr.link-detail[data-slug="${slug}"]`);
+      if (!detail.hidden) { detail.hidden = true; return; }
+      const rec = await api(`/api/cards/${slug}`);
+      if (!rec) return;
+      const a = rec.activatedBy;
+      detail.firstElementChild.innerHTML = a
+        ? `Activated by <b>${a.name}</b> · <b>${a.provider}</b> · <b>${a.uid}</b> · ${a.at}` +
+          ` <button type="button" class="ghost sm" data-unlink="${slug}">Unlink</button>`
+        : 'Not activated yet.';
+      detail.hidden = false;
+      const unlink = detail.querySelector('[data-unlink]');
+      if (unlink) unlink.addEventListener('click', async () => {
+        if (!confirm('Clear this card\u2019s link? Whoever signs in next becomes its owner.')) return;
+        await api(`/api/cards/${slug}/unlink`, { method: 'POST' });
+        await refresh();
+      });
     }));
   $('rows').querySelectorAll('[data-copy]').forEach(b =>
     b.addEventListener('click', async e => {

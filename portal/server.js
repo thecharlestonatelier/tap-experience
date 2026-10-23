@@ -583,7 +583,23 @@ async function route(req, res) {
 
   if (p.startsWith('/api/cards/')) {
     if (!requireClinician(req, res)) return;
-    const slug = assertSlug(p.slice('/api/cards/'.length));
+    const rest = p.slice('/api/cards/'.length);
+
+    /* --- clear a wrong first link ---
+       The remedy behind the patient's "message the atelier": the link
+       comes off the card and nothing else, so whoever signs in next
+       becomes its owner. Passphrase-protected like every dashboard
+       write. Checked before assertSlug — the suffix is not part of a
+       valid slug. */
+    if (req.method === 'POST' && rest.endsWith('/unlink')) {
+      const slug = assertSlug(rest.slice(0, -'/unlink'.length));
+      if (!(await store.get(slug))) return json(res, 404, { error: 'not_found' });
+      if (!store.unlink) return json(res, 501, { error: 'not_supported' });
+      await store.unlink(slug);
+      return json(res, 200, await store.get(slug));
+    }
+
+    const slug = assertSlug(rest);
     const existing = await store.get(slug);
 
     if (req.method === 'GET') {

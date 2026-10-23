@@ -62,6 +62,22 @@ TOK=$(curl -s -X POST http://localhost:<port>/api/session \
 echo "$TOK" > /tmp/tok.txt
 ```
 
+## unlink.mjs
+
+The clinician's link reset, over HTTP: an unauthenticated POST to
+`/api/cards/<slug>/unlink` is refused, a passphrase-protected POST clears
+`activatedBy` and nothing else, and the next sign-in links the card again.
+Node-only, activate-style; needs the Auth emulator and a service with
+`STUDIO_PASSPHRASE` and `FIREBASE_AUTH_EMULATOR_HOST`.
+
+## studio-link.mjs
+
+Card Studio's activation surface in a real browser: the LINKED / NOT
+LINKED pill, the detail line (name, provider, uid, timestamp — never an
+email), and the confirmed Unlink control that returns the pill to NOT
+LINKED. Needs a Studio session token (above) and a store seeded with
+`linked.t` and `fresh.t` (the seed tool writes them).
+
 ## push-crypto.mjs
 
 The cryptography, checked rather than assumed. Signs a VAPID token and

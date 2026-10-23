@@ -291,6 +291,12 @@ function firestoreStore() {
         tx.set(doc, { activatedBy }, { merge: true });
         return { result: 'linked' };
       });
+    },
+    // The clinician's remedy for a wrong first link: remove the field
+    // and nothing else, so the next sign-in links the card again.
+    async unlink(slug) {
+      const { FieldValue } = require('@google-cloud/firestore');
+      await col.doc(normalizeSlug(slug)).update({ activatedBy: FieldValue.delete() });
     }
   };
 }
@@ -356,6 +362,13 @@ function fileStore(file) {
       rec.activatedBy = activatedBy;
       writeAll(all);
       return { result: 'linked' };
+    },
+    async unlink(slug) {
+      const all = readAll(), s = normalizeSlug(slug), rec = all[s];
+      if (!rec) return false;
+      delete rec.activatedBy;
+      writeAll(all);
+      return true;
     }
   };
 }
