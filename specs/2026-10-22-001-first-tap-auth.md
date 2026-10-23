@@ -89,7 +89,8 @@ nothing. The portal opens.
 A second person taps an already-activated card. That person signs in with a
 different Google account. The service sees that the card already holds a
 different uid. The service blocks the write. The card shows the quiet stuck
-screen with one "Message the atelier" action.
+screen with one "Message the atelier" action. The atelier can now clear the
+link, after which the next sign-in links the card to the correct account.
 
 ### 5.5 No-Google-account fallback
 
@@ -97,9 +98,27 @@ The customer has no Google account, or does not want to sign in. The customer
 taps "Message the atelier". The card opens an SMS to the atelier through
 `smsHref()`.
 
-## 6. Functional Requirements
+## 6. Existing cards (migration)
 
-### 6.1 The gate
+When the feature ships, existing cards behave as follows:
+
+- An assigned stored card with no `activatedBy`. Its next open (a tap, a
+  home-screen app, or a link) shows the welcome gate. The patient signs in
+  with Google. The card links to that account exactly once. Nothing else about
+  the card changes.
+- First signer wins. The first Google account to sign in for a pre-existing
+  card becomes its linked owner. If the wrong account links (a spouse, a
+  caregiver, or a demo account), the atelier clears the link with the reset
+  action (FR-23). The next sign-in links the card again.
+- Old fragment cards (`#Name~pen`), the legacy card (`?card=legacy`), and
+  blank or unassigned tags are never gated. They stay unauthenticated by
+  design.
+- A home-screen app saved before the feature gates on its next open the same
+  as any boot. The gate lives in `loadProtocol()`, so every boot runs it.
+
+## 7. Functional Requirements
+
+### 7.1 The gate
 
 - **FR-1.** Put the sign-in gate once inside the shared `loadProtocol()` boot
   in `patients/jessica/assets/protocol.js`. Do not add the gate per page.
@@ -113,7 +132,7 @@ taps "Message the atelier". The card opens an SMS to the atelier through
   in again. The gate verifies that the signed-in uid matches the linked uid.
   It writes nothing.
 
-### 6.2 Google sign-in
+### 7.2 Google sign-in
 
 - **FR-6.** Load `firebase-app.js` and `firebase-auth.js` version 13.x from the
   gstatic CDN as ES modules, inside a `script` element with `type="module"`.
@@ -129,7 +148,7 @@ taps "Message the atelier". The card opens an SMS to the atelier through
 - **FR-11.** Keep a simple provider list in the sign-in UI. Put one provider
   (Google) in the list. Do not add Apple now.
 
-### 6.3 The link endpoint
+### 7.3 The link endpoint
 
 - **FR-12.** Add a new public endpoint on the portal service, for example
   `POST /api/activate/<slug>`. The request body carries the Google ID token.
@@ -144,7 +163,7 @@ taps "Message the atelier". The card opens an SMS to the atelier through
   link.
 - **FR-16.** Add `firebase-admin` as a new `portal/` dependency.
 
-### 6.4 UI — visual decisions
+### 7.4 UI — visual decisions
 
 These three decisions are settled.
 
@@ -160,7 +179,7 @@ These three decisions are settled.
   clicks the pill, show the name, the provider, the uid, and the timestamp in a
   detail line under the row.
 
-### 6.5 Privacy and data
+### 7.5 Privacy and data
 
 - **FR-20.** Store `uid`, `provider`, `name`, and `at` in `activatedBy`. Take
   the name from the ID token's name claim. Do not store the email.
@@ -168,9 +187,17 @@ These three decisions are settled.
   service. Add no client Firestore SDK and no security rules.
 - **FR-22.** Do not let Card Studio edits overwrite `activatedBy`.
 
-## 7. Data Model
+### 7.6 Link reset (clinician)
 
-### 7.1 `activatedBy`
+- **FR-23.** Add a clinician-only link reset, for example
+  `POST /api/cards/<slug>/unlink`. The action sits behind the Studio passphrase
+  session. It clears `activatedBy` from a card document. Card Studio shows the
+  action on a linked card. After the reset, the next sign-in links the card
+  again.
+
+## 8. Data Model
+
+### 8.1 `activatedBy`
 
 The field lives on the card document in the `cards` collection.
 
@@ -201,7 +228,7 @@ Field rules:
 - The store must carry `activatedBy` forward on a Studio save, like it carries
   the counters today.
 
-## 8. Non-Functional Requirements
+## 9. Non-Functional Requirements
 
 - **NFR-1 (No build).** The SDK loads from the CDN. No bundler enters the
   project.
@@ -217,7 +244,7 @@ Field rules:
 - **NFR-6 (Local development).** The flow runs on the Firebase Auth and
   Firestore emulators with no live project.
 
-## 9. Assumptions and Dependencies
+## 10. Assumptions and Dependencies
 
 - The Firebase app is registered against the existing `atelier-tap` GCP
   project. Firebase Auth is enabled there.
@@ -227,7 +254,7 @@ Field rules:
 - The customer has a Google account for the main path. The no-account fallback
   covers the other case.
 
-## 10. Acceptance Criteria
+## 11. Acceptance Criteria
 
 - **AC-1.** A new stored card on a fresh device shows the welcome gate on the
   first tap.
@@ -247,8 +274,14 @@ Field rules:
 - **AC-9.** The `activatedBy` field holds no email. The name matches the Google
   account's name claim.
 - **AC-10.** The flow runs on the Firebase emulators with no live project.
+- **AC-11.** A clinician signed into Card Studio can clear a card's
+  `activatedBy`. The card shows NOT LINKED again.
+- **AC-12.** After the reset, the next Google sign-in links the card to the new
+  account. The old uid is gone.
+- **AC-13.** The reset endpoint rejects a request with no valid Studio session
+  (HTTP 401).
 
-## 11. Research and Best Practices
+## 12. Research and Best Practices
 
 The atelier's tap portal is a static, no-build site (plain ES modules) served
 from both Netlify and Google Cloud Run, with card records in Firestore reached
@@ -309,20 +342,22 @@ A first-tap Google sign-in must respect that shape.
   - Verdict: Applicable. Rationale: the portal already runs locally with a JSON
     file store, so an emulator path fits the existing laptop workflow.
 
-## 12. Baseline Impact
+## 13. Baseline Impact
 
 When this feature lands, update these sections of `specs/000-system.md`:
 
 - `§2` (Architecture and Components): add the Firebase Auth client SDK, the
   new `/api/activate/<slug>` endpoint, and the `firebase-admin` dependency.
 - `§3.2` (Card boot): add the sign-in gate inside `loadProtocol()`.
-- `§4.1` (HTTP endpoints): add the activation endpoint to the public list.
+- `§3.6` (Card Studio): add the link-reset control on a linked card.
+- `§4.1` (HTTP endpoints): add the activation endpoint to the public list, and
+  the link-reset endpoint to the passphrase-protected list.
 - `§4.3` (Card record shape): add `activatedBy`.
 - `§5` (Constraints): add the Firebase authorized domains.
 - `§6` (Known Gaps): remove the gap that the atelier cannot see who activated
   a card.
 
-## 13. Risks
+## 14. Risks
 
 - **R1 — iOS standalone redirects.** OAuth redirects are fragile in a
   home-screen app. Test the `isHomeScreenApp()` case early.
@@ -340,8 +375,10 @@ When this feature lands, update these sections of `specs/000-system.md`:
 - **R6 — Name exposure.** The stored name is PHI. Keep it in Firestore only.
   Never write it to `localStorage` and never send it back to the card. The card
   read must not include it.
+- **R7 — Accidental reset.** Clearing the link removes the owner record. A wrong
+  click unlinks a card. Mitigate: require a confirm step in Card Studio.
 
-## 14. Settled Decisions and Open Questions
+## 15. Settled Decisions and Open Questions
 
 ### Settled decisions
 
@@ -365,8 +402,10 @@ When this feature lands, update these sections of `specs/000-system.md`:
 5. What Firebase Auth config values (api key, auth domain, project id) does the
    card load, and how are they stored? They are public, but the loading file
    location is unset. Recommended: a small config module in the portal assets.
+6. Should a link reset keep an audit trail? Recommended: no — clearing is
+   enough. The next sign-in re-links, and the new `activatedBy` is the record.
 
-## 15. Glossary
+## 16. Glossary
 
 - **slug.** The short address of a stored card, for example `/phil.h`.
 - **fragment card.** A legacy card that holds its protocol in the URL fragment.

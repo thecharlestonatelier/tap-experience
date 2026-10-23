@@ -296,10 +296,11 @@ tap skips the sign-in screen and verifies silently.
 
 ---
 
-### Phase 4 — Studio pill, detail line, and portal surface
+### Phase 4 — Studio pill, detail line, unlink reset, and portal surface
 
-**Goal:** Card Studio shows a LINKED / NOT LINKED pill per card and a detail
-line with the name, provider, uid, and timestamp on demand.
+**Goal:** Card Studio shows a LINKED / NOT LINKED pill per card, a detail line
+with the name, provider, uid, and timestamp on demand, and a clinician-only
+control that resets a card's link so it can be linked again.
 
 **Tasks:**
 - [ ] In `portal/studio/index.html` `refresh()` (the `$('rows')` render), add a
@@ -312,34 +313,64 @@ line with the name, provider, uid, and timestamp on demand.
       test so a later `publicView` refactor cannot silently strip it.
 - [ ] Confirm a Studio save keeps `activatedBy` (already carried in Phase 1);
       render from the full record, never from `publicView()`.
+- [ ] Add a store method `unlink(slug)` on both backings in
+      `portal/store/index.js` that clears `activatedBy` (analogous to the
+      `touch()` / `setState()` merge paths — a targeted field removal, never a
+      full-record overwrite that would clobber concurrent edits) (FR-23).
+- [ ] Add `POST /api/cards/<slug>/unlink` to `portal/server.js`, protected by
+      `requireClinician()` (the same passphrase session as the rest of
+      `/api/cards/*`): `assertSlug`, confirm the card exists, call
+      `store.unlink(slug)`, return `200 {ok:true}` (FR-23).
+- [ ] In `portal/studio/index.html`, add a small unlink control on the detail
+      line of a LINKED card, with a confirm step before posting (R7). On
+      success, re-render the row so the pill returns to NOT LINKED.
 
 **Acceptance criteria:**
 - Card Studio shows the LINKED / NOT LINKED pill (AC-8).
 - The detail line shows the name, provider, uid, and timestamp (AC-8).
 - No email appears in the Studio surface (AC-9).
+- A clinician can reset a link from Studio; the record is cleared and the pill
+  returns to NOT LINKED (AC-11).
+- An unauthenticated `POST /api/cards/<slug>/unlink` returns 401 (AC-12).
+- After a reset, the next sign-in re-links the card normally (AC-13).
 
 **Tests:**
-- New `portal/tests/studio-link.mjs` (Playwright): sign in to Studio with the
-  passphrase, assert a linked card shows "LINKED" and that clicking reveals the
-  four detail fields; a fresh card shows "NOT LINKED".
+- New `portal/tests/unlink.mjs` (Node, activate-style; server-side): assert
+  clinician `POST /api/cards/<slug>/unlink` clears `activatedBy`; an
+  unauthenticated `POST` returns 401; after unlink, a fresh `POST
+  /api/activate/<slug>` with an emulator-minted ID token re-links the card.
+- Extend `portal/tests/studio-link.mjs` (Playwright): sign in to Studio with
+  the passphrase, assert a linked card shows "LINKED", that clicking reveals
+  the four detail fields, that the unlink control appears on a LINKED card with
+  a confirm step, and that confirming resets the pill to "NOT LINKED"; a fresh
+  card shows "NOT LINKED".
 - Exact commands:
   ```bash
+  # server-side reset (uses the Auth emulator to mint an ID token for re-link)
   cd portal
-  CARD_STORE=file CARD_FILE=.data-test/studio-link-cards.json \
+  FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GOOGLE_CLOUD_PROJECT=atelier-tap \
+    CARD_STORE=file CARD_FILE=.data-test/unlink-cards.json \
     STUDIO_PASSPHRASE=testpassphrase PORT=8099 node server.js &
 
+  node tests/unlink.mjs
   node tests/studio-link.mjs
   ```
+- `unlink.mjs` must assert: linked card becomes `activatedBy`-free after the
+  clinician POST; unauthenticated POST returns 401 and leaves the link intact;
+  the next `/api/activate` re-links it.
 - `studio-link.mjs` must assert: linked card pill text is `LINKED`; detail line
-  contains the name, `google.com`, the uid, and an ISO timestamp; fresh card
-  pill text is `NOT LINKED`; no `@` email-like token is rendered.
+  contains the name, `google.com`, the uid, and an ISO timestamp; the unlink
+  control confirms then resets the pill to `NOT LINKED`; fresh card pill text is
+  `NOT LINKED`; no `@` email-like token is rendered.
 
 **Touch points:**
-- `portal/studio/index.html`, `portal/tests/studio-link.mjs`.
+- `portal/server.js`, `portal/store/index.js`, `portal/studio/index.html`,
+  `portal/tests/studio-link.mjs`, `portal/tests/unlink.mjs`.
 
 **Baseline refs:**
 - `specs/000-system.md` §3.6 (Card Studio dashboard) — "see who activated a
-  card".
+  card" and reset a link; §4.1 (passphrase-protected endpoint list gains
+  `POST /api/cards/<slug>/unlink`); §4.3 (`activatedBy` shape).
 
 ---
 
@@ -391,6 +422,7 @@ the full suite is green.
   node tests/gate.mjs
   node tests/gate-edge.mjs
   node tests/studio-link.mjs
+  node tests/unlink.mjs
   # and the pre-existing suite, each with its own server setup per README:
   node tests/empty-card.mjs
   node tests/doses.mjs
@@ -447,3 +479,7 @@ the full suite is green.
 - **Open questions 2, 3, 4** are settled by the spec as planned (no fragment
   gate; endpoint `POST /api/activate/<slug>`; stuck screen offers only "Message
   the atelier").
+- **Link reset endpoint.** `POST /api/cards/<slug>/unlink` (FR-23) is
+  passphrase-protected like the rest of `/api/cards/*`; when the baseline is
+  updated, it joins the passphrase-protected endpoint list in
+  `specs/000-system.md` §4.1 alongside `/api/cards/<slug>`.
