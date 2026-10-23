@@ -244,7 +244,29 @@ running as it is, free, forever. So does the forwarding site holding
 
 ---
 
-## 8. Lock down Card Studio
+## 8. Turn on first-tap sign-in
+
+The patient cards gate their first tap behind a Google sign-in (SPEC-001).
+Three console steps, no code:
+
+1. **Register the web app.** Firebase console → Project settings → Your
+   apps → Web. Paste the real `apiKey` into
+   `patients/jessica/assets/firebase.js`, replacing the placeholder. The
+   key is public — it is an identifier, not a secret; the security is the
+   Admin SDK verification on the service.
+2. **Enable the provider.** Authentication → Sign-in method → Google →
+   Enable.
+3. **Authorized domains.** Authentication → Settings → Authorized domains
+   must list `tap.thecharlestonatelier.com` and `localhost` (for local
+   development). The Netlify origins are inactive and need nothing.
+
+The service verifies every activation token with its default credentials —
+nothing else to configure. To clear a wrong link, Card Studio's LINKED
+pill has a confirmed Unlink control.
+
+---
+
+## 9. Lock down Card Studio
 
 The passphrase keeps the dashboard off the open web. If you want a second lock,
 put Identity-Aware Proxy in front of `/studio` so it also requires your Google

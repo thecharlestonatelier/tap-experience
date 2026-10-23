@@ -10,11 +10,25 @@ behind a Google sign-in. Every suite that opens one must therefore run
 against the **Auth emulator** and sign in like a patient:
 
 ```bash
-firebase emulators:start --only auth          # 127.0.0.1:9099
+cd portal/..
+firebase emulators:start --only auth          # 127.0.0.1:9099 (firebase.json)
 ```
 
-The service for those suites additionally needs the emulator wired in so
-`/api/activate` verifies tokens locally:
+The dev matrix:
+
+- **Endpoint tests** (activate, unlink, gate-edge server side): file store
+  plus `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099
+  GOOGLE_CLOUD_PROJECT=atelier-tap` on the service.
+- **Patient-side suites**: the browser connects to the emulator itself —
+  `auth-gate.js` wires `connectAuthEmulator` whenever the page is served
+  from localhost. No env needed in the page.
+- **Full Firestore path**: `CARD_STORE=firestore
+  FIRESTORE_EMULATOR_HOST=127.0.0.1:8081` with `firebase emulators:start`
+  (the Firestore emulator needs a JRE). The file store covers the same
+  interface, which is what the suites exercise.
+
+The service for suites that exercise `/api/activate` additionally needs
+the emulator wired in so it verifies tokens locally:
 
 ```bash
 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GOOGLE_CLOUD_PROJECT=atelier-tap \
@@ -100,7 +114,8 @@ node tests/push-crypto.mjs
 
 The delivery loop against a running service: a reminder fires once, does not
 fire twice, is dropped rather than delivered when it has gone stale, and stops
-entirely when the card is retired.
+entirely when the card is retired. Needs a **fresh card file each run** — the
+suite retires its own card and would collide with a previous run's record.
 
 Needs a local HTTPS endpoint to stand in for Apple:
 
