@@ -225,7 +225,27 @@ function showEmailForm() {
   forgot.textContent = 'Forgot password?';
   forgot.href = '#';
   forgot.style.cssText = 'font-size:14px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer;';
-  forgot.addEventListener('click', e => e.preventDefault()); // wired with the reset flow later
+  forgot.addEventListener('click', async e => {
+    e.preventDefault();
+    const value = email.input.value.trim();
+    if (!EMAIL_OK.test(value)) {
+      email.err.textContent = 'Enter a valid email address.';
+      email.err.style.display = 'block';
+      return;
+    }
+    // Enumeration protection means the call resolves even for unknown
+    // addresses, and the confirmation must not reveal which case it was.
+    try {
+      await sendPasswordResetEmail(auth, value, {
+        url: `${location.origin}/${currentSlug}`,
+        handleCodeInApp: false
+      });
+    } catch {
+      /* offline: fall through to the same non-committal message */
+    }
+    forgot.textContent = 'If that email has an account here, a reset link is on its way.';
+    forgot.style.cursor = 'default';
+  });
 
   function paint() {
     title.textContent = mode === 'signup' ? 'Create your account' : 'Sign in with email';
