@@ -75,6 +75,15 @@ function conciergeHref() {
   return 'sms:';
 }
 
+/* Set the moment the Google redirect leaves the page. When the next load
+   finds this marker but no redirect result and no session, the handoff
+   back from Google failed — which must be said, never looped silently. */
+const GOOGLE_PENDING_KEY = 'tca.google.pending';
+
+function clearGooglePending() {
+  try { sessionStorage.removeItem(GOOGLE_PENDING_KEY); } catch {}
+}
+
 const GOOGLE_G = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">' +
   '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>' +
   '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>' +
@@ -129,9 +138,13 @@ function showWelcome() {
     btn.disabled = true;
     btn.style.opacity = '0.6';
     // Redirect, never popup: mobile browsers block popups, and this is a phone.
+    // The marker is what lets the returning page tell "a sign-in was started"
+    // apart from a plain first visit, so a failed handoff is never a loop.
+    try { sessionStorage.setItem(GOOGLE_PENDING_KEY, '1'); } catch {}
     signInWithRedirect(auth, new GoogleAuthProvider()).catch(() => {
       btn.disabled = false;
       btn.style.opacity = '';
+      clearGooglePending();
       copy.textContent = 'Sign-in didn\u2019t open. Please try again, or message the atelier below.';
     });
   });
@@ -392,6 +405,42 @@ function showStuck() {
   overlay('blocked', wrap);
 }
 
+/* A Google sign-in that did not survive its round trip. The patient did
+   log in; the card just never received the session back. The message
+   says why, and the email path stays open — a loop teaches nothing and
+   wastes a tap. */
+function showGoogleFailure(message) {
+  // The attempt is settled: a reload should come back to the welcome
+  // gate, not re-claim a lost handoff.
+  clearGooglePending();
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:14px; max-width:320px;';
+
+  const title = document.createElement('h1');
+  title.textContent = 'Google sign-in didn\u2019t finish';
+  title.style.cssText = 'font-size:22px; font-weight:600; color:var(--espresso,#3B2E20); line-height:1.25;';
+
+  const copy = document.createElement('p');
+  copy.textContent = message;
+  copy.style.cssText = 'font-size:15px; line-height:1.55; color:var(--espresso-soft,#4A3B2C);';
+
+  const email = document.createElement('a');
+  email.textContent = 'Use email instead';
+  email.href = '#';
+  email.style.cssText = 'font-size:15px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer;';
+  email.addEventListener('click', e => { e.preventDefault(); showEmailForm(); });
+
+  const retry = document.createElement('a');
+  retry.textContent = 'Try Google again';
+  retry.href = '#';
+  retry.style.cssText = 'font-size:15px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer;';
+  retry.addEventListener('click', e => { e.preventDefault(); showWelcome(); });
+
+  wrap.append(monogram(), title, copy, email, retry, messageLink('Message the atelier \u2192'));
+  overlay('google-failed', wrap);
+}
+
 /* ---------- the handshake ---------- */
 
 /* Which card this page is gating, and the resolver the email flow uses
@@ -410,17 +459,41 @@ function finishEmailFlow(outcome) {
 
 /* Who is signed in right now. A sign-in that just completed comes back
    as a redirect result; an account that exists under another provider
-   must not be silently re-welcomed into a loop. */
+   must not be silently re-welcomed into a loop. Every other failure is
+   named instead of swallowed, so the patient sees why and the console
+   carries the code. */
 async function signedInUser() {
+  let hadPendingGoogle = false;
+  try { hadPendingGoogle = sessionStorage.getItem(GOOGLE_PENDING_KEY) === '1'; } catch {}
+
   try {
     const result = await getRedirectResult(auth);
-    if (result && result.user) return result.user;
+    if (result && result.user) {
+      clearGooglePending();
+      return result.user;
+    }
   } catch (err) {
+    clearGooglePending();
+    console.error('[auth-gate] Google redirect result failed:', err && err.code, err);
     if (err && err.code === 'auth/account-exists-with-different-credential') {
       return 'blocked';
     }
+    // Only a load that follows a started Google attempt reports the
+    // failure; an ordinary first visit with an unreachable Auth service
+    // still welcomes, exactly as before.
+    if (hadPendingGoogle) return { failed: err };
   }
-  return auth.currentUser;
+
+  // A session the SDK has already restored, for example after an in-page
+  // email sign-in or a remembered visit.
+  const user = auth.currentUser;
+  if (user) { clearGooglePending(); return user; }
+
+  // The marker is set and the redirect came back empty: the handoff from
+  // Google to this browser was lost. Say so rather than re-welcome.
+  if (hadPendingGoogle) return 'handoff-lost';
+
+  return null;
 }
 
 /* Wait without resolving: the page stays behind the gate until the
@@ -434,6 +507,10 @@ function forever() { return new Promise(() => {}); }
 async function linkCard(slug, user, forceRefresh = false) {
   const idToken = await user.getIdToken(forceRefresh).catch(() => null);
   if (!idToken) return 'no-token';
+
+  // A real session reached this point, so a half-finished Google attempt
+  // from an earlier load can no longer masquerade as a lost handoff.
+  clearGooglePending();
 
   let res;
   try {
@@ -463,6 +540,18 @@ async function ensureActivated({ slug }) {
   if (user === 'blocked') {
     showStuck();
     return 'blocked';
+  }
+  if (user === 'handoff-lost') {
+    showGoogleFailure('Google signed you in, but this browser did not hand the sign-in back to the card. Private browsing and strict privacy settings can do this. Try again, or use your email instead.');
+    return await new Promise(resolve => { resolveEmailFlow = resolve; });
+  }
+  if (user && user.failed) {
+    const code = (user.failed && user.failed.code) || 'unknown';
+    const message = code === 'auth/operation-not-allowed'
+      ? 'The Google sign-in method is not switched on for this card yet. Use email instead, or message the atelier.'
+      : `Google sign-in could not finish (${code}). Try again, or use your email instead.`;
+    showGoogleFailure(message);
+    return await new Promise(resolve => { resolveEmailFlow = resolve; });
   }
   if (user) {
     const outcome = await linkCard(slug, user, false);
