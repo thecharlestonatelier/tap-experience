@@ -260,6 +260,28 @@ Three console steps, no code:
    must list `tap.thecharlestonatelier.com` and `localhost` (for local
    development). The Netlify origins are inactive and need nothing.
 
+### Redirect sign-in and third-party storage (required)
+
+The sign-in uses `signInWithRedirect` on purpose — mobile browsers block
+popups. Since June 2024, redirect sign-in only works in Chrome M115+,
+Firefox 109+ and Safari 16.1+ if the app follows one of the options in
+Firebase's guide *"Best practices for signInWithRedirect flows"*. This
+service uses **Option 3 (proxy)**: `portal/server.js` transparently
+proxies `/__/auth/*` and `/__/firebase/*` to
+`atelier-tap.firebaseapp.com`, and `patients/jessica/assets/firebase.js`
+sets `authDomain` to the serving origin, so the sign-in helper runs
+first-party and no browser blocks the credential handoff. Nothing to
+configure at deploy time — but one console step is required for each
+domain the portal is served from:
+
+4. **OAuth redirect URIs.** GCP console → APIs & Services → Credentials →
+   the web OAuth client (`…apps.googleusercontent.com`, the one visible in
+   the browser console during a sign-in) → Authorized redirect URIs must
+   list `https://<portal-domain>/__/auth/handler` for every domain the
+   portal serves — `tap.thecharlestonatelier.com` and the `*.run.app`
+   service URL at minimum. The trailing `/__/auth/handler` is the part
+   that matters.
+
 The service verifies every activation token with its default credentials —
 nothing else to configure. To clear a wrong link, Card Studio's LINKED
 pill has a confirmed Unlink control.

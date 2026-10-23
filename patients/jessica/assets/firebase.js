@@ -15,7 +15,13 @@
 
 export const firebaseConfig = {
   // TODO(at deploy): the real Web API key for project atelier-tap.
-  apiKey: 'atelier-tap-web-api-key-placeholder',
-  authDomain: 'atelier-tap.firebaseapp.com',
+  apiKey: 'AIzaSyBbgeQDAJTjywdCVJ1dNbRxlw0EsLS3Oek',
+  // The sign-in helper is proxied through this service (portal/server.js,
+  // /__/auth/*), so the authDomain is wherever the page is served from —
+  // host, not hostname, so a local port survives too. The auth iframe
+  // then reads as first-party, which browsers that block third-party
+  // storage require for redirect sign-in. Localhost runs are unaffected:
+  // connectAuthEmulator overrides the helper URLs entirely.
+  authDomain: (typeof location !== 'undefined' && location.host) || 'atelier-tap.firebaseapp.com',
   projectId: 'atelier-tap'
 };

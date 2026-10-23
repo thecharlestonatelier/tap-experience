@@ -21,6 +21,7 @@
    ================================================================== */
 
 const http = require('node:http');
+const https = require('node:https');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -300,6 +301,59 @@ function serveStatic(res, urlPath, { inject, vial, remember, setCard } = {}) {
   return true;
 }
 
+/* ---------- sign-in helper proxy ----------
+
+   Firebase's redirect sign-in runs its helper code (handler + iframe) on
+   the auth domain, and the browser hands the credential back through that
+   domain's storage. Browsers that block third-party storage refuse that
+   handoff unless the helper is first-party — the official fix is to serve
+   /__/auth/* from the app's own origin, transparently, with no 302
+   (Auth web guide: "Best practices for signInWithRedirect flows").
+
+   Cloud Run is the app origin, so this service proxies the helper paths
+   to the Firebase auth domain. The SDK is pointed at the app origin as
+   its authDomain (patients/jessica/assets/firebase.js), which makes the
+   whole round trip same-origin and immune to third-party storage rules. */
+
+const AUTH_HELPER_HOST = 'atelier-tap.firebaseapp.com';
+const HOP_BY_HOP = new Set([
+  'connection', 'keep-alive', 'transfer-encoding', 'upgrade',
+  'te', 'trailer', 'proxy-authenticate', 'proxy-authorization',
+  'content-length'
+]);
+
+function proxyAuthHelper(req, res, url) {
+  const headers = {};
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (!HOP_BY_HOP.has(String(k).toLowerCase()) && k !== 'host') headers[k] = v;
+  }
+
+  const upstream = https.request({
+    hostname: AUTH_HELPER_HOST,
+    port: 443,
+    method: req.method,
+    path: url.pathname + url.search,
+    headers: Object.assign(headers, { host: AUTH_HELPER_HOST })
+  }, upstreamRes => {
+    const out = {};
+    for (const [k, v] of Object.entries(upstreamRes.headers)) {
+      if (!HOP_BY_HOP.has(String(k).toLowerCase())) out[k] = v;
+    }
+    res.writeHead(upstreamRes.statusCode || 502, out);
+    upstreamRes.pipe(res);
+  });
+
+  upstream.on('error', err => {
+    console.error('auth helper proxy failed', err && err.message);
+    if (!res.headersSent) {
+      res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' });
+    }
+    res.end('sign-in helper unavailable');
+  });
+
+  req.pipe(upstream);
+}
+
 /* ---------- routes ---------- */
 
 async function route(req, res) {
@@ -331,6 +385,16 @@ async function route(req, res) {
         error: String(err && err.message || err).slice(0, 300)
       }, build));
     }
+  }
+
+  /* --- the sign-in helper, first-party ---
+     Proxied before the API routes so GET and POST both land on the helper
+     pages rather than the static portal's method gate. */
+  if (p.startsWith('/__/auth/') || p.startsWith('/__/firebase/')) {
+    if (req.method !== 'GET' && req.method !== 'POST' && req.method !== 'HEAD') {
+      return json(res, 405, { error: 'method_not_allowed' });
+    }
+    return proxyAuthHelper(req, res, url);
   }
 
   /* --- the card a tag points at --- */
