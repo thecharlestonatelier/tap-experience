@@ -29,8 +29,9 @@ The system has these parts:
   Firebase Auth SDK from the gstatic CDN and drive the first-tap sign-in gate.
 - **Portal service** (`portal/server.js`). A Node.js HTTP server on Google
   Cloud Run. It serves the patient portal, card addresses (`/<slug>`), the
-  `/api` endpoints, and Card Studio. It verifies the Google ID token with
-  `firebase-admin` before linking a card.
+  `/api` endpoints, and Card Studio. It verifies the Firebase ID token with
+  `firebase-admin` before linking a card, and records the provider from the
+  token as `google.com` or `password`.
 - **Store layer** (`portal/store/`). One interface with two backings. Firestore
   on Cloud Run; a JSON file on a laptop. Files: `index.js` (cards),
   `doses.js`, `feeds.js`, `subs.js`.
@@ -54,8 +55,10 @@ Deployment:
 - `firebase.json` configures the Auth (port 9099) and Firestore (port 8081)
   emulators for local development.
 - Test suites that open a stored card sign in through the Auth emulator
-  (`portal/tests/auth-session.mjs`). `npm run seed` (`portal/scripts/seed.js`)
-  writes the dev and test cards.
+  (`portal/tests/auth-session.mjs`, which exposes `signInGoogle`, `signUpEmail`,
+  and `signInEmail` helpers; `portal/tests/gate-email.mjs` covers the email
+  path). `npm run seed` (`portal/scripts/seed.js`) writes the dev and test
+  cards.
 
 ## 3. Current Behaviors
 
@@ -75,9 +78,15 @@ the config. It loads the patient's device settings. It reports state to the
 server. It remembers the card on the device.
 
 For an assigned stored card, the boot also runs the sign-in gate. The first
-tap shows a full-screen welcome and a Google redirect sign-in. The service
-links the card once. Later sign-ins verify only. A different account shows a
-stuck screen. Fragment, legacy, and blank cards never see the gate.
+tap shows a full-screen welcome with two paths. The Google path runs a
+redirect sign-in. The email path opens a form that toggles between sign-up and
+sign-in. Sign-up asks for a name, an email, and a password of at least 8
+characters. Sign-in asks for the email and password only. A failed sign-in
+shows one uniform message that does not reveal which part was wrong. The form
+offers a forgot-password reset that returns to the card. The service links the
+card once, to whichever provider signs in first. Later sign-ins verify only. A
+different account shows a stuck screen. Fragment, legacy, and blank cards
+never see the gate.
 
 ### 3.3 Dose logging
 
@@ -125,7 +134,8 @@ Public (no passphrase):
 - `/health`
 - `/api/card/<slug>`
 - `/api/tap/<slug>`
-- `/api/activate/<slug>` (POST). Links a card to the verified Google uid.
+- `/api/activate/<slug>` (POST). Links a card to the verified Firebase uid.
+  The provider is recorded from the token as `google.com` or `password`.
   Returns 200 `linked` or `verified`; 409 `uid_mismatch`; 400 `bad_request`;
   404 `not_found`; 503 `auth_unavailable`.
 - `/v/<payload>`
@@ -174,7 +184,8 @@ A card record holds:
 - `state`: what the patient's phone last reported
 - `settings`: start day and times the atelier set for the patient
 - `added`, `dropped`: pens the patient added or removed herself
-- `activatedBy`: `{uid, provider, name, at}`, set once at first sign-in
+- `activatedBy`: `{uid, provider, name, at}`, set once at first sign-in. The
+  `name` is the Google token's name or the name typed at email sign-up.
 - `createdAt`, `updatedAt`
 
 `publicView()` returns only `slug`, `name`, `status`, `startDate`, `pens`,
@@ -194,9 +205,13 @@ forward. Only the clinician Unlink action removes it.
 - The repository is public. The site URL is unlisted but guessable.
 - The tag capacity bounds the card URL length (see `NFC-CARDS.md`).
 - Firebase Auth is registered against the `atelier-tap` project. The Firebase
-  console must list a web app with its `apiKey`, the Google provider enabled,
-  and the authorized domains `tap.thecharlestonatelier.com` and `localhost`.
-  Netlify is inactive.
+  console must list a web app with its `apiKey`, the Google and email/password
+  providers enabled, and the authorized domains `tap.thecharlestonatelier.com`
+  and `localhost`. Netlify is inactive.
+- The console password policy should match the client check: a minimum of 8
+  characters. The client enforces 8. The Firebase default is 6.
+- The forgot-password reset page is owned by Firebase. It uses the default
+  template. Custom branding is a later console change, not code.
 
 ## 6. Known Gaps
 
