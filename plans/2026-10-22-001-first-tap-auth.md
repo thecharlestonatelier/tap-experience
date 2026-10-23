@@ -162,6 +162,11 @@ gate, Google sign-in completes by redirect, and the ID token is posted to
 - Fragment/legacy cards never show the gate (FR-2).
 - The "Message the atelier" action is reachable via an `sms:` deep link
   (AC-7, FR-18).
+- The existing stored-card browser suites (`empty-card`, `click-every-link`,
+  `added-pens`, `protocol-change`, `push-ui`) are EXPECTED RED during this
+  phase: they now meet the gate and are migrated in Phase 3. No bypass knobs,
+  no `GATE_OFF` flag, no special code paths exist anywhere — this red state is
+  the honest, temporary consequence of turning the gate on.
 
 **Tests:**
 - New `portal/tests/gate.mjs` (Playwright, mirrors `empty-card.mjs` /
@@ -181,6 +186,10 @@ gate, Google sign-in completes by redirect, and the ID token is posted to
 - `gate.mjs` must assert: `/<slug>` (stored) shows the monogram, one Google
   button, and a link whose `href` starts with `sms:`; `/#Name~pen` (fragment)
   and a `?card=legacy` address show no gate.
+- During Phase 2 the following are EXPECTED RED (they hit the gate and are
+  migrated in Phase 3): `empty-card.mjs`, `click-every-link.mjs`,
+  `added-pens.mjs`, `protocol-change.mjs`, `push-ui.mjs`. They stay red — the
+  phase does not add any bypass to make them pass.
 
 **Touch points:**
 - `patients/jessica/assets/firebase.js` (new), `patients/jessica/assets/auth-gate.js`
@@ -216,6 +225,20 @@ tap skips the sign-in screen and verifies silently.
       exists locally, do not hold the portal open on the network verify call —
       bound it (short timeout / best-effort) so a signed-in device past the
       gate still shows its dose when the service is unreachable (NFR-5).
+- [ ] Build a shared Playwright helper `portal/tests/auth-session.mjs`
+      (exported functions, imported by the suites). It signs a page into the
+      Auth emulator's Google provider flow — gate button → emulator widget →
+      back to the app — so the page holds a real Firebase session and the card
+      links through the normal `POST /api/activate/<slug>` path. It must work
+      headless and be importable by `gate-edge.mjs` and the five migrated
+      suites alike.
+- [ ] Migrate the five stored-card browser suites — `empty-card.mjs`,
+      `click-every-link.mjs`, `added-pens.mjs`, `protocol-change.mjs`,
+      `push-ui.mjs` — so each signs in via `auth-session.mjs` for its named
+      stored card before the assertions that need the card open.
+- [ ] Update `portal/tests/README.md` with the sign-in-helper usage and a note
+      that these suites now require the Auth emulator running at
+      `127.0.0.1:9099`.
 
 **Acceptance criteria:**
 - A different Google account on an activated card is blocked with the stuck
@@ -224,17 +247,36 @@ tap skips the sign-in screen and verifies silently.
   (AC-5).
 - A second tap on the same device opens the portal with no gate (AC-4).
 - A patient with no Google account can reach "Message the atelier" (AC-7).
+- The five migrated suites pass with genuine Firebase sessions; no test
+  modifies production code to skip the gate.
 
 **Tests:**
-- New `portal/tests/gate-edge.mjs` (Playwright): drive sign-in state against
-  the Auth emulator to cover block, re-link, and session-remembered paths.
+- New `portal/tests/auth-session.mjs` (shared Playwright helper): exports the
+  sign-in-through-the-gate function used by every patient-facing browser suite.
+- New `portal/tests/gate-edge.mjs` (Playwright): uses the helper to drive
+  block, re-link, and session-remembered paths against the Auth emulator.
+- Migrated: `empty-card.mjs`, `click-every-link.mjs`, `added-pens.mjs`,
+  `protocol-change.mjs`, `push-ui.mjs` now sign in via the helper.
 - Exact commands:
   ```bash
+  # terminal 1 — Auth emulator (required for the helper)
+  firebase emulators:start --only auth
+
+  # terminal 2 — the service
   cd portal
   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GOOGLE_CLOUD_PROJECT=atelier-tap \
     CARD_STORE=file CARD_FILE=.data-test/gate-edge-cards.json PORT=8098 node server.js &
 
+  # terminal 3 — edge cases
   node tests/gate-edge.mjs
+
+  # then the migrated suites, each against its own running service (see README),
+  # now additionally with FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099:
+  node tests/empty-card.mjs
+  node tests/click-every-link.mjs
+  node tests/added-pens.mjs
+  node tests/protocol-change.mjs
+  node tests/push-ui.mjs
   ```
 - `gate-edge.mjs` must assert: a card linked to uid A then opened by uid B
   shows the stuck screen (message action only); re-linking uid A after the
@@ -244,7 +286,10 @@ tap skips the sign-in screen and verifies silently.
 
 **Touch points:**
 - `patients/jessica/assets/auth-gate.js`, `patients/jessica/assets/protocol.js`,
-  `portal/tests/gate-edge.mjs`.
+  `portal/tests/auth-session.mjs` (new), `portal/tests/gate-edge.mjs`,
+  `portal/tests/empty-card.mjs`, `portal/tests/click-every-link.mjs`,
+  `portal/tests/added-pens.mjs`, `portal/tests/protocol-change.mjs`,
+  `portal/tests/push-ui.mjs`, `portal/tests/README.md`.
 
 **Baseline refs:**
 - `specs/000-system.md` §3.2 (return tap / session-lost behavior).
@@ -318,18 +363,29 @@ the full suite is green.
       endpoint, firebase-admin), §3.2 (gate in boot), §4.1 (endpoint), §4.3
       (`activatedBy`), §5 (authorized domains), §6 (remove the "cannot see who
       activated" gap).
-- [ ] Run the complete regression — all existing and new tests — and verify
-      the patient side locally with `npx http-server . -p 8080 -c-1` and with
+- [ ] Run the complete regression — all existing and new tests, including the
+      migrated suites now signed in via the helper — and verify the patient
+      side locally with `npx http-server . -p 8080 -c-1` and with
       `node portal/server.js`.
 
 **Acceptance criteria:**
 - The flow runs on the emulators with no live project (AC-10).
 - Every acceptance criterion AC-1 through AC-10 is covered by some phase's
   tests.
+- No `GATE_OFF`-style bypass knob exists anywhere. Encode this as a grep-able
+  assertion:
+  ```bash
+  grep -R "GATE_OFF\|__NO_GATE__" patients portal && echo "FAIL: bypass found" || echo "ok: no bypass"
+  ```
+  This must return `ok: no bypass`.
 
 **Tests:**
-- Full regression, exact commands:
+- Full regression, exact commands (all patient-facing suites run against the
+  Auth emulator at `127.0.0.1:9099`; the migrated suites sign in via the
+  helper):
   ```bash
+  firebase emulators:start --only auth,firestore   # one terminal
+
   cd portal
   node tests/activate.mjs
   node tests/gate.mjs
@@ -364,6 +420,12 @@ the full suite is green.
 
 ## Risks and open questions
 
+- **Testing policy (chosen).** Tests authenticate like patients: every
+  patient-facing browser test drives the real gate and the real Google sign-in
+  flow through the Auth emulator. No gate-bypass, `GATE_OFF` flag, or
+  conditional code path exists in production code to skip the gate. The only
+  concession is timing: the stored-card browser suites are expected red during
+  Phase 2 and are migrated to the shared sign-in helper in Phase 3.
 - **R1 — iOS standalone redirects.** `isHomeScreenApp()` already exists in
   `protocol.js`; the gate and `signInWithRedirect` path must be exercised in
   that case. Add a Playwright check in Phase 2 or 3 that stubs
@@ -374,6 +436,9 @@ the full suite is green.
   await readiness (poll `window.__authGate`).
 - **R3 — offline gate.** A live-session device must not be blocked from its
   dose by a network verify call (handled by the best-effort verify in Phase 3).
+  This is a spec-mandated failure-tolerance behavior (NFR-5), not a gate bypass:
+  the patient still holds a real, verifiable session; only the blocking nature
+  of the verify call is bounded.
 - **Open question 1 — `publicView()` exclusion.** Recommended and planned: yes.
 - **Open question 5 — config location.** Planned as
   `patients/jessica/assets/firebase.js` with public-only values; the parent
