@@ -24,9 +24,13 @@ The system has these parts:
   client-side script. It reads `protocol.json` or a card record. It computes
   the dosing schedule. It handles card identity, dose logging, reminders,
   calendar export, and state reporting.
+- **First-tap auth client** (`patients/jessica/assets/firebase.js`,
+  `patients/jessica/assets/auth-gate.js`). Two ES modules. They load the
+  Firebase Auth SDK from the gstatic CDN and drive the first-tap sign-in gate.
 - **Portal service** (`portal/server.js`). A Node.js HTTP server on Google
   Cloud Run. It serves the patient portal, card addresses (`/<slug>`), the
-  `/api` endpoints, and Card Studio.
+  `/api` endpoints, and Card Studio. It verifies the Google ID token with
+  `firebase-admin` before linking a card.
 - **Store layer** (`portal/store/`). One interface with two backings. Firestore
   on Cloud Run; a JSON file on a laptop. Files: `index.js` (cards),
   `doses.js`, `feeds.js`, `subs.js`.
@@ -47,6 +51,11 @@ Deployment:
 - Secret Manager holds the Studio passphrase and the push and wallet secrets.
 - Netlify serves the static portal at `ca-tap.netlify.app` (legacy) and
   `atelier-portal-jessica.netlify.app` (Jessica).
+- `firebase.json` configures the Auth (port 9099) and Firestore (port 8081)
+  emulators for local development.
+- Test suites that open a stored card sign in through the Auth emulator
+  (`portal/tests/auth-session.mjs`). `npm run seed` (`portal/scripts/seed.js`)
+  writes the dev and test cards.
 
 ## 3. Current Behaviors
 
@@ -64,6 +73,11 @@ Every patient page calls `loadProtocol()`. It installs a link guard. It reads
 the card from the fragment or the slug. It fetches `templates.json`. It builds
 the config. It loads the patient's device settings. It reports state to the
 server. It remembers the card on the device.
+
+For an assigned stored card, the boot also runs the sign-in gate. The first
+tap shows a full-screen welcome and a Google redirect sign-in. The service
+links the card once. Later sign-ins verify only. A different account shows a
+stuck screen. Fragment, legacy, and blank cards never see the gate.
 
 ### 3.3 Dose logging
 
@@ -92,6 +106,10 @@ opens and last-open time. It shows what the patient's phone reports. The
 atelier creates, edits, and retires cards there. Studio sign-in is a
 passphrase exchanged for a signed cookie.
 
+Each card row carries a LINKED or NOT LINKED pill. Clicking the pill opens a
+detail line with the linked name, provider, uid, and timestamp. A linked card
+shows an Unlink action, which clears the link so the next sign-in links again.
+
 ### 3.7 Card creation and editing
 
 Card Studio posts to `/api/cards` to create a card. The store sanitizes the
@@ -107,6 +125,9 @@ Public (no passphrase):
 - `/health`
 - `/api/card/<slug>`
 - `/api/tap/<slug>`
+- `/api/activate/<slug>` (POST). Links a card to the verified Google uid.
+  Returns 200 `linked` or `verified`; 409 `uid_mismatch`; 400 `bad_request`;
+  404 `not_found`; 503 `auth_unavailable`.
 - `/v/<payload>`
 - `/api/dose`
 - `/api/added/<slug>`
@@ -121,6 +142,8 @@ Passphrase-protected:
 - `/api/session`
 - `/api/cards`
 - `/api/cards/<slug>`
+- `/api/cards/<slug>/unlink` (POST). Clears `activatedBy`. Returns 200; 401
+  without a session; 404 `not_found`.
 - `/api/doses/<slug>`
 - `/api/push/phones/<slug>`
 - `/api/push/test`
@@ -151,11 +174,13 @@ A card record holds:
 - `state`: what the patient's phone last reported
 - `settings`: start day and times the atelier set for the patient
 - `added`, `dropped`: pens the patient added or removed herself
+- `activatedBy`: `{uid, provider, name, at}`, set once at first sign-in
 - `createdAt`, `updatedAt`
 
 `publicView()` returns only `slug`, `name`, `status`, `startDate`, `pens`,
-`added`, `dropped`, `settings`. The note, the counters, and the state stay on
-the clinician side.
+`added`, `dropped`, `settings`. The note, the counters, the state, and
+`activatedBy` stay on the clinician side. A Studio save carries `activatedBy`
+forward. Only the clinician Unlink action removes it.
 
 ## 5. Constraints
 
@@ -168,11 +193,13 @@ the clinician side.
   clinical record transits Netlify.
 - The repository is public. The site URL is unlisted but guessable.
 - The tag capacity bounds the card URL length (see `NFC-CARDS.md`).
+- Firebase Auth is registered against the `atelier-tap` project. The Firebase
+  console must list a web app with its `apiKey`, the Google provider enabled,
+  and the authorized domains `tap.thecharlestonatelier.com` and `localhost`.
+  Netlify is inactive.
 
 ## 6. Known Gaps
 
-- The atelier cannot see who activated a card. A tap is counted. No account is
-  linked to it.
 - Apple Wallet needs a developer membership and signing certificates before
   passes are issued (see `WALLET.md`).
 - Five titrations are flagged `needsDose` in `templates.json`. They are
