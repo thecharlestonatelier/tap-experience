@@ -1120,6 +1120,20 @@ async function loadTemplates() {
   return TEMPLATES;
 }
 
+/* The auth gate lives in its own module because only an ES module can
+   import the Firebase CDN. Loaded lazily, so fragment and legacy cards
+   never pay for it — and if the CDN is unreachable (offline dose), the
+   card opens anyway rather than lock her out. */
+var _authGatePromise = null;
+function loadAuthGate() {
+  if (!_authGatePromise) {
+    _authGatePromise = import('./auth-gate.js')
+      .then(m => (m && m.ensureActivated ? m : window.__authGate))
+      .catch(() => null);
+  }
+  return _authGatePromise;
+}
+
 async function loadProtocol() {
   // Every page gets the guard, whatever else happens below.
   installCardLinkGuard();
@@ -1174,6 +1188,20 @@ async function loadProtocol() {
     // Anything the atelier set for her, before the start day is read.
     _tookSettings = applySettings(rec.settings);
     noteTap(CARD_SLUG);
+
+    // An assigned stored card: the first tap must be linked to a Google
+    // account before the experience opens. Blank tags have no owner to
+    // link yet, and fragment / legacy cards carry their own protocol and
+    // never had a record, so neither sees the gate.
+    if (rec.name && rec.status !== 'retired') {
+      const gate = await loadAuthGate();
+      if (gate) {
+        const outcome = await gate.ensureActivated({ slug: CARD_SLUG });
+        if (outcome === 'blocked') {
+          throw Object.assign(new Error('card_blocked'), { blocked: true });
+        }
+      }
+    }
   } else if (legacy) {
     // The one card written before any of this existed. It is reached only
     // through its own marked address, never by landing on the bare root.
