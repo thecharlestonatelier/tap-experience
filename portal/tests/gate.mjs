@@ -1,5 +1,7 @@
 /* The welcome gate appears for an assigned stored card and never for a
-   fragment card or a legacy card. Needs (see tests/README.md):
+   fragment card or a legacy card. It offers two paths — Google and email
+   — and the email form validates before anything reaches the SDK. Needs
+   (see tests/README.md):
 
      firebase emulators:start --only auth               # 127.0.0.1:9099
      CARD_STORE=file CARD_FILE=.data-test/gate-cards.json PORT=8097 node server.js
@@ -16,6 +18,10 @@ const check = (name, ok, extra = '') => {
 
 const b = await chromium.launch();
 const page = await b.newPage();
+const activatePosts = [];
+page.on('request', req => {
+  if (/\/api\/activate\//.test(req.url())) activatePosts.push(req.url());
+});
 
 /* a stored card with no session: the gate */
 await page.goto(`${BASE}/gate.t`);
@@ -26,14 +32,37 @@ check('stored card shows the welcome gate', state === 'welcome', state);
 const title = await page.textContent('#auth-gate h1');
 check('welcome copy is present', /Welcome to The Charleston Atelier/.test(title), title);
 
-const buttons = await page.locator('#auth-gate button').count();
-check('exactly one Google button', buttons === 1, `buttons=${buttons}`);
+const googleButtons = await page.locator('#auth-gate button:has-text("Sign in with Google")').count();
+check('exactly one Google button', googleButtons === 1, `google buttons=${googleButtons}`);
 
-const google = await page.textContent('#auth-gate button');
-check('button says Sign in with Google', /Sign in with Google/.test(google), google);
+const emailAffordance = await page.locator('#auth-gate [data-email]').count();
+check('the email path is offered', emailAffordance === 1, `email affordances=${emailAffordance}`);
 
 const sms = await page.locator('#auth-gate a[href^="sms:"]').count();
 check('message-the-atelier link is an sms: deep link', sms >= 1, `sms links=${sms}`);
+
+/* the email form: toggle, name-only-on-signup, validation before any SDK */
+await page.locator('#auth-gate [data-email]').click();
+check('the email form opens', (await page.getAttribute('#auth-gate', 'data-state')) === 'email');
+
+const signupName = await page.locator('#auth-gate input[autocomplete="name"]').isVisible();
+check('sign-up mode shows the name field', signupName);
+
+await page.locator('#auth-gate a:has-text("Already have an account")').click();
+const signinName = await page.locator('#auth-gate input[autocomplete="name"]').isVisible();
+check('sign-in mode hides the name field', !signinName);
+const forgot = await page.locator('#auth-gate a:has-text("Forgot password")').isVisible();
+check('sign-in mode shows forgot-password', forgot);
+
+await page.locator('#auth-gate a:has-text("New here")').click();
+await page.locator('#auth-gate input[type="email"]').fill('not-an-email');
+await page.locator('#auth-gate input[type="password"]').fill('short');
+await page.locator('#auth-gate button:has-text("Create account")').click();
+const emailErr = await page.locator('#auth-gate [data-field-error]').filter({ hasText: 'valid email' }).isVisible();
+const passErr = await page.locator('#auth-gate [data-field-error]').filter({ hasText: 'at least 8' }).isVisible();
+check('a malformed email is rejected with a field error', emailErr);
+check('a short password is rejected with a field error', passErr);
+check('nothing reached the SDK or the service on invalid input', activatePosts.length === 0, `${activatePosts.length} activate posts`);
 
 /* a fragment card: no gate */
 await page.goto(`${BASE}/#Gate~nad`);
@@ -48,5 +77,5 @@ const legacyGate = await page.locator('#auth-gate').count();
 check('legacy card shows no gate', legacyGate === 0, `gate count=${legacyGate}`);
 
 await b.close();
-console.log(bad ? `\n${bad} FAILED` : '\nPASS — the gate appears for a stored card and nowhere else.');
+console.log(bad ? `\n${bad} FAILED` : '\nPASS — the gate offers Google and email, validates first, and appears for a stored card only.');
 process.exit(bad ? 1 : 0);

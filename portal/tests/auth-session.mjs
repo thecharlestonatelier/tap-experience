@@ -61,3 +61,44 @@ export async function clearSession(page) {
     sessionStorage.clear();
   });
 }
+
+/* ---------- email + password ----------
+   The same CDN SDK and emulator wiring the gate uses, so a suite holds a
+   real Firebase session exactly like a patient. */
+
+export function signUpEmail(page, { email = 'alice@example.com', password = 'password123', name = 'Alice Example' } = {}) {
+  return page.evaluate(async ({ email, password, name, CDN_APP, CDN_AUTH }) => {
+    const [{ firebaseConfig }] = await Promise.all([
+      import('/assets/firebase.js'),
+      import(CDN_APP),
+      import(CDN_AUTH)
+    ]);
+    const { initializeApp } = await import(CDN_APP);
+    const { getAuth, createUserWithEmailAndPassword, updateProfile, connectAuthEmulator } = await import(CDN_AUTH);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    }
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(cred.user, { displayName: name });
+  }, { email, password, name, CDN_APP, CDN_AUTH });
+}
+
+export function signInEmail(page, { email = 'alice@example.com', password = 'password123' } = {}) {
+  return page.evaluate(async ({ email, password, CDN_APP, CDN_AUTH }) => {
+    const [{ firebaseConfig }] = await Promise.all([
+      import('/assets/firebase.js'),
+      import(CDN_APP),
+      import(CDN_AUTH)
+    ]);
+    const { initializeApp } = await import(CDN_APP);
+    const { getAuth, signInWithEmailAndPassword, connectAuthEmulator } = await import(CDN_AUTH);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    }
+    await signInWithEmailAndPassword(auth, email, password);
+  }, { email, password, CDN_APP, CDN_AUTH });
+}

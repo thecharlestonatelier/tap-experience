@@ -21,7 +21,11 @@ import {
   GoogleAuthProvider,
   signInWithRedirect,
   getRedirectResult,
-  connectAuthEmulator
+  connectAuthEmulator,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  sendPasswordResetEmail
 } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 import { firebaseConfig } from './firebase.js';
 
@@ -97,8 +101,8 @@ function messageLink(label) {
   return a;
 }
 
-/* The full-screen welcome: monogram, one Google button, and the quiet
-   fallback for a patient without a Google account. */
+/* The full-screen welcome: monogram, one Google button, an email path,
+   and the quiet fallback for a patient without either. */
 function showWelcome() {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:14px; max-width:320px;';
@@ -132,12 +136,147 @@ function showWelcome() {
     });
   });
 
+  const email = document.createElement('a');
+  email.textContent = 'Use email instead';
+  email.href = '#';
+  email.setAttribute('data-email', '');
+  email.style.cssText = 'font-size:15px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer; margin-top:2px;';
+  email.addEventListener('click', e => {
+    e.preventDefault();
+    showEmailForm();
+  });
+
   const or = document.createElement('p');
-  or.textContent = 'Don\u2019t have a Google account?';
+  or.textContent = 'Don\u2019t have a Google account or an email?';
   or.style.cssText = 'font-size:14px; margin-top:8px;';
 
-  wrap.append(monogram(), title, copy, btn, or, messageLink('Message the atelier \u2192'));
+  wrap.append(monogram(), title, copy, btn, email, or, messageLink('Message the atelier \u2192'));
   overlay('welcome', wrap);
+}
+
+/* ---------- email + password form ----------
+   One form, two modes. Sign-up is the default — a new patient has no
+   account yet. The name field only exists in sign-up mode; a returning
+   email account already carries its name. Validation runs before any
+   SDK call. The flows themselves are wired in the next phase. */
+
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN = 8;
+
+function field(label, type, autocomplete) {
+  const box = document.createElement('label');
+  box.style.cssText = 'display:block; text-align:left; width:100%; font-size:13px; color:var(--espresso-soft,#4A3B2C);';
+  const text = document.createElement('span');
+  text.textContent = label;
+  const input = document.createElement('input');
+  input.type = type;
+  if (autocomplete) input.autocomplete = autocomplete;
+  input.style.cssText = [
+    'display:block; width:100%; margin-top:4px; padding:11px 12px; font:inherit;',
+    'border:1px solid rgba(59,46,32,0.25); border-radius:10px; background:#fff; color:var(--espresso,#3B2E20);'
+  ].join('');
+  const err = document.createElement('span');
+  err.setAttribute('data-field-error', '');
+  err.style.cssText = 'display:none; margin-top:3px; font-size:12px; color:#a4553f;';
+  box.append(text, input, err);
+  return { box, input, err };
+}
+
+function showEmailForm() {
+  let mode = 'signup';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:12px; max-width:320px; width:100%;';
+
+  const back = document.createElement('a');
+  back.textContent = '\u2190 Back to sign-in options';
+  back.href = '#';
+  back.style.cssText = 'font-size:14px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer; align-self:flex-start;';
+  back.addEventListener('click', e => { e.preventDefault(); showWelcome(); });
+
+  const title = document.createElement('h1');
+  title.textContent = 'Create your account';
+  title.style.cssText = 'font-size:22px; font-weight:600; color:var(--espresso,#3B2E20);';
+  const sub = document.createElement('p');
+  sub.textContent = 'Your name goes on the card so the atelier knows it is yours.';
+  sub.style.cssText = 'font-size:14px; line-height:1.5; color:var(--espresso-soft,#4A3B2C);';
+
+  const email = field('Email', 'email', 'email');
+  const password = field('Password (at least 8 characters)', 'password', 'current-password');
+  const name = field('Your name', 'text', 'name');
+
+  const formError = document.createElement('p');
+  formError.setAttribute('data-form-error', '');
+  formError.style.cssText = 'display:none; width:100%; font-size:13px; color:#a4553f; text-align:left;';
+
+  const submit = document.createElement('button');
+  submit.type = 'button';
+  submit.textContent = 'Create account';
+  submit.style.cssText = [
+    'width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer;',
+    'background:var(--brass,#8A7350); color:#F3EBE1; font:inherit; font-size:16px; font-weight:500;'
+  ].join('');
+
+  const toggle = document.createElement('a');
+  toggle.href = '#';
+  toggle.style.cssText = 'font-size:14px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer;';
+
+  const forgot = document.createElement('a');
+  forgot.textContent = 'Forgot password?';
+  forgot.href = '#';
+  forgot.style.cssText = 'font-size:14px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer;';
+  forgot.addEventListener('click', e => e.preventDefault()); // wired with the reset flow later
+
+  function paint() {
+    title.textContent = mode === 'signup' ? 'Create your account' : 'Sign in with email';
+    sub.textContent = mode === 'signup'
+      ? 'Your name goes on the card so the atelier knows it is yours.'
+      : 'Sign in to keep using your card.';
+    name.box.style.display = mode === 'signup' ? 'block' : 'none';
+    submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
+    toggle.textContent = mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account';
+    forgot.style.display = mode === 'signin' ? 'inline-block' : 'none';
+  }
+  toggle.addEventListener('click', e => {
+    e.preventDefault();
+    mode = mode === 'signup' ? 'signin' : 'signup';
+    email.err.style.display = 'none';
+    password.err.style.display = 'none';
+    name.err.style.display = 'none';
+    formError.style.display = 'none';
+    paint();
+  });
+
+  function invalid(which, message) {
+    which.err.textContent = message;
+    which.err.style.display = 'block';
+  }
+
+  submit.addEventListener('click', () => {
+    const okEmail = EMAIL_OK.test(email.input.value.trim());
+    const okPassword = password.input.value.length >= PASSWORD_MIN;
+    const okName = mode === 'signin' || name.input.value.trim().length > 0;
+    email.err.style.display = okEmail ? 'none' : 'block';
+    password.err.style.display = okPassword ? 'none' : 'block';
+    name.err.style.display = okName ? 'none' : 'block';
+    if (!okEmail) invalid(email, 'Enter a valid email address.');
+    if (!okPassword) invalid(password, `Use at least ${PASSWORD_MIN} characters.`);
+    if (!okName) invalid(name, 'Tell us your name.');
+    if (okEmail && okPassword && okName) {
+      formError.style.display = 'none';
+      submitEmailForm(mode, email.input.value.trim(), password.input.value, name.input.value.trim());
+    }
+  });
+
+  paint();
+  wrap.append(back, title, sub, email.box, password.box, name.box, formError, submit, toggle, forgot);
+  overlay('email', wrap);
+}
+
+/* The SDK flows behind the form — create or sign in, then link the card.
+   Wired in the next phase. */
+function submitEmailForm(mode, email, password, name) {
+  void mode; void email; void password; void name;
 }
 
 /* The quiet stuck screen: one message, one action. Shown when the card
