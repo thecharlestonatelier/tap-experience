@@ -1,10 +1,16 @@
 /* Three states must look different: her card unfinished, an address that
-   resolves to nobody, and a blank tag never assigned. */
+   resolves to nobody, and a blank tag never assigned. The stored card is
+   opened with a real Google session, the way a patient would. */
 import { chromium } from 'playwright';
+import { signInGoogle } from './auth-session.mjs';
 const BASE='http://localhost:8091';
 let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${x?' — '+x:''}`); if(!ok)bad++;};
 
 const b=await chromium.launch(); const page=await b.newPage();
+
+/* Sign in first — test.p is an assigned stored card and gates otherwise. */
+await page.goto(BASE + '/');
+await signInGoogle(page);
 
 async function look(path){
   await page.goto(BASE+path);

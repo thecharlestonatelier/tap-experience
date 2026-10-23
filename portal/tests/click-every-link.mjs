@@ -1,6 +1,8 @@
 /* Click every internal link on every page, in both kinds of card, and
-   assert the patient is never told her card is not set up. */
+   assert the patient is never told her card is not set up. The stored
+   card is opened with a real Google session. */
 import { chromium } from 'playwright';
+import { signInGoogle } from './auth-session.mjs';
 const BASE='http://localhost:8087';
 const CARDS = [
   ['slug card',     '/layn.p-v2p',                       'Layna'],
@@ -11,6 +13,10 @@ let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${
 
 const b=await chromium.launch(); const page=await b.newPage();
 page.on('pageerror', e=>console.log('  PAGE ERROR:', e.message));
+
+/* Sign in before the stored card is opened — the gate is part of the flow. */
+await page.goto(`${BASE}/`);
+await signInGoogle(page);
 
 const broken = async () => {
   await page.waitForTimeout(750);

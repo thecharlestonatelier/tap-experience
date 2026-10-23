@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { signInGoogle } from './auth-session.mjs';
 const B='http://localhost:8096', TOK=readFileSync('/tmp/tok.txt','utf8').trim();
 const H={'Content-Type':'application/json',Cookie:`ca_studio=${TOK}`};
 let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${x?' — '+x:''}`);if(!ok)bad++;};
@@ -21,8 +22,10 @@ const rec=await (await fetch(`${B}/api/card/est.t`)).json();
 check('saving puts it back on the record', (rec.dropped||[]).length===0, JSON.stringify(rec.dropped));
 // and it returns to her card
 const q=await (await br.newContext()).newPage();
+await q.goto(`${B}/`);
+await signInGoogle(q);
 await q.goto(`${B}/ritual.html?c=est.t`);
-await q.waitForFunction(()=>typeof PENS!=='undefined',null,{timeout:15000});
+await q.waitForFunction(()=>typeof PENS!=='undefined'&&PENS.length,null,{timeout:15000});
 check('and back onto her card', await q.evaluate(()=>PENS.some(x=>x.id==='ghk')),
       (await q.evaluate(()=>PENS.map(x=>x.id))).join(', '));
 await br.close();

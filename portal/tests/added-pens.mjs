@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { signInGoogle } from './auth-session.mjs';
 const B='http://localhost:8096', TOK=readFileSync('/tmp/tok.txt','utf8').trim();
 const H={'Content-Type':'application/json',Cookie:`ca_studio=${TOK}`};
 let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${x?' — '+x:''}`);if(!ok)bad++;};
@@ -12,6 +13,8 @@ const br=await chromium.launch();
 const ctx=await br.newContext({viewport:{width:420,height:900}});
 const p=await ctx.newPage(); p.on('pageerror',e=>{console.log(' FAIL page error —',e.message);bad++;});
 p.on('dialog',d=>d.accept());
+await p.goto(`${B}/`);
+await signInGoogle(p);
 await p.goto(`${B}/ritual.html?c=est.t`);
 await p.waitForFunction(()=>typeof PENS!=='undefined'&&PENS.length,null,{timeout:15000});
 
@@ -27,6 +30,8 @@ check('and does not touch what was prescribed',
 
 // --- it comes back on a phone that has never seen it ---
 const fresh=await (await br.newContext({viewport:{width:420,height:900}})).newPage();
+await fresh.goto(`${B}/`);
+await signInGoogle(fresh);
 await fresh.goto(`${B}/ritual.html?c=est.t`);
 await fresh.waitForFunction(()=>typeof PENS!=='undefined'&&PENS.length,null,{timeout:15000});
 check('a wiped phone gets it back',
@@ -68,7 +73,7 @@ check('putting it back restores it', await p.evaluate(()=>PENS.some(x=>x.id==='g
       (await p.evaluate(()=>PENS.map(x=>x.id))).join(', '));
 check('and the record agrees', ((await rec()).dropped||[]).length===0,
       JSON.stringify((await rec()).dropped));
-await p.reload(); await p.waitForFunction(()=>typeof PENS!=='undefined',null,{timeout:15000});
+await p.reload(); await p.waitForFunction(()=>typeof PENS!=='undefined'&&PENS.length,null,{timeout:15000});
 check('and it survives a reload', await p.evaluate(()=>PENS.some(x=>x.id==='ghk')));
 
 await br.close();

@@ -1,7 +1,9 @@
 /* A card left open, the way a home-screen card is: never reloaded.
-   The atelier changes the protocol; the patient comes back to the app. */
+   The atelier changes the protocol; the patient comes back to the app.
+   The card is opened with a real Google session first. */
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { signInGoogle } from './auth-session.mjs';
 const B='http://localhost:8096', TOK=readFileSync('/tmp/tok.txt','utf8').trim();
 const H={'Content-Type':'application/json',Cookie:`ca_studio=${TOK}`};
 let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${x?' — '+x:''}`);if(!ok)bad++;};
@@ -12,6 +14,8 @@ const br=await chromium.launch();
 const ctx=await br.newContext({viewport:{width:420,height:900}});
 const p=await ctx.newPage(); p.on('pageerror',e=>{console.log(' FAIL  page error —',e.message);bad++;});
 
+await p.goto(`${B}/`);
+await signInGoogle(p);
 await p.goto(`${B}/ritual.html?c=est.t`);
 await p.waitForFunction(()=>typeof PENS!=='undefined'&&PENS.length,null,{timeout:15000});
 /* Coming back to a card that was left open. The browser fires these when

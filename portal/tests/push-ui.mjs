@@ -1,8 +1,10 @@
 /* The patient's side, in a real browser:
    the switch appears, subscribes, survives a reload, and the schedule it
-   posts matches the doses the card itself is showing. */
+   posts matches the doses the card itself is showing. The stored card is
+   opened with a real Google session. */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import { signInGoogle } from './auth-session.mjs';
 
 /* Read the store directly rather than adding a debug route to a service
    that holds patient records. */
@@ -61,6 +63,8 @@ await page.addInitScript(() => {
   window.PushManager = function () {};
 });
 
+await page.goto(`${BASE}/`);
+await signInGoogle(page);
 await page.goto(`${BASE}/rem.t`);
 await page.waitForSelector('body.resolved', { timeout: 8000 });
 

@@ -1,8 +1,66 @@
-# Reminder tests
+# Portal test suites
 
-Three suites, because reminders fail quietly. A dose that is never nudged
-looks exactly like a dose that was nudged and ignored, and neither the
-patient nor the atelier finds out.
+The suites fall into two groups: Node suites that talk HTTP only, and
+Playwright suites that open the patient pages in a real browser.
+
+## Stored cards and the sign-in gate
+
+An assigned stored card (a slug with a name) now gates its first tap
+behind a Google sign-in. Every suite that opens one must therefore run
+against the **Auth emulator** and sign in like a patient:
+
+```bash
+firebase emulators:start --only auth          # 127.0.0.1:9099
+```
+
+The service for those suites additionally needs the emulator wired in so
+`/api/activate` verifies tokens locally:
+
+```bash
+FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GOOGLE_CLOUD_PROJECT=atelier-tap \
+  CARD_STORE=file CARD_FILE=.data-test/<file>.json PORT=<port> node server.js
+```
+
+Suites import the shared helper:
+
+```js
+import { signInGoogle, clearSession } from './auth-session.mjs';
+
+await page.goto(`${BASE}/`);
+await signInGoogle(page);                 // a real Firebase session, persisted
+await clearSession(page);                 // simulate WebKit ITP wiping it
+```
+
+`signInGoogle` speaks the same SDK calls the gate itself uses — the Auth
+emulator mints a fake Google account per `identity` (default `alice`), and
+the same identity always means the same account. There is no gate-bypass
+in the code: a suite passes because it is signed in, exactly like a
+patient. Suites that open stored cards: `empty-card`, `click-every-link`,
+`added-pens`, `protocol-change`, `push-ui`, `studio-pens`, `gate-edge`.
+
+Those suites also expect the named dev cards — `est.t` (Established),
+`layn.p-v2p` (Layna), `test.p` (Test), `rem.t` (Rem), `blank.q`
+(blank), `edge.t` (Edge), `gate.t` (Gate) — which the seed tool writes
+into any file store:
+
+```bash
+cd portal
+SEED_FILE=.data-test/gate-cards.json npm run seed      # per-suite file
+npm run seed                                           # or the dev store
+```
+
+Cards a suite opens in the browser carry a start date in `settings`,
+so the ritual page never raises its first-run start-day scrim over the
+clicks the suite is making. For suites that talk to the dashboard
+(`added-pens`, `protocol-change`, `studio-pens`), mint a Studio session
+token first:
+
+```bash
+TOK=$(curl -s -X POST http://localhost:<port>/api/session \
+  -H "Content-Type: application/json" -d '{"passphrase":"testpassphrase"}' -i \
+  | grep -i '^set-cookie' | sed 's/^[Ss]et-[Cc]ookie: ca_studio=//' | cut -d';' -f1)
+echo "$TOK" > /tmp/tok.txt
+```
 
 ## push-crypto.mjs
 
