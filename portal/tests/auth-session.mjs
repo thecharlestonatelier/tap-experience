@@ -82,6 +82,10 @@ export function signUpEmail(page, { email = 'alice@example.com', password = 'pas
     }
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(cred.user, { displayName: name });
+    // Refresh the session's cached token so a later navigation links the
+    // card with the name claim present — the same freshness the gate's
+    // own sign-up path forces at link time.
+    await cred.user.getIdToken(true);
   }, { email, password, name, CDN_APP, CDN_AUTH });
 }
 

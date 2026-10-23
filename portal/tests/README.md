@@ -38,10 +38,12 @@ FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GOOGLE_CLOUD_PROJECT=atelier-tap \
 Suites import the shared helper:
 
 ```js
-import { signInGoogle, clearSession } from './auth-session.mjs';
+import { signInGoogle, signUpEmail, signInEmail, clearSession } from './auth-session.mjs';
 
 await page.goto(`${BASE}/`);
 await signInGoogle(page);                 // a real Firebase session, persisted
+await signUpEmail(page, { email, password, name });   // create + profile name
+await signInEmail(page, { email, password });         // existing account
 await clearSession(page);                 // simulate WebKit ITP wiping it
 ```
 
@@ -75,6 +77,18 @@ TOK=$(curl -s -X POST http://localhost:<port>/api/session \
   | grep -i '^set-cookie' | sed 's/^[Ss]et-[Cc]ookie: ca_studio=//' | cut -d';' -f1)
 echo "$TOK" > /tmp/tok.txt
 ```
+
+## gate-email.mjs
+
+The email + password path end to end against the Auth emulator: sign-up
+through the gate links the card with provider `password` and the typed
+name; an existing email suggests sign-in and flips the form; a wrong
+password and an unknown email show one uniform message; and a password
+reset (Admin `generatePasswordResetLink` → `oobCode` →
+`confirmPasswordReset` in the browser) lets the patient back in without
+touching `activatedBy`. Needs the Auth emulator and a service with
+`STUDIO_PASSPHRASE` and `FIREBASE_AUTH_EMULATOR_HOST`; the seed tool
+provides the cards.
 
 ## unlink.mjs
 

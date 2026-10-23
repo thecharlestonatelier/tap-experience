@@ -147,7 +147,7 @@ function showWelcome() {
   });
 
   const or = document.createElement('p');
-  or.textContent = 'Don\u2019t have a Google account or an email?';
+  or.textContent = 'Don\u2019t have a Google account or an email account?';
   or.style.cssText = 'font-size:14px; margin-top:8px;';
 
   wrap.append(monogram(), title, copy, btn, email, or, messageLink('Message the atelier \u2192'));
@@ -225,8 +225,10 @@ function showEmailForm() {
   forgot.textContent = 'Forgot password?';
   forgot.href = '#';
   forgot.style.cssText = 'font-size:14px; color:var(--brass,#8A7350); text-decoration:underline; cursor:pointer;';
+  let forgotSent = false;
   forgot.addEventListener('click', async e => {
     e.preventDefault();
+    if (forgotSent) return;
     const value = email.input.value.trim();
     if (!EMAIL_OK.test(value)) {
       email.err.textContent = 'Enter a valid email address.';
@@ -235,16 +237,24 @@ function showEmailForm() {
     }
     // Enumeration protection means the call resolves even for unknown
     // addresses, and the confirmation must not reveal which case it was.
+    // But a real misconfiguration — the provider disabled, or the network
+    // down — must not masquerade as "sent".
     try {
       await sendPasswordResetEmail(auth, value, {
         url: `${location.origin}/${currentSlug}`,
         handleCodeInApp: false
       });
-    } catch {
-      /* offline: fall through to the same non-committal message */
+    } catch (err) {
+      if (err && (err.code === 'auth/operation-not-allowed' ||
+                  err.code === 'auth/network-request-failed' ||
+                  err.code === 'auth/internal-error')) {
+        forgot.textContent = 'Couldn\u2019t send the reset email \u2014 try again, or message the atelier.';
+        return;
+      }
     }
     forgot.textContent = 'If that email has an account here, a reset link is on its way.';
     forgot.style.cursor = 'default';
+    forgotSent = true;
   });
 
   function paint() {
@@ -254,6 +264,9 @@ function showEmailForm() {
       : 'Sign in to keep using your card.';
     name.box.style.display = mode === 'signup' ? 'block' : 'none';
     submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
+    // A password manager should only autofill a saved login in sign-in
+    // mode; in sign-up it is a brand-new password.
+    password.input.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
     toggle.textContent = mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account';
     forgot.style.display = mode === 'signin' ? 'inline-block' : 'none';
   }
@@ -285,7 +298,7 @@ function showEmailForm() {
     if (okEmail && okPassword && okName) {
       formError.style.display = 'none';
       submitEmailForm(mode, email.input.value.trim(), password.input.value, name.input.value.trim(),
-        { toggle, formError, emailErr: email.err, passwordErr: password.err });
+        { toggle, formError, emailErr: email.err, passwordErr: password.err, submit });
     }
   });
 
@@ -300,9 +313,15 @@ function showEmailForm() {
    enumeration protection), and only the create path's
    email-already-in-use proves an account exists. */
 async function submitEmailForm(mode, emailValue, passwordValue, nameValue, ui) {
-  const { toggle, formError, emailErr, passwordErr } = ui;
+  const { toggle, formError, emailErr, passwordErr, submit } = ui;
   const fieldMsg = (which, msg) => { which.textContent = msg; which.style.display = 'block'; };
   const formMsg = (msg) => { formError.textContent = msg; formError.style.display = 'block'; };
+
+  // A double-tap must not fire two sign-up calls; the loser would flip
+  // the form to sign-in even though the first succeeded.
+  const idle = () => { submit.disabled = false; submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in'; };
+  submit.disabled = true;
+  submit.textContent = 'One moment\u2026';
 
   try {
     let user;
@@ -317,8 +336,15 @@ async function submitEmailForm(mode, emailValue, passwordValue, nameValue, ui) {
       user = (await signInWithEmailAndPassword(auth, emailValue, passwordValue)).user;
     }
     const outcome = await linkCard(currentSlug, user, mode === 'signup');
+    if (outcome === 'no-token') {
+      // The session could not produce a token; back to the welcome gate
+      // with the resolver still armed so the patient can try again.
+      showWelcome();
+      return;
+    }
     finishEmailFlow(outcome);
   } catch (err) {
+    idle();
     const code = err && err.code;
     if (code === 'auth/email-already-in-use') {
       // Switch to sign-in and keep the typed email in the box.
@@ -403,13 +429,11 @@ function forever() { return new Promise(() => {}); }
 
 /* Post the ID token and let the service decide: linked, verified, or
    blocked. Force-refresh after a fresh email sign-up so the name claim
-   makes the trip. */
+   makes the trip. A missing token returns 'no-token' so the caller can
+   re-arm the gate instead of dead-ending. */
 async function linkCard(slug, user, forceRefresh = false) {
   const idToken = await user.getIdToken(forceRefresh).catch(() => null);
-  if (!idToken) {
-    showWelcome();
-    await forever();
-  }
+  if (!idToken) return 'no-token';
 
   let res;
   try {
@@ -441,7 +465,9 @@ async function ensureActivated({ slug }) {
     return 'blocked';
   }
   if (user) {
-    return linkCard(slug, user, false);
+    const outcome = await linkCard(slug, user, false);
+    if (outcome !== 'no-token') return outcome;
+    // No token after all: fall through and treat this as no session.
   }
 
   // No session. The Google path navigates away and comes back as a fresh
