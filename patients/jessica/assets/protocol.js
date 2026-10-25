@@ -714,6 +714,10 @@ function buildConfig(name, pens, templates, startDate) {
       name: `${name}'s Protocol`,
       // With no date on the card the patient sets her own on first open.
       startDate: startDate || fallback,
+      // Whether that date was actually given to us or quietly defaulted.
+      // "We do not know when she started" and "she started today" are
+      // different facts, and only one of them is worth asking about.
+      startGiven: !!startDate,
       delivery: 'pen',
       /* Logging a dose by hand, from the card itself.
 

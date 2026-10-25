@@ -169,3 +169,13 @@ Every tirzepatide vial is 1 mL — 100 units — whatever the patient doses
 out of it. Her own dose at N units a week gives floor(100/N) doses; a
 stored answer claiming a bigger vial cannot resize it; two vials are
 2 mL and twice the doses and do not restart the schedule.
+
+## no-reprompt.mjs
+
+A card that is already anchored must never ask when she started again.
+Safari clears script storage after seven quiet days, and the card used to
+ask whenever THIS BROWSER had no answer — so a patient two months in was
+asked the question and shown a two-month-old date, and one tap on "Today"
+moved her phases, supply, refill date and calendar forward two months.
+Each visit here uses a brand-new browser context, which is exactly what
+that eviction leaves behind.

@@ -1846,12 +1846,25 @@ async function boot() {
   // tells the patient her card is not set up.
   applyCardLinks(document);
 
-  // First visit on this device: ask which day she actually started, so the
-  // whole schedule is anchored to her, not to a date typed in the chart.
-  // ?change=1 is the link inside every calendar event: she tapped a dose,
-  // wanted it moved, and should land on the sheet that moves it.
+  /* Ask only when nobody anywhere knows when she started.
+
+     This used to ask whenever THIS BROWSER had no saved answer, which is
+     not the same thing at all. Safari clears script storage for a site
+     not visited in seven days, so a patient two months into a protocol
+     would open her card, be asked "which day did you start?", and be
+     shown a date from two months ago — correct, but presented as a
+     question. One tap on "Today" and her phases, her supply, her refill
+     date and her calendar all jumped forward two months.
+
+     A card with a start day on the record, or with a dose already logged,
+     is anchored. It does not need asking and must not be re-asked.
+
+     ?change=1 is the link inside every calendar event: she tapped a dose,
+     wanted it moved, and should land on the sheet that moves it. */
   const wantsChange = new URLSearchParams(location.search).get('change') === '1';
-  if (!saved || wantsChange) openStartPicker();
+  const anchored = !!CFG.protocol.startGiven
+    || PENS.some(p => p.atelierStart || firstDoseDay(p));
+  if ((!saved && !anchored) || wantsChange) openStartPicker();
 
   // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
   const tagged = TRACKING ? new URLSearchParams(location.search).get('log') : null;
