@@ -126,3 +126,20 @@ her card in a fortnight is still flagged; a vial she sized herself —
 tirzepatide, a NAD vial — comes from her card's own report instead,
 because this end cannot know how big it is. Also checks that a start day
 which only ever reached her phone still counts, which it did not before.
+
+## overview.mjs
+
+The read-only overview at /api/overview. What it refuses (no token, a
+wrong token, the studio cookie alone, anything but GET), what it answers
+with, and what it must never carry — the clinician note, dose history,
+injection sites, times, push subscriptions, or any field beyond the
+agreed list. It also pins the milligram-to-unit resolution: templates
+state the dose in milligrams and the pen is dialled in units, and reading
+the file raw makes every pen measure as lasting no days, which reports
+that nobody is ever short of anything.
+
+```bash
+AGENT_TOKEN=test-agent-token-xyz CARD_STORE=file STUDIO_PASSPHRASE=tp \
+  PORT=8095 node server.js &
+node tests/overview.mjs
+```

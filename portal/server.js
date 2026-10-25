@@ -28,6 +28,7 @@ const crypto = require('node:crypto');
 const { openStore, sanitize, publicView, assertSlug, sanitizeState } = require('./store');
 const { openDoses, sanitizeDose } = require('./store/doses');
 const { openFeeds, sanitizeFeed } = require('./store/feeds');
+const { supplyFor, effectiveStart } = require('./lib/supply');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
@@ -56,6 +57,25 @@ const SESSION_SECRET = process.env.SESSION_SECRET
 
 /* Cloud Scheduler proves itself with this rather than a session cookie. */
 const PUSH_RUN_SECRET = process.env.PUSH_RUN_SECRET || '';
+
+/* A read-only overview for an assistant acting for the atelier, proved by
+   a bearer token rather than the dashboard session, because a program has
+   no browser and should not be handed the passphrase.
+
+   Unset means the route does not exist. There is no default and no
+   fallback: a PHI endpoint that turns itself on is not one worth having.
+   Revoking is deleting the secret and redeploying. */
+const AGENT_TOKEN = process.env.AGENT_TOKEN || '';
+
+/* Compared in constant time, and never logged or echoed. */
+function isAgent(req) {
+  if (!AGENT_TOKEN) return false;
+  const raw = String(req.headers.authorization || '');
+  const given = /^Bearer\s+(.+)$/i.exec(raw);
+  if (!given) return false;
+  const a = Buffer.from(given[1]), b = Buffer.from(AGENT_TOKEN);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 const store = openStore();
 const doses = openDoses();
@@ -524,9 +544,51 @@ async function route(req, res) {
     return json(res, 200, { signedIn: isClinician(req), required: !!STUDIO_PASSPHRASE });
   }
 
+  /* --- the read-only overview ---
+     What is needed to answer "is she out of anything" and "has anyone
+     stopped a prescription", and nothing else. Deliberately not the card
+     records: no clinician note, no dose history, no injection sites, no
+     times, no push subscriptions. GET only, and it writes nothing.
+
+     It carries patient names, because a supply list nobody can match to a
+     person answers no question worth asking. That makes it PHI, which is
+     why it is behind its own token, off unless one is set, and served
+     only from Cloud Run under the BAA. */
+  if (p === '/api/overview' && req.method === 'GET') {
+    if (!AGENT_TOKEN) return json(res, 404, { error: 'not_found' });
+    if (!isAgent(req)) return json(res, 401, { error: 'unauthorized' });
+
+    const cards = (await store.list()).filter(c => c.status !== 'blank');
+    return json(res, 200, {
+      asOf: new Date().toISOString(),
+      patients: cards.map(c => {
+        const s = supplyFor(c, WEB_ROOT);
+        return {
+          slug: c.slug,
+          name: c.name || '',
+          status: c.status,
+          lastSeen: c.lastSeen || null,
+          startDate: effectiveStart(c),
+          pens: (c.pens || []).map(x => x.template),
+          outOf: s.out,
+          runningLow: s.low,
+          // Named, because a blank here means "nobody can say", which is
+          // not the same as "she is fine".
+          supplyUnknown: s.unknown,
+          stopped: c.dropped || [],
+          addedHerself: (c.added || []).map(a => a.template)
+        };
+      })
+    });
+  }
+
   if (p === '/api/cards' && req.method === 'GET') {
     if (!requireClinician(req, res)) return;
-    return json(res, 200, { cards: await store.list(), store: store.kind });
+    // The dashboard reads supply from here rather than working it out in
+    // the page, so the list and the overview can never disagree.
+    const cards = (await store.list()).map(c =>
+      Object.assign({}, c, { supply: supplyFor(c, WEB_ROOT) }));
+    return json(res, 200, { cards, store: store.kind });
   }
 
   if (p === '/api/cards' && req.method === 'POST') {

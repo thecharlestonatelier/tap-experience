@@ -47,12 +47,37 @@ bold "Service : $SERVICE ($REGION)"
 
 # ---------------------------------------------------------------- deploy
 step "Deploying production"
+
+# --set-secrets REPLACES the service's whole secret list, so every secret
+# the service needs has to be named here, every time. Naming fewer is what
+# switched reminders off in production twice.
+SECRETS="STUDIO_PASSPHRASE=studio-passphrase:latest"
+SECRETS="$SECRETS,VAPID_PUBLIC_KEY=vapid-public-key:latest"
+SECRETS="$SECRETS,VAPID_PRIVATE_KEY=vapid-private-key:latest"
+SECRETS="$SECRETS,PUSH_RUN_SECRET=push-run-secret:latest"
+
+# The read-only overview is off until a token exists, and naming a secret
+# that does not exist fails the whole deploy — so this is added only when
+# it is really there. To turn it on:
+#
+#   openssl rand -base64 32 | tr -d '\n' \
+#     | gcloud secrets create agent-token --data-file=- \
+#     && bash deploy-prod.sh
+#
+# and to revoke it, delete the secret and deploy again.
+if gcloud secrets describe agent-token >/dev/null 2>&1; then
+  SECRETS="$SECRETS,AGENT_TOKEN=agent-token:latest"
+  bold "Overview : on (agent-token exists)"
+else
+  bold "Overview : off (no agent-token secret)"
+fi
+
 gcloud run deploy "$SERVICE" \
   --source . \
   --region "$REGION" \
   --allow-unauthenticated \
   --set-env-vars CARD_STORE=firestore,NODE_ENV=production \
-  --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,PUSH_RUN_SECRET=push-run-secret:latest
+  --set-secrets "$SECRETS",AGENT_TOKEN=agent-token:latest
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
 
