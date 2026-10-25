@@ -151,3 +151,14 @@ leaves the others where they were, it survives a reload, a pen added
 today starts today without disturbing anything, each pen's day reaches
 the atelier, and every pen carries a remove control in the rhythm sheet
 — due today or not.
+
+## first-dose-start.mjs
+
+The start day is the day of the first dose, not the day it was planned.
+Before any dose a pen follows the atelier's date; the first logged dose
+replaces it; a later dose does not move it; a dose back-filled to an
+earlier day does; a date typed in the sheet pins it and the log stops
+moving it; and saving the sheet without touching a date pins nothing, so
+a pen not yet started still picks up its own first dose.
+
+Every suite takes BASE, so the whole set can be run against one service.

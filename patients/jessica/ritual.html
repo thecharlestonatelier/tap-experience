@@ -751,12 +751,20 @@ function openStartPicker() {
 
   const list = document.getElementById('startPens');
   list.hidden = single;
-  list.innerHTML = single ? '' : PENS.map(pen => `
+  list.innerHTML = single ? '' : PENS.map(pen => {
+    // A day taken from her own first logged dose is already right, and
+    // saying so stops her retyping it — and stops a stray tap pinning a
+    // date that would then stop following the record.
+    const obs = firstDoseDay(pen);
+    const fromLog = obs && obs === penStartIso(pen);
+    return `
     <label class="time-row">
-      <span>${pen.name}</span>
+      <span>${pen.name}${fromLog
+        ? '<br><small style="color:var(--muted)">your first logged dose</small>' : ''}</span>
       <input class="date-field" type="date" data-penstart="${pen.id}"
-             value="${penStartIso(pen)}">
-    </label>`).join('');
+             data-was="${penStartIso(pen)}" value="${penStartIso(pen)}">
+    </label>`;
+  }).join('');
 
   const quick = [
     ['Today', t],
@@ -796,14 +804,19 @@ function commitStart() {
   if (rows.length) {
     rows.forEach(inp => {
       const pen = PENS.find(p => p.id === inp.dataset.penstart);
-      if (pen && inp.value) setPenStart(pen, inp.value);
+      // Only a date she actually changed is pinned. Saving the sheet to
+      // set her reminder times would otherwise freeze every start day at
+      // whatever was shown, and they would stop following her log.
+      if (pen && inp.value && inp.value !== inp.dataset.was) setPenStart(pen, inp.value);
     });
-    /* The protocol start day stays as the earliest pen, because it is what
-       a pen with no answer of its own falls back to and what the adherence
-       figures count from. It is no longer the thing that moves pens. */
-    const earliest = rows.map(i => i.value).filter(Boolean).sort()[0];
-    if (earliest) setStart(earliest);
-    else scheduleChanged();
+    /* The protocol start day is deliberately NOT touched here.
+
+       It was being set to the earliest pen, which read as tidy and was the
+       same bug in a new place: a pen with no date of its own falls back to
+       it, so typing a date for one pen moved every pen that had not been
+       answered for. It stays as the atelier set it, and is now only ever a
+       fallback. */
+    scheduleChanged();
   } else {
     const v = document.getElementById('startInput').value;
     if (v) setStart(v);

@@ -559,11 +559,50 @@ function savePenStarts(map) {
   try { localStorage.setItem(penStartsKey(), JSON.stringify(map)); } catch {}
 }
 
+/* The day a pen was first actually injected, as recorded.
+
+   This is the only start day anybody observes rather than predicts. The
+   atelier types a date when it hands the pen over, and the patient gets
+   home, puts the box in the fridge and starts on Thursday — from then on
+   every phase boundary, every refill date and every reminder is two days
+   out, and nothing in the system would ever notice.
+
+   A back-filled dose counts, because a dose carries the day it was given
+   rather than the day it was entered. Only the earliest matters, so a
+   second vial of the same pen never moves it. */
+function firstDoseDay(pen) {
+  const key = penKeyOf(pen);
+  let first = null;
+  for (const day of Object.keys(LOGGED || {})) {
+    if (!(LOGGED[day] || []).includes(key)) continue;
+    if (!first || day < first) first = day;
+  }
+  return first;
+}
+
 /* Applied after the pen list is settled, so it can key off pen ids that
-   only exist once added pens are in and dropped pens are out. */
+   only exist once added pens are in and dropped pens are out.
+
+   Precedence, most trustworthy first:
+
+     1. a date somebody typed, which pins it — if she says she started on
+        the 12th but only began logging on the 14th, she is telling us
+        about two doses she did not record, and she is right;
+     2. the first dose on record, which is an observation;
+     3. what the atelier put on the card, which is a plan;
+     4. the protocol's own start day.
+
+   Nothing here is typed by the patient unless she opens the sheet, so in
+   the ordinary case — pen handed over Monday, first injection Thursday —
+   the card corrects itself the moment she logs that first dose. */
 function applyPenStarts() {
   const mine = loadPenStarts();
-  PENS.forEach(p => { if (mine[p.id]) p.startDate = mine[p.id]; });
+  PENS.forEach(p => {
+    if (mine[p.id]) { p.startDate = mine[p.id]; return; }
+    const first = firstDoseDay(p);
+    if (first) p.startDate = first;
+  });
+  _supplyCache.clear();
 }
 
 function setPenStart(pen, isoDate) {
@@ -1674,6 +1713,10 @@ async function loadLogged(only) {
     const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
     if (res.ok) LOGGED = (await res.json()).days || {};
   } catch { /* a page that cannot reach the service is still a page */ }
+  // A pen's start day can be the day of its first dose, and that is only
+  // knowable once the log is in hand. Every page loads the protocol before
+  // the log, so this is where the two meet.
+  if (typeof PENS !== 'undefined' && PENS.length) applyPenStarts();
   return LOGGED;
 }
 
