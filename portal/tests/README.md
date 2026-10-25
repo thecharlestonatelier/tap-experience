@@ -117,3 +117,12 @@ patient's reminders.
 
 Needs the push sink and VAPID keys; see push-flow.mjs for both, plus a
 Studio session cookie in /tmp/tok.txt.
+
+## supply-flags.mjs
+
+Who is out of something, read off the dashboard list. A pen is projected
+from the prescription and the start day, so a patient who has not opened
+her card in a fortnight is still flagged; a vial she sized herself —
+tirzepatide, a NAD vial — comes from her card's own report instead,
+because this end cannot know how big it is. Also checks that a start day
+which only ever reached her phone still counts, which it did not before.

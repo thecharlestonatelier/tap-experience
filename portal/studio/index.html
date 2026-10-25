@@ -780,6 +780,7 @@ async function refresh() {
         : name;
     }).join(' · ');
     const now = showingNow(c);
+    const supply = supplyOf(c);
     const taps = Number(c.taps) || 0;
     return `<tr data-slug="${c.slug}" style="cursor:pointer">
       <td class="slug">/${c.slug}</td>
@@ -802,7 +803,17 @@ async function refresh() {
         (c.name && !(c.pens || []).length)
           ? ' <span class="pill warn" title="This card opens with no protocol on it">no protocol</span>'
           : ''}${
-        now.flag === 'course finished'
+        // Out of something, named. "finished" told you a course had ended
+        // but never which pen, which is no use when you are the one who
+        // has to order it.
+        supply.out.length
+          ? ` <span class="pill stop" title="This pen has given its last dose — she needs a refill">out of ${
+              supply.out.join(', ')}</span>`
+          : ''}${
+        supply.low.map(l =>
+          ` <span class="pill warn" title="${l.name} runs out in ${l.days} day${
+            l.days === 1 ? '' : 's'}">${l.name} ${l.days}d left</span>`).join('')}${
+        (!supply.out.length && now.flag === 'course finished')
           ? ' <span class="pill warn" title="Every pen on this card is spent">finished</span>'
           : ''}${
         // A named, active card nobody has ever opened is usually a card that
@@ -1231,6 +1242,82 @@ function renderStats() {
    opened days ago: walk the schedule from the card's start day and say
    where that lands. It is a second copy of the arithmetic, and it is kept
    only because a card nobody has tapped still has to show something. */
+/* How many days before a pen runs dry counts as "order one". */
+const LOW_DAYS = 10;
+
+/* The start day the patient is actually on.
+
+   Three places hold one and they are not the same: the card's own
+   startDate is what was typed here, settings.startDate is what was sent
+   to her phone, and state.startDate is what her phone says it is using —
+   which wins, because she can move it herself. Reading only the first is
+   why a card with a perfectly good start day sat on this list saying
+   "waiting for her start day", and why nothing here could work out how
+   much she had left. */
+function effectiveStart(rec) {
+  return (rec.state && rec.state.startDate)
+      || (rec.settings && rec.settings.startDate)
+      || rec.startDate || null;
+}
+
+/* What is left in each pen, from the record alone.
+
+   It does not wait for her phone to report in. A patient who has not
+   opened her card in a fortnight is exactly the one whose pen quietly
+   ran out, so this is computed here from the prescription and the start
+   day rather than from anything she sends. */
+function supplyOf(rec) {
+  const out = [], low = [];
+  const seen = new Set();
+  const nameOf = id => {
+    const t = (TEMPLATES.templates || []).find(x => x.id === id);
+    return t ? t.name : id;
+  };
+  const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+  const place = (name, days) => {
+    if (days <= 0) out.push(name);
+    else if (days <= LOW_DAYS) low.push({ name, days });
+  };
+
+  /* What her phone worked out, first. A vial she sized herself — a
+     tirzepatide, a NAD vial — has no life this end can calculate, because
+     the prescription does not say how big it is or how often she draws
+     from it. Her card does, and it reports it.
+
+     `lastDose` is an absolute date, so an old report is still right: the
+     day a pen runs dry does not move unless the protocol does, and when
+     the protocol moves her card reports again. */
+  for (const s of (rec.state && rec.state.supply) || []) {
+    seen.add(s.template);
+    const name = nameOf(s.template);
+    if (s.lastDose) {
+      place(name, Math.round((new Date(s.lastDose + 'T00:00:00') - midnight) / 86400000));
+    } else if (!s.dosesLeft) {
+      out.push(name);
+    }
+  }
+
+  /* And the prescription for anything she has not reported — a patient
+     who has not opened her card in a fortnight is exactly the one whose
+     pen quietly ran out, so this end does not wait to be told. */
+  const startDate = effectiveStart(rec);
+  if (!startDate) return { out, low };
+  const elapsed = Math.floor((midnight - new Date(startDate + 'T00:00:00')) / 86400000);
+  if (elapsed < 0) return { out, low };
+
+  for (const pen of rec.pens || []) {
+    if (seen.has(pen.template)) continue;
+    const t = (TEMPLATES.templates || []).find(x => x.id === pen.template);
+    // A vial she sizes herself cannot be projected from here, and saying
+    // nothing is better than saying a number that is not hers.
+    if (!t || t.setup) continue;
+    const L = penLife(t, pen.phases || t.phases || []);
+    if (!L.days) continue;
+    place(t.name, L.days - elapsed);
+  }
+  return { out, low };
+}
+
 function showingNow(rec) {
   const s = rec.state;
   if (s && s.at && Date.now() - new Date(s.at) < 36 * 3600000 && (s.today || []).length) {
@@ -1242,9 +1329,10 @@ function showingNow(rec) {
 
   const pens = rec.pens || [];
   if (!pens.length) return { text: '—', flag: rec.name ? 'no protocol' : '' };
-  if (!rec.startDate) return { text: 'waiting for her start day', flag: '' };
+  const startDate = effectiveStart(rec);
+  if (!startDate) return { text: 'waiting for her start day', flag: '' };
 
-  const start = new Date(rec.startDate + 'T00:00:00');
+  const start = new Date(startDate + 'T00:00:00');
   const elapsed = Math.floor((Date.now() - start) / 86400000);
   if (elapsed < 0) return { text: 'not started yet', flag: '' };
 
