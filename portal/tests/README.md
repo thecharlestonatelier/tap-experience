@@ -93,8 +93,9 @@ Also checks that coming back with nothing changed redraws nothing.
 
 The `+` on Today's Ritual. A peptide a patient adds reaches the record
 without touching what was prescribed, comes back on a phone that has
-never seen it, and can be taken off again by her. A prescribed pen
-carries no remove control and `removePen()` refuses it.
+never seen it, and can be taken off again by her. A prescribed pen can
+be taken off too — recorded in `dropped` rather than deleted from
+`pens` — stays off across a reload, and comes back when she asks.
 
 Both need a service with a Studio session; see logging.mjs for the setup,
 and mint a session cookie from STUDIO_PASSPHRASE.
@@ -103,3 +104,16 @@ and mint a session cookie from STUDIO_PASSPHRASE.
 
 The atelier's side of a stopped prescription: Card Studio says she has
 stopped it, offers to put it back, and saving puts it back on her card.
+
+## atelier-alert.mjs
+
+Being told when a patient stops a prescription: the device subscribes
+(and only behind the passphrase), a newly stopped pen sends exactly one
+push, her phone re-posting the same list sends none, adding one of her
+own or putting a pen back sends none, and turning it off makes it quiet.
+It also reads the notification body out of server.js and checks it names
+no drug and no patient — the same rule push-crypto.mjs enforces for the
+patient's reminders.
+
+Needs the push sink and VAPID keys; see push-flow.mjs for both, plus a
+Studio session cookie in /tmp/tok.txt.

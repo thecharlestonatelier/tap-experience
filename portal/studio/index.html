@@ -72,6 +72,10 @@
   .pill.blank { color:var(--brass); }
   .pill.retired { color:var(--alert); border-color:rgba(164,85,63,.35); }
   .pill.warn { color:var(--alert); border-color:rgba(164,85,63,.45); background:rgba(164,85,63,.06); }
+  /* Louder than warn. A patient who has stopped a prescription is the one
+     thing on this list worth looking at before anything else. */
+  .pill.stop { color:#FBF3E9; border-color:var(--alert); background:var(--alert); }
+  .pens .off { text-decoration:line-through; opacity:.55; }
 
   .url { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--sunk);
          border:1px solid var(--line); border-radius:9px; padding:9px 11px;
@@ -279,6 +283,20 @@
         <input id="blankCount" type="number" min="1" max="50" value="1">
       </div>
       <div style="flex:0 0 auto"><button class="ghost" id="makeBlanks">Mint blanks</button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tell me when a patient changes something</h2>
+    <p class="hint">
+      A patient can take a pen she was prescribed off her own schedule. The
+      list above marks it, but only once you look &mdash; this sends it to
+      this device as it happens. The notification names nobody and no drug;
+      it says a card changed, and you open Studio to see which.
+    </p>
+    <div class="panel">
+      <button class="ghost sm" id="alertToggle">Turn on</button>
+      <span class="hint" id="alertState" style="margin-left:10px">Off on this device.</span>
     </div>
   </section>
 
@@ -548,6 +566,7 @@ async function start() {
   renderDeck();
   renderVials();
   renderDeploy();
+  renderAlerts();
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
     TEMPLATES.templates.filter(t => t.id !== 'custom' && !t.retired)
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -584,6 +603,80 @@ function deployCommand(health) {
   ].join(' && ');
 }
 
+/* ---------- told when a patient changes her own protocol ----------
+   Per device, because a push subscription is a browser, not an account.
+   Turning it on on the laptop does not turn it on on the phone, and the
+   state below is this browser's, not the atelier's. */
+async function currentStudioSub() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  const reg = await navigator.serviceWorker.getRegistration('/studio/');
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+function keyToBytes(base64) {
+  const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4))
+    .replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function renderAlerts() {
+  const btn = $('alertToggle'), label = $('alertState');
+  if (!btn) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    btn.hidden = true;
+    label.textContent = 'This browser cannot show notifications.';
+    return;
+  }
+  let on = false;
+  try { on = !!(await currentStudioSub()); } catch {}
+  btn.textContent = on ? 'Turn off' : 'Turn on';
+  label.textContent = on
+    ? 'On for this device.'
+    : (Notification.permission === 'denied'
+        ? 'Notifications are blocked for this site in your browser settings.'
+        : 'Off on this device.');
+}
+
+async function toggleAlerts() {
+  const btn = $('alertToggle');
+  btn.disabled = true;
+  try {
+    const existing = await currentStudioSub();
+    if (existing) {
+      await api('/api/push/atelier', {
+        method: 'POST',
+        body: JSON.stringify({ off: true, endpoint: existing.endpoint })
+      });
+      await existing.unsubscribe();
+      toast('Off. This device will not be told.');
+      return;
+    }
+
+    const { available, key } = await api('/api/push/key');
+    if (!available || !key) return toast('Notifications are not configured on the server.', 6000);
+    if (await Notification.requestPermission() !== 'granted') {
+      return toast('Your browser refused notifications for this site.', 6000);
+    }
+
+    const reg = await navigator.serviceWorker.register('sw.js', { scope: '/studio/' });
+    await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: keyToBytes(key)
+    });
+    await api('/api/push/atelier', { method: 'POST', body: JSON.stringify({ sub: sub.toJSON() }) });
+    toast('On. This device will be told when a patient stops a pen.');
+  } catch (e) {
+    toast(`Could not change it — ${e.message}`, 6000);
+  } finally {
+    btn.disabled = false;
+    renderAlerts();
+  }
+}
+
 async function renderDeploy() {
   $('dRev').textContent = '…';
   let health = null;
@@ -602,6 +695,8 @@ $('copyDeploy').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('deployCmd').textContent);
   toast('Command copied — paste it into Cloud Shell.');
 });
+$('alertToggle').addEventListener('click', toggleAlerts);
+
 $('checkDeploy').addEventListener('click', async () => {
   await renderDeploy();
   toast(`Running ${$('dRev').textContent}, up ${$('dSince').textContent}.`);
@@ -671,9 +766,18 @@ async function refresh() {
   sel.value = keep;
 
   $('rows').innerHTML = CARDS.map(c => {
-    const pens = (c.pens || []).map(p => {
+    /* A pen she has stopped is still prescribed, so it stays in this
+       column — struck through, which says both things at once: it was
+       ordered, and it is not being taken. */
+    const off = c.dropped || [];
+    const pens = (c.pens || []).map((p, i) => {
       const t = TEMPLATES.templates.find(x => x.id === p.template);
-      return t ? t.name : p.template;
+      const name = t ? t.name : p.template;
+      const id = (c.pens || []).filter(x => x.template === p.template).length > 1
+        ? `${p.template}#${i}` : p.template;
+      return off.includes(id)
+        ? `<span class="off" title="She has taken this off her schedule">${name}</span>`
+        : name;
     }).join(' · ');
     const now = showingNow(c);
     const taps = Number(c.taps) || 0;
@@ -685,6 +789,13 @@ async function refresh() {
       <td class="num${taps ? '' : ' cold'}">${taps || '—'}</td>
       <td class="num${c.lastSeen ? '' : ' cold'}">${c.lastSeen ? ago(c.lastSeen) : 'never'}</td>
       <td><span class="pill ${c.status}">${c.status}</span>${
+        // Said first, and in full colour: she has stopped something that
+        // was prescribed for her, and nothing else here would say so.
+        off.length
+          ? ` <span class="pill stop" title="She has taken ${off.length} prescribed ${
+              off.length === 1 ? 'pen' : 'pens'} off her own schedule">stopped ${
+              off.length === 1 ? 'a pen' : `${off.length} pens`}</span>`
+          : ''}${
         // A named card with nothing on it opens to "your protocol has not
         // been added yet". Say so here, so it is caught before the card is
         // handed over rather than by the patient.

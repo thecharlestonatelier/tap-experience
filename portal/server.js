@@ -71,6 +71,27 @@ const STARTED_AT = new Date().toISOString();
    Nothing here reads the protocol. The card is consulted only to check it
    still exists and is still active, so a retired patient stops hearing
    from us the moment the card is retired. */
+/* Where the atelier's own subscriptions live. A '~' cannot survive
+   normalizeSlug(), so no card can ever be given this address. */
+const ATELIER_SLUG = '~atelier';
+
+/* Told that something changed, never what. The body is a fixed string
+   with no patient and no drug in it — a notification renders on a locked
+   screen, and the push services are outside the BAA. Tapping it opens
+   Card Studio, which is behind the passphrase and has the detail. */
+async function notifyAtelier(body, tag) {
+  if (!push.configured()) return { sent: 0 };
+  let sent = 0;
+  for (const rec of await subs.forSlug(ATELIER_SLUG)) {
+    const out = await push.sendPush(rec.sub, {
+      title: 'The Charleston Atelier', body, url: '/studio/', tag
+    }).catch(() => ({ ok: false, gone: false }));
+    if (out.gone) { await subs.remove(rec.id); continue; }
+    if (out.ok) sent++;
+  }
+  return { sent };
+}
+
 async function runReminders(now = Date.now()) {
   const all = await subs.listAll();
   const out = { phones: all.length, sent: 0, skipped: 0, dropped: 0, failed: 0 };
@@ -395,7 +416,20 @@ async function route(req, res) {
     if (Array.isArray(body.added)) patch.added = body.added;
     if (Array.isArray(body.dropped)) patch.dropped = body.dropped;
     if (!Object.keys(patch).length) return json(res, 400, { error: 'bad_request' });
+    const before = (rec.dropped || []).slice();
     const saved = await store.put(sanitize(patch, rec));
+
+    /* Stopping a prescription is the one thing a patient can do here that
+       the atelier would want to hear about rather than find later. Only a
+       pen that was not already off counts — her phone re-posts the whole
+       list, so without this every save would ring. */
+    const fresh = (saved.dropped || []).filter(id => !before.includes(id));
+    if (fresh.length) {
+      notifyAtelier(
+        'A patient has taken a prescribed pen off her schedule. Open Card Studio.',
+        'stopped'
+      ).catch(() => {});
+    }
     return json(res, 200, { ok: true, added: saved.added || [], dropped: saved.dropped || [] });
   }
 
@@ -579,6 +613,33 @@ async function route(req, res) {
     if (!rec) return json(res, 400, { error: 'bad_subscription' });
     const saved = await subs.put(rec);
     return json(res, 201, { ok: true, id: saved.id, due: saved.due.length });
+  }
+
+  /* --- the atelier's own phone ---
+     Not a card, so it cannot hang off a slug. The sentinel below is not a
+     valid slug — normalizeSlug() can never produce a leading '~' — so it
+     can never collide with a patient, and runReminders() leaves it alone
+     because it carries no due times. */
+  if (p === '/api/push/atelier') {
+    if (!requireClinician(req, res)) return;
+
+    if (req.method === 'GET') {
+      const found = await subs.forSlug(ATELIER_SLUG);
+      return json(res, 200, { on: found.length, available: push.configured() });
+    }
+
+    if (req.method === 'POST') {
+      if (!push.configured()) return json(res, 503, { error: 'push_not_configured' });
+      const body = await readBody(req);
+      if (body && body.off && body.endpoint) {
+        await subs.remove(subIdFor(body.endpoint));
+        return json(res, 200, { ok: true, on: false });
+      }
+      const rec = sanitizeSub(body, ATELIER_SLUG);
+      if (!rec) return json(res, 400, { error: 'bad_subscription' });
+      await subs.put(rec);
+      return json(res, 201, { ok: true, on: true });
+    }
   }
 
   if (p === '/api/push/unsubscribe' && req.method === 'POST') {
