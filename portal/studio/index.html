@@ -1400,6 +1400,15 @@ function renderPens() {
         <span class="pen-name">${t.name || pen.template}</span>
         <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
       </div>
+      <!-- Its own start day. Blank means it follows the card's start day,
+           which is what every pen did before any of them could differ —
+           so an existing card reads exactly as it always has until a date
+           is actually typed here. -->
+      <label class="setup-note" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span>Started</span>
+        <input type="date" data-penstart="${pi}" value="${pen.startDate || ''}">
+        <span style="color:var(--muted)">${pen.startDate ? '' : 'follows the card'}</span>
+      </label>
       ${phases.length ? `<div class="phase phase-head">
         <span>Phase</span><span>Units</span><span>Days</span><span></span>
       </div>` : ''}
@@ -1433,6 +1442,14 @@ function renderPens() {
       if (mgEl) mgEl.textContent = mgLine(t, pen.phases);
       const lifeEl = list.querySelector(`[data-life="${p}"]`);
       if (lifeEl) lifeEl.innerHTML = lifeLine(t, pen.phases);
+    }));
+
+  list.querySelectorAll('[data-penstart]').forEach(inp =>
+    inp.addEventListener('change', () => {
+      const pen = editing.pens[inp.dataset.penstart];
+      if (!pen) return;
+      if (inp.value) pen.startDate = inp.value; else delete pen.startDate;
+      renderPens();
     }));
 
   list.querySelectorAll('[data-undrop]').forEach(b =>

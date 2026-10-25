@@ -533,6 +533,51 @@ function setStart(isoDate) {
   scheduleChanged();
 }
 
+/* ---------- when each pen started ----------
+   One start day for the whole protocol was wrong the moment a second pen
+   existed. A patient three months into a GHK pen who begins tirzepatide
+   today has two start days, and answering "which day did you start?" with
+   today used to drag the GHK back to today with it — new phase, wrong
+   dial number, wrong supply, wrong calendar.
+
+   So each pen carries its own. penStart() already reads pen.startDate and
+   every projection goes through it; what was missing was anywhere for the
+   patient to put one, and anything that kept them apart.
+
+   Her answer lives on her phone, like the protocol start day always has,
+   and is reported to the atelier with the rest of her state. A pen with
+   no answer of its own falls back to the record's date for that pen, and
+   then to the protocol's — which is what every existing card does, so
+   nothing moves for anyone until they say otherwise. */
+function penStartsKey() { return `tca.penstart.${CFG.patient.id}`; }
+
+function loadPenStarts() {
+  try { return JSON.parse(localStorage.getItem(penStartsKey())) || {}; } catch { return {}; }
+}
+
+function savePenStarts(map) {
+  try { localStorage.setItem(penStartsKey(), JSON.stringify(map)); } catch {}
+}
+
+/* Applied after the pen list is settled, so it can key off pen ids that
+   only exist once added pens are in and dropped pens are out. */
+function applyPenStarts() {
+  const mine = loadPenStarts();
+  PENS.forEach(p => { if (mine[p.id]) p.startDate = mine[p.id]; });
+}
+
+function setPenStart(pen, isoDate) {
+  if (!pen || !isoDate) return;
+  const mine = loadPenStarts();
+  mine[pen.id] = isoDate;
+  savePenStarts(mine);
+  pen.startDate = isoDate;
+  _supplyCache.clear();
+}
+
+/* The day a pen began, as a date string, for anything that has to show it. */
+function penStartIso(pen) { return iso(penStart(pen)); }
+
 /* ---------- card payloads ----------
    A tap card carries its own protocol in the URL fragment, so a card can
    be written at the end of a visit with no server and no record to keep.
@@ -738,7 +783,10 @@ function stateReport() {
       return {
         template: pen.template || pen.id,
         dosesLeft: dosesLeft(pen),
-        lastDose: s.lastDose ? iso(s.lastDose) : ''
+        lastDose: s.lastDose ? iso(s.lastDose) : '',
+        // The day this pen began, which is now its own and not the
+        // protocol's, so the atelier reads what she is actually on.
+        startDate: penStartIso(pen)
       };
     })
   };
@@ -1188,6 +1236,7 @@ async function loadProtocol() {
   START = parse(loadStart() || CFG.protocol.startDate);
   applyAdded(templates);
   applyDropped();
+  applyPenStarts();
   applySetups();
   _supplyCache.clear();
 
@@ -1250,6 +1299,7 @@ async function recheckCard() {
     START = parse(loadStart() || CFG.protocol.startDate);
     applyAdded(templates);
     applyDropped();
+    applyPenStarts();
     applySetups();
     _supplyCache.clear();
 

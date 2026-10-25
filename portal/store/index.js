@@ -123,7 +123,10 @@ function sanitizeState(input) {
     supply: (Array.isArray(input.supply) ? input.supply : []).slice(0, 8).map(s => ({
       template: str(s.template, 24),
       dosesLeft: Number(s.dosesLeft) || 0,
-      lastDose: /^\d{4}-\d{2}-\d{2}$/.test(s.lastDose || '') ? s.lastDose : ''
+      lastDose: /^\d{4}-\d{2}-\d{2}$/.test(s.lastDose || '') ? s.lastDose : '',
+      // Each pen has its own start day now, so the one in `startDate`
+      // above is only the protocol's default.
+      startDate: /^\d{4}-\d{2}-\d{2}$/.test(s.startDate || '') ? s.startDate : ''
     })),
     at: nowIso()
   };

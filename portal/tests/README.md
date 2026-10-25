@@ -143,3 +143,11 @@ AGENT_TOKEN=test-agent-token-xyz CARD_STORE=file STUDIO_PASSPHRASE=tp \
   PORT=8095 node server.js &
 node tests/overview.mjs
 ```
+
+## pen-starts.mjs
+
+Each pen keeps its own start day. The sheet asks per pen, moving one
+leaves the others where they were, it survives a reload, a pen added
+today starts today without disturbing anything, each pen's day reaches
+the atelier, and every pen carries a remove control in the rhythm sheet
+— due today or not.
