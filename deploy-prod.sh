@@ -79,6 +79,9 @@ fi
 step "Checking it answered"
 HEALTH="$(curl -fsS "$URL/health" || true)"
 GATE="$(curl -s -o /dev/null -w '%{http_code}' "$URL/api/cards" || true)"
+# Reminders fail silently. Nothing errors, no patient complains, and the
+# first sign is a dose nobody was nudged about — so the deploy asks.
+PUSHK="$(curl -fsS "$URL/api/push/key" || true)"
 
 echo "  /health     ${HEALTH:-(no answer)}"
 echo "  /api/cards  $GATE  (401 means the dashboard is locked, which is right)"
@@ -91,6 +94,19 @@ case "$HEALTH" in
    Check: gcloud run services logs read $SERVICE --region $REGION" ;;
 esac
 [ "$GATE" = "401" ] || warn "Expected 401 on /api/cards — if it is 200 the passphrase did not take."
+
+case "$PUSHK" in
+  *'"available":true'*) echo "  reminders   on — the signing keys are attached." ;;
+  *) warn "REMINDERS ARE OFF. The service has no VAPID keys, so no patient
+   will be nudged for a dose and the atelier will not be told when one
+   changes her protocol. Nothing else will report this — it fails quietly.
+
+   Almost always this: a 'gcloud run deploy --set-secrets' naming fewer
+   than all four secrets. --set-secrets REPLACES the list; it does not add
+   to it. This script names all four, so re-running it is the fix:
+
+     bash deploy-prod.sh" ;;
+esac
 
 step "Live"
 cat <<EOF
