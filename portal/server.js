@@ -29,6 +29,7 @@ const { openStore, sanitize, publicView, assertSlug, sanitizeState } = require('
 const { openDoses, sanitizeDose } = require('./store/doses');
 const { openFeeds, sanitizeFeed } = require('./store/feeds');
 const { supplyFor, effectiveStart } = require('./lib/supply');
+const { catalogue: serviceCatalogue, servicesFor } = require('./lib/services');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
@@ -588,12 +589,21 @@ async function route(req, res) {
     });
   }
 
+  /* The treatments the atelier gives in the room, and their cadences.
+     Public: it is the menu, not anybody's record. */
+  if (p === '/api/services') {
+    return json(res, 200, { services: serviceCatalogue() });
+  }
+
   if (p === '/api/cards' && req.method === 'GET') {
     if (!requireClinician(req, res)) return;
-    // The dashboard reads supply from here rather than working it out in
-    // the page, so the list and the overview can never disagree.
-    const cards = (await store.list()).map(c =>
-      Object.assign({}, c, { supply: supplyFor(c, WEB_ROOT) }));
+    // The dashboard reads supply and service cadences from here rather
+    // than working them out in the page, so the list, the editor and the
+    // overview can never disagree.
+    const cards = (await store.list()).map(c => Object.assign({}, c, {
+      supply: supplyFor(c, WEB_ROOT),
+      services: servicesFor(c)
+    }));
     return json(res, 200, { cards, store: store.kind });
   }
 

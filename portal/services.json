@@ -1,0 +1,115 @@
+{
+  "_note": "Aesthetic treatments the atelier gives in the room, as opposed to the peptides a patient takes at home. A card can carry both. Cadence is what decides when the next one is due; `color` is how it reads on a calendar.",
+
+  "_cadence": "everyDays is the usual gap. firstGaps overrides it for the opening sessions of a course — PRX is weekly four times and then monthly, so firstGaps is [7,7,7] and everyDays is 30. courseOf ends a course rather than repeating forever. windowDays is a range where one exists, and the due date is taken from its start so the reminder lands at the beginning of the window rather than the end.",
+
+  "services": [
+    {
+      "id": "toxin",
+      "name": "Toxin — Xeomin",
+      "short": "tox",
+      "color": "blue",
+      "hex": "#3E6B8A",
+      "everyDays": 90,
+      "unit": "unit",
+      "price": 12.5,
+      "memberPrice": 10,
+      "note": "Priced per unit."
+    },
+    {
+      "id": "filler",
+      "name": "Dermal Filler",
+      "short": "fil",
+      "color": "pink",
+      "hex": "#C9748C",
+      "everyDays": null,
+      "note": "No set cadence — reviewed at follow-up rather than scheduled.",
+      "price": 750,
+      "memberPrice": 700
+    },
+    {
+      "id": "prx",
+      "name": "PRX Glass Skin Facial",
+      "short": "prx",
+      "color": "magenta",
+      "hex": "#A3387A",
+      "firstGaps": [7, 7, 7],
+      "everyDays": 30,
+      "note": "Once a week for four weeks, then monthly or before an event.",
+      "price": 350,
+      "memberPrice": 99,
+      "seriesPrice": 1200,
+      "memberSeriesPrice": 900
+    },
+    {
+      "id": "poly",
+      "name": "Polynucleotides & Skin Boosters",
+      "short": "pol",
+      "color": "light purple",
+      "hex": "#A892C9",
+      "everyDays": 28,
+      "courseOf": 3,
+      "note": "Profhilo, Nucleofil or Redensity I. Every four weeks, two to three sessions.",
+      "price": 300
+    },
+    {
+      "id": "lipo",
+      "name": "Fat Dissolving / Liquid Lipo",
+      "short": "lip",
+      "color": "amber",
+      "hex": "#B5803A",
+      "everyDays": 56,
+      "windowDays": [56, 70],
+      "courseOf": 2,
+      "note": "Every eight to ten weeks, one to two sessions. Priced by area.",
+      "areas": [
+        { "name": "Bra bulge, per side", "price": 200 },
+        { "name": "Inner thigh, per thigh", "price": 300 },
+        { "name": "Underarm, per side", "price": 300 },
+        { "name": "Lower abdominal pouch", "price": 600 }
+      ]
+    },
+    {
+      "id": "radiesse",
+      "name": "Hyperdilute Radiesse",
+      "short": "rad",
+      "color": "clay",
+      "hex": "#A4553F",
+      "everyDays": null,
+      "note": "Collagen stimulation. Cadence set case by case.",
+      "price": 795,
+      "memberPrice": 735
+    },
+    {
+      "id": "b12",
+      "name": "B12 Injection",
+      "short": "b12",
+      "color": "sage",
+      "hex": "#5C7A5E",
+      "everyDays": 28,
+      "note": "Methylcobalamin. Included for members.",
+      "price": 25,
+      "memberPrice": 0
+    },
+    {
+      "id": "labs",
+      "name": "Laboratory Panel",
+      "short": "lab",
+      "color": "espresso",
+      "hex": "#4A3C30",
+      "everyDays": 180,
+      "note": "The Atelier Baseline or Advanced. Repeated twice a year unless the physician says otherwise.",
+      "price": 399,
+      "memberPrice": 299
+    },
+    {
+      "id": "consult",
+      "name": "Metabolic Consultation",
+      "short": "con",
+      "color": "brass",
+      "hex": "#A98844",
+      "everyDays": null,
+      "note": "Complimentary. Booked rather than scheduled on a cadence."
+    }
+  ]
+}

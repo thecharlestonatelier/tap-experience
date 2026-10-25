@@ -25,6 +25,7 @@
    ================================================================== */
 
 const { isValidSlug, normalizeSlug } = require('../lib/slug');
+const { sanitizeVisits } = require('../lib/services');
 
 const COLLECTION = process.env.CARD_COLLECTION || 'cards';
 
@@ -160,6 +161,11 @@ function sanitize(input, existing = null) {
       ? input.dropped.slice(0, 8)
           .map(id => String(id || '')).filter(id => /^[A-Za-z0-9#._-]{1,48}$/.test(id))
       : (existing ? (existing.dropped || []) : []),
+    // Aesthetic treatments given in the room. The atelier's record, not
+    // the patient's — a tapped card cannot reach this.
+    visits: Array.isArray(input.visits)
+      ? sanitizeVisits(input.visits)
+      : (existing ? (existing.visits || []) : []),
     createdAt: existing ? existing.createdAt : nowIso(),
     updatedAt: nowIso()
   };
@@ -218,6 +224,7 @@ function publicView(rec) {
     pens: rec.pens || [],
     added: rec.added || [],
     dropped: rec.dropped || [],
+    visits: rec.visits || [],
     // Her own settings, so the card can adopt anything the atelier
     // changed for her. Not the state report — that came from her phone
     // and it has no use for it back.

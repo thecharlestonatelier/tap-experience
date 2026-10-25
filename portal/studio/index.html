@@ -475,6 +475,20 @@
       </div>
     </div>
 
+    <div style="margin-top:22px">
+      <label>Treatments in the room <span style="text-transform:none;letter-spacing:0">— what she has had, and when the next one is due</span></label>
+      <div id="visitList"></div>
+      <div class="row" style="margin-top:10px">
+        <div><select id="visitPick"><option value="">Log a treatment…</option></select></div>
+        <div style="flex:0 0 auto"><input type="date" id="visitDate"></div>
+        <div style="flex:0 0 auto"><button type="button" class="ghost sm" id="addVisit">Log it</button></div>
+      </div>
+      <div class="row" style="margin-top:8px" id="visitExtra" hidden>
+        <div><select id="visitArea"><option value="">Area or product…</option></select></div>
+        <div style="flex:0 0 auto"><input type="number" id="visitUnits" placeholder="units" min="0" step="0.5" style="width:90px"></div>
+      </div>
+    </div>
+
     <div style="margin-top:20px">
       <label for="editNote">Chart note <span style="text-transform:none;letter-spacing:0">— never shown to the patient</span></label>
       <textarea id="editNote" rows="2"></textarea>
@@ -506,6 +520,7 @@ const ORIGIN = location.origin;
 const ML_PER_UNIT = 0.01;
 
 let TEMPLATES = null;
+let SERVICES = [];
 let CARDS = [];
 let editing = null;
 
@@ -587,6 +602,11 @@ async function start() {
   $('app').hidden = false;
   TEMPLATES = resolveDoses(
     await (await fetch('/templates.json', { cache: 'no-store' })).json());
+  try { SERVICES = (await (await fetch('/api/services')).json()).services || []; } catch {}
+  $('visitPick').innerHTML = '<option value="">Log a treatment…</option>' +
+    SERVICES.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  $('visitDate').value = new Date().toISOString().slice(0, 10);
+
   renderDeck();
   renderVials();
   renderDeploy();
@@ -863,6 +883,15 @@ async function refresh() {
               off.length === 1 ? 'pen' : 'pens'} off her own schedule">stopped ${
               off.length === 1 ? 'a pen' : `${off.length} pens`}</span>`
           : ''}${
+        // A treatment she is due for, or past due. Worked out from the
+        // visits on her record rather than from a booking system, so it
+        // shows whether or not anything is in the diary.
+        (c.services || []).filter(s => s.next && (s.next.overdue || s.next.soon))
+          .map(s => ` <span class="pill ${s.next.overdue ? 'stop' : 'warn'}"
+            title="${esc(s.name)} — ${s.next.overdue
+              ? `was due ${s.next.due}` : `due ${s.next.due}`}">${
+            esc(s.name.split(' — ')[0].split(' / ')[0])} ${
+            s.next.overdue ? 'overdue' : 'due'}</span>`).join('')}${
         // A named card with nothing on it opens to "your protocol has not
         // been added yet". Say so here, so it is caught before the card is
         // handed over rather than by the patient.
@@ -975,6 +1004,7 @@ function openEditor(slug) {
   $('editStatus').value = editing.status || 'active';
   $('editNote').value = editing.note || '';
   renderPens();
+  renderVisits();
   renderSeen();
   renderTimes();
   renderDoses(editing.slug);
@@ -1489,6 +1519,86 @@ function stoppedByHer() {
   </div>`;
 }
 
+/* ---------- treatments in the room ----------
+   A visit is a date and a service, and the cadence does the rest. The due
+   date is never stored: the moment a visit is corrected a stored one would
+   be wrong, and nothing would say so. */
+function renderVisits() {
+  const list = $('visitList');
+  if (!list) return;
+  const visits = (editing.visits || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!visits.length) {
+    list.innerHTML = '<p class="hint" style="margin:0">Nothing logged yet.</p>';
+    return;
+  }
+
+  // Grouped by service, newest first, each with where the course stands.
+  const ids = [...new Set(visits.map(v => v.service))];
+  list.innerHTML = ids.map(id => {
+    const s = SERVICES.find(x => x.id === id) || { name: id, hex: '#8A7C6A' };
+    const mine = visits.filter(v => v.service === id);
+    const n = nextVisit(id, editing.visits || []);
+
+    const when = !n ? ''
+      : n.done ? `Course complete — ${n.course}.`
+      : n.none ? 'No set cadence.'
+      : n.overdue ? `<b style="color:var(--alert)">Overdue by ${-n.days} day${n.days === -1 ? '' : 's'}</b> — was due ${fmtDay(n.due)}.`
+      : `Next ${fmtDay(n.due)}${n.days === 0 ? ' — today' : `, in ${n.days} day${n.days === 1 ? '' : 's'}`}.${
+          n.window ? ` Window to ${fmtDay(n.window[1])}.` : ''}${
+          n.course ? ` Session ${n.course}.` : ''}`;
+
+    return `<div class="pen-row" style="border-left:4px solid ${s.hex}">
+      <div class="pen-head">
+        <span class="pen-name">${s.name}</span>
+        <span class="hint" style="margin:0">${mine.length} visit${mine.length === 1 ? '' : 's'}</span>
+      </div>
+      <p class="setup-note" style="margin-bottom:8px">${when}</p>
+      ${mine.map(v => `<div class="phase" style="grid-template-columns:1fr auto auto">
+        <span>${fmtDay(v.date)}${v.area ? ` · ${v.area}` : ''}${v.units ? ` · ${v.units} units` : ''}</span>
+        <span></span>
+        <button type="button" class="x" data-dropvisit="${v.service}|${v.date}"
+          title="Remove this visit">&times;</button>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-dropvisit]').forEach(b =>
+    b.addEventListener('click', () => {
+      const [service, date] = b.dataset.dropvisit.split('|');
+      editing.visits = (editing.visits || [])
+        .filter(v => !(v.service === service && v.date === date));
+      renderVisits();
+    }));
+}
+
+/* The same arithmetic the server does, so the editor and the list agree.
+   Kept here rather than fetched because the editor has to redraw as she
+   types, before anything is saved. */
+function nextVisit(id, visits) {
+  const s = SERVICES.find(x => x.id === id);
+  if (!s) return null;
+  const mine = visits.filter(v => v.service === id).sort((a, b) => a.date.localeCompare(b.date));
+  if (!mine.length) return null;
+  const n = mine.length, last = mine[n - 1].date;
+  if (s.courseOf && n >= s.courseOf) return { done: true, course: `${n} of ${s.courseOf}`, last };
+  const gaps = s.firstGaps || [];
+  const gap = n <= gaps.length ? gaps[n - 1] : s.everyDays;
+  if (!gap) return { none: true, last };
+  const due = addDays(last, gap);
+  const mid = new Date(); mid.setHours(0, 0, 0, 0);
+  const days = Math.round((new Date(due + 'T00:00:00') - mid) / 86400000);
+  return { due, days, last, overdue: days < 0,
+           window: s.windowDays ? [addDays(last, s.windowDays[0]), addDays(last, s.windowDays[1])] : null,
+           course: s.courseOf ? `${n} of ${s.courseOf}` : null };
+}
+
+function addDays(isoDate, days) {
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function renderPens() {
   const list = $('penList');
   const hers = stoppedByHer() + addedByHer();
@@ -1618,6 +1728,37 @@ $('addPen').addEventListener('click', () => {
   editing.pens.push({ template: id });
   $('penPick').value = '';
   renderPens();
+});
+
+/* Liquid lipo is priced and given by area, and toxin by the unit, so
+   those two ask one more question. Everything else does not. */
+$('visitPick').addEventListener('change', () => {
+  const s = SERVICES.find(x => x.id === $('visitPick').value);
+  const areas = (s && s.areas) || [];
+  const wantsUnits = !!(s && s.unit === 'unit');
+  $('visitExtra').hidden = !areas.length && !wantsUnits;
+  $('visitArea').hidden = !areas.length;
+  $('visitUnits').hidden = !wantsUnits;
+  $('visitArea').innerHTML = '<option value="">Area…</option>' +
+    areas.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+});
+
+$('addVisit').addEventListener('click', () => {
+  const service = $('visitPick').value;
+  const date = $('visitDate').value;
+  if (!service) return toast('Choose a treatment.');
+  if (!date) return toast('Which day was it?');
+  editing.visits = editing.visits || [];
+  if (editing.visits.some(v => v.service === service && v.date === date)) {
+    return toast('That treatment is already logged for that day.');
+  }
+  const v = { service, date };
+  if ($('visitArea').value) v.area = $('visitArea').value;
+  if ($('visitUnits').value) v.units = Number($('visitUnits').value);
+  editing.visits.push(v);
+  $('visitPick').value = ''; $('visitArea').value = ''; $('visitUnits').value = '';
+  $('visitExtra').hidden = true;
+  renderVisits();
 });
 
 /* What the record kept, against what the editor sent. Returns a sentence

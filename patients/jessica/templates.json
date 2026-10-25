@@ -14,7 +14,10 @@
   "concierge": {
     "phone": "843-377-3713",
     "messageOpener": "Hi Dr. Phelps-Polirer — ",
-    "refillOpener": "Hi Dr. Phelps-Polirer — I need a refill of my {pen}."
+    "refillOpener": "Hi Dr. Phelps-Polirer — I need a refill of my {pen}.",
+    "reviewUrl": "https://g.page/r/CXnBtSAG298ZEBI/review",
+    "address": "83 Cannon St, Charleston, SC 29403",
+    "site": "thecharlestonatelier.com"
   },
   "templates": [
     {

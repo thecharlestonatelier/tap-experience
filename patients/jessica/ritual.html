@@ -1803,7 +1803,14 @@ async function boot() {
   document.title = `Today's Ritual — ${CFG.patient.name}`;
   document.getElementById('footnote').innerHTML =
     (TRACKING ? 'Injection history is stored on this device only.<br>' : '') +
-    `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.`;
+    `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.` +
+    // Asked once, quietly, at the bottom — and only of someone far enough
+    // in to have something to say. A review prompt in front of a patient
+    // who started yesterday is asking a stranger for a favour.
+    (doseStreak() >= 10 && (CFG.protocol.concierge || {}).reviewUrl
+      ? `<br><a href="${CFG.protocol.concierge.reviewUrl}" target="_blank" rel="noopener">
+           Enjoying your results? Leave us a review</a>.`
+      : '');
 
   await loadLogged();
   renderAll();

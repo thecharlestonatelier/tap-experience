@@ -179,3 +179,11 @@ asked the question and shown a two-month-old date, and one tap on "Today"
 moved her phases, supply, refill date and calendar forward two months.
 Each visit here uses a brand-new browser context, which is exactly what
 that eviction leaves behind.
+
+## services.mjs
+
+Aesthetic treatments and their cadences, in Dr Kendall's own terms: PRX
+weekly four times then monthly, toxin every three months, filler with no
+cadence at all, polynucleotides every four weeks for a course of three,
+liquid lipo at eight to ten weeks for a course of two. Also the colours,
+and that a treatment not on the menu is dropped rather than stored.
