@@ -105,6 +105,11 @@
   td.dose { font-size:12.5px; }
   td.dose .spent { color:var(--muted); }
   td.num { font-variant-numeric:tabular-nums; }
+  /* The only red on this list. It means order something today, so nothing
+     else is allowed to use it. */
+  td .urgent { display:inline-block; white-space:nowrap; padding:3px 9px;
+               border-radius:999px; color:#FBF3E9; background:var(--alert);
+               font-weight:600; }
   td.cold { color:var(--muted); }
   @media (max-width:900px) { .stats { grid-template-columns:repeat(2,1fr); } }
   /* Days comes from the peptide, so it is shown rather than asked for. */
@@ -287,6 +292,23 @@
   </section>
 
   <section>
+    <h2>Are reminders working?</h2>
+    <p class="hint">
+      Three things have to be true, and when one is not, the symptom is
+      silence &mdash; nothing errors and no patient complains.
+    </p>
+    <div class="panel">
+      <div class="stats" style="margin-bottom:14px">
+        <div class="stat"><small>Signing keys</small><strong id="pKeys">—</strong></div>
+        <div class="stat"><small>Phones subscribed</small><strong id="pPhones">—</strong></div>
+        <div class="stat"><small>With a dose still to come</small><strong id="pUpcoming">—</strong></div>
+        <div class="stat"><small>Scheduler last seen</small><strong id="pRun">—</strong></div>
+      </div>
+      <p class="hint" id="pWhy" style="margin:0"></p>
+    </div>
+  </section>
+
+  <section>
     <h2>Tell me when a patient changes something</h2>
     <p class="hint">
       A patient can take a pen she was prescribed off her own schedule. The
@@ -378,7 +400,9 @@
       <table>
         <thead>
           <tr>
-            <th>Address</th><th>Patient</th><th>Protocol</th><th>Showing now</th><th>Opens</th><th>Last opened</th><th>Status</th><th></th>
+            <th>Address</th><th>Patient</th><th>Protocol</th><th>Showing now</th>
+            <th>Doses left</th><th>Runs out</th>
+            <th>Opens</th><th>Last opened</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -567,6 +591,7 @@ async function start() {
   renderVials();
   renderDeploy();
   renderAlerts();
+  renderPushHealth();
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
     TEMPLATES.templates.filter(t => t.id !== 'custom' && !t.retired)
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -620,6 +645,46 @@ function keyToBytes(base64) {
   const out = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
   return out;
+}
+
+/* Why reminders are not arriving, in the order the question is actually
+   asked: are the keys there, is anyone subscribed, and is the scheduler
+   getting through. */
+async function renderPushHealth() {
+  if (!$('pKeys')) return;
+  let h;
+  try { h = await api('/api/push/health'); } catch { return; }
+
+  $('pKeys').textContent = h.configured ? 'attached' : 'MISSING';
+  $('pPhones').textContent = `${h.phones} on ${h.cards} card${h.cards === 1 ? '' : 's'}`;
+  $('pUpcoming').textContent = h.withUpcoming;
+  $('pRun').textContent = h.lastRun
+    ? (h.lastRun.ok ? since(h.lastRun.at) : `turned away ${since(h.lastRun.at)}`)
+    : 'not since this instance started';
+
+  const why = [];
+  if (!h.configured) why.push(
+    '<b>No signing keys.</b> Nothing can be sent at all. This is what a ' +
+    '<code>gcloud run deploy --set-secrets</code> naming fewer than all the ' +
+    'secrets does — it replaces the list rather than adding to it. ' +
+    'Fix: <code>bash deploy-prod.sh</code>.');
+  if (!h.schedulerSecretSet) why.push(
+    '<b>No scheduler secret.</b> Cloud Scheduler is being turned away every ' +
+    'time it knocks, so nothing is ever sent on time.');
+  if (h.lastRun && !h.lastRun.ok) why.push(
+    `<b>The scheduler was turned away</b> (${h.lastRun.why}). Reminders are ` +
+    'not going out.');
+  if (h.configured && !h.phones) why.push(
+    'No phone has ever subscribed. The switch is on each patient\'s own card, ' +
+    'under Today\'s Ritual — it has to be turned on there, on the phone, and ' +
+    'iOS only offers it on a card added to the home screen.');
+  if (h.configured && h.phones && !h.withUpcoming) why.push(
+    'Phones are subscribed but none has a dose still to come. A card only ' +
+    'sends its schedule when it is opened, so a patient who has not opened ' +
+    'hers since her last posted dose will not be nudged until she does.');
+  if (!why.length && h.lastRun && h.lastRun.ok) why.push('All three are fine.');
+
+  $('pWhy').innerHTML = why.join('<br><br>');
 }
 
 async function renderAlerts() {
@@ -787,6 +852,7 @@ async function refresh() {
       <td class="who">${c.name || '<span style="color:var(--muted);font-weight:400">unassigned</span>'}</td>
       <td class="pens">${pens || '—'}</td>
       <td class="dose">${now.text}${now.live ? ' <span class="live" title="Reported by her phone">•</span>' : ''}</td>
+      ${supplyCells(supply)}
       <td class="num${taps ? '' : ' cold'}">${taps || '—'}</td>
       <td class="num${c.lastSeen ? '' : ' cold'}">${c.lastSeen ? ago(c.lastSeen) : 'never'}</td>
       <td><span class="pill ${c.status}">${c.status}</span>${
@@ -1266,7 +1332,59 @@ function effectiveStart(rec) {
    telling the atelier two different things about the same patient. */
 function supplyOf(rec) {
   const s = rec.supply || {};
-  return { out: s.out || [], low: s.low || [], unknown: s.unknown || [] };
+  return { out: s.out || [], low: s.low || [], unknown: s.unknown || [],
+           pens: s.pens || [] };
+}
+
+/* Doses left, and the day it runs out, for every pen on the card. Two
+   columns rather than a pill, because this is the question asked of every
+   row every time — not an exception worth flagging.
+
+   Red inside a week. Red is the only thing on this list that means "order
+   something today", so nothing else is allowed to use it. */
+function supplyCells(s) {
+  const pens = s.pens || [];
+  const unknown = s.unknown || [];
+
+  if (!pens.length) {
+    // Named, not blank. A vial she sets up herself on a card she has never
+    // opened has no supply anyone can state, and an empty cell reads as
+    // "she is fine" — the one thing it does not mean.
+    const why = unknown.length ? 'not set up on her phone yet' : '';
+    return `<td class="num cold" title="${why}">${unknown.length ? '?' : '—'}</td>
+            <td class="num cold" title="${why}">${unknown.length ? 'not set up' : '—'}</td>`;
+  }
+
+  const soonest = pens.reduce((a, b) =>
+    (a.days == null) ? b : (b.days == null) ? a : (b.days < a.days ? b : a));
+  const urgent = soonest.days != null && soonest.days <= 7;
+
+  const doses = pens.map(p => p.dosesLeft == null ? '?' : p.dosesLeft).join(' / ');
+  const text = soonest.days == null ? '—'
+    : soonest.days <= 0 ? 'out now'
+    : `${soonest.days}d · ${fmtDay(soonest.runsOut)}`;
+  const when = urgent ? `<span class="urgent">${text}</span>` : text;
+
+  const detail = pens.map(p => `${p.name}: ${
+    p.dosesLeft == null ? 'unknown' : p.dosesLeft + ' left'}${
+    p.runsOut ? `, last dose ${p.runsOut}` : ''}`).join('\n');
+
+  return `<td class="num" title="${esc(detail)}">${doses}</td>
+          <td class="num" style="white-space:nowrap" title="${esc(detail)}">${when}</td>`;
+}
+
+/* Titles carry pen names and dates; keep a stray quote from ending the
+   attribute. */
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fmtDay(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 function showingNow(rec) {

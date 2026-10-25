@@ -757,12 +757,19 @@ function openStartPicker() {
     // date that would then stop following the record.
     const obs = firstDoseDay(pen);
     const fromLog = obs && obs === penStartIso(pen);
+    // A date the atelier set is shown but not editable here. Changing it
+    // on the phone would not change the record, so offering the field
+    // would only let her believe she had.
+    const theirs = !!pen.atelierStart;
+    const note = theirs ? 'set by the atelier'
+               : fromLog ? 'your first logged dose' : '';
     return `
     <label class="time-row">
-      <span>${pen.name}${fromLog
-        ? '<br><small style="color:var(--muted)">your first logged dose</small>' : ''}</span>
+      <span>${pen.name}${note
+        ? `<br><small style="color:var(--muted)">${note}</small>` : ''}</span>
       <input class="date-field" type="date" data-penstart="${pen.id}"
-             data-was="${penStartIso(pen)}" value="${penStartIso(pen)}">
+             data-was="${penStartIso(pen)}" value="${penStartIso(pen)}"
+             ${theirs ? 'disabled' : ''}>
     </label>`;
   }).join('');
 

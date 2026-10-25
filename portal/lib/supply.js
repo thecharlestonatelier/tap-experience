@@ -66,7 +66,9 @@ function templates(webRoot) {
 /* How long one pen lasts, in days from its own first dose: step through
    the schedule drawing each phase's units until the next one will not
    fit in what is left of the vial. */
-function penLife(t, phases) {
+/* `upTo` stops the walk after that many days, which is how many doses a
+   patient is through rather than how many the pen holds. */
+function penLife(t, phases, upTo) {
   const vol = t.volumeMl || 3;
   const sc = t.schedule || { on: 7, off: 0 };
   const cyc = sc.weekly ? 7 : (sc.on + sc.off);
@@ -74,6 +76,7 @@ function penLife(t, phases) {
   let bound = 0;
   const ends = (phases || []).map(ph => (bound += (ph.days == null ? 3650 : ph.days)));
   let ml = vol, doses = 0, last = 0;
+  if (upTo != null) bound = Math.min(bound, upTo);
   for (let i = 0; i < bound; i++) {
     if (i % cyc >= on) continue;
     const pi = ends.findIndex(e => i < e);
@@ -101,10 +104,21 @@ function effectiveStart(rec) {
 function supplyFor(rec, webRoot, now = Date.now()) {
   const list = templates(webRoot);
   const nameOf = id => { const t = list.find(x => x.id === id); return t ? t.name : id; };
-  const out = [], low = [], seen = new Set();
+  const out = [], low = [], pens = [], seen = new Set();
 
   const midnight = new Date(now); midnight.setHours(0, 0, 0, 0);
-  const place = (name, days) => {
+  const dateIn = days => {
+    const d = new Date(midnight); d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  /* Every pen lands in `pens` with its own numbers, whether or not it is
+     short — the dashboard shows the run-out date for all of them, and a
+     column that only fills in once something is wrong is a column nobody
+     learns to read. */
+  const place = (name, days, dosesLeft, runsOut) => {
+    pens.push({ name, days, dosesLeft: dosesLeft == null ? null : dosesLeft,
+                runsOut: runsOut || (days == null ? null : dateIn(days)) });
+    if (days == null) return;
     if (days <= 0) out.push(name);
     else if (days <= LOW_DAYS) low.push({ name, days });
   };
@@ -113,16 +127,19 @@ function supplyFor(rec, webRoot, now = Date.now()) {
     seen.add(s.template);
     const name = nameOf(s.template);
     if (s.lastDose) {
-      place(name, Math.round((new Date(s.lastDose + 'T00:00:00') - midnight) / 86400000));
+      place(name, Math.round((new Date(s.lastDose + 'T00:00:00') - midnight) / 86400000),
+            s.dosesLeft, s.lastDose);
     } else if (!s.dosesLeft) {
-      out.push(name);
+      place(name, 0, 0, null);
+    } else {
+      place(name, null, s.dosesLeft, null);
     }
   }
 
   const startDate = effectiveStart(rec);
-  if (!startDate) return { out, low, unknown: unknownOf(rec, list, seen) };
-  const elapsed = Math.round((midnight - new Date(startDate + 'T00:00:00')) / 86400000);
-  if (elapsed < 0) return { out, low, unknown: unknownOf(rec, list, seen) };
+  const elapsed = startDate
+    ? Math.round((midnight - new Date(startDate + 'T00:00:00')) / 86400000)
+    : null;
 
   for (const pen of rec.pens || []) {
     if (seen.has(pen.template)) continue;
@@ -130,11 +147,22 @@ function supplyFor(rec, webRoot, now = Date.now()) {
     // A vial she sizes herself cannot be projected from here, and saying
     // nothing is better than saying a number that is not hers.
     if (!t || t.setup) continue;
-    const L = penLife(t, pen.phases || t.phases || []);
+    if (elapsed == null || elapsed < 0) continue;
+    const phases = pen.phases || t.phases || [];
+    const L = penLife(t, phases);
     if (!L.days) continue;
-    place(t.name, L.days - elapsed);
+    // Doses still to come: the whole pen, less the ones already scheduled.
+    const taken = penLife(t, phases, Math.max(0, elapsed)).doses;
+    place(t.name, L.days - elapsed, Math.max(0, L.doses - taken),
+          startDate ? addDaysIso(startDate, L.days) : null);
   }
-  return { out, low, unknown: unknownOf(rec, list, seen) };
+  return { out, low, pens, unknown: unknownOf(rec, list, seen) };
+}
+
+function addDaysIso(isoDate, days) {
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /* Named separately from "fine". A vial she sets up herself, on a card she

@@ -162,3 +162,10 @@ moving it; and saving the sheet without touching a date pins nothing, so
 a pen not yet started still picks up its own first dose.
 
 Every suite takes BASE, so the whole set can be run against one service.
+
+## tirz-vial.mjs
+
+Every tirzepatide vial is 1 mL — 100 units — whatever the patient doses
+out of it. Her own dose at N units a week gives floor(100/N) doses; a
+stored answer claiming a bigger vial cannot resize it; two vials are
+2 mL and twice the doses and do not restart the schedule.

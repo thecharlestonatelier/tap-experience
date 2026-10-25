@@ -143,7 +143,18 @@ function applySetup(pen, data) {
   // still on the same protocol — only the supply resets, so count the
   // vials rather than restarting her schedule.
   const vials = Math.max(1, Number(data.vials) || 1);
-  const oneVial = data.vialMl || pen.volumeMl || 1;
+
+  /* The size of ONE vial, captured before anything multiplies it. Reading
+     pen.volumeMl here is reading the running total: apply a two-vial
+     answer and then a one-vial answer, and the second starts from 2 mL
+     and calls it one vial. */
+  if (pen.baseVialMl == null) pen.baseVialMl = pen.vialMl || pen.volumeMl || 1;
+
+  /* A template with a fixed vial size has one, full stop. Tirzepatide is
+     always a 1 mL vial — 100 units — however the patient is dosing out of
+     it, so a stored answer from an older card cannot quietly resize it and
+     make the run-out date wrong. */
+  const oneVial = pen.vialFixed ? pen.baseVialMl : (data.vialMl || pen.baseVialMl);
   pen.volumeMl = oneVial * vials;
   pen.vialMl = oneVial;
   pen.vials = vials;
@@ -598,6 +609,12 @@ function firstDoseDay(pen) {
 function applyPenStarts() {
   const mine = loadPenStarts();
   PENS.forEach(p => {
+    /* A date the atelier put on the record wins over everything. It is
+       the one place with the whole picture — what was dispensed, when,
+       and what the patient said on the phone afterwards — so when it
+       disagrees with a phone it is the phone that is wrong. Blank means
+       "follow her", which is the usual case and the default. */
+    if (p.atelierStart) { p.startDate = p.atelierStart; return; }
     if (mine[p.id]) { p.startDate = mine[p.id]; return; }
     const first = firstDoseDay(p);
     if (first) p.startDate = first;
@@ -1081,7 +1098,9 @@ function hydrateRecord(rec, templates) {
       ? `${base.id}#${i}` : base.id;
     if (entry.phases && entry.phases.length) pen.phases = entry.phases;
     if (entry.schedule) pen.schedule = entry.schedule;
-    if (entry.startDate) pen.startDate = entry.startDate;
+    // Kept under its own name as well, because applyPenStarts() may put a
+    // patient's answer over the top and still has to know this existed.
+    if (entry.startDate) { pen.startDate = entry.startDate; pen.atelierStart = entry.startDate; }
     return pen;
   }).filter(Boolean);
 

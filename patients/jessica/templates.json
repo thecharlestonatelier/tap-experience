@@ -480,6 +480,7 @@
       "delivery": "syringe",
       "concentrationMgPerMl": 17,
       "volumeMl": 1,
+      "vialFixed": true,
       "route": "Subcutaneous",
       "time": "Morning",
       "components": [

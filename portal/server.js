@@ -95,6 +95,12 @@ const STARTED_AT = new Date().toISOString();
    normalizeSlug(), so no card can ever be given this address. */
 const ATELIER_SLUG = '~atelier';
 
+/* The last time the scheduler knocked, and what came of it. In memory, so
+   it resets when Cloud Run replaces the instance — which is itself worth
+   knowing, because "never" after a day of uptime means the job is not
+   running at all. */
+let LAST_RUN = null;
+
 /* Told that something changed, never what. The body is a fixed string
    with no patient and no drug in it — a notification renders on a locked
    screen, and the push services are outside the BAA. Tapping it opens
@@ -715,9 +721,39 @@ async function route(req, res) {
      studio session — a cron job has no cookie. */
   if (p === '/api/push/run' && req.method === 'POST') {
     if (!PUSH_RUN_SECRET || req.headers['x-push-secret'] !== PUSH_RUN_SECRET) {
+      // Recorded, because this is the failure that looks like nothing at
+      // all: the scheduler knocks every quarter hour, is turned away, and
+      // no patient is ever nudged. It switched reminders off in production
+      // for days and the only visible symptom was silence.
+      LAST_RUN = { at: new Date().toISOString(), ok: false,
+                   why: PUSH_RUN_SECRET ? 'wrong secret' : 'no PUSH_RUN_SECRET set' };
       return json(res, 401, { error: 'unauthorized' });
     }
-    return json(res, 200, await runReminders());
+    const out = await runReminders();
+    LAST_RUN = Object.assign({ at: new Date().toISOString(), ok: true }, out);
+    return json(res, 200, out);
+  }
+
+  /* --- are reminders actually working? ---
+     Three things have to be true and none of them is visible from the
+     dashboard otherwise: the signing keys are attached, phones are
+     subscribed, and the scheduler is getting through. */
+  if (p === '/api/push/health') {
+    if (!requireClinician(req, res)) return;
+    const all = await subs.listAll();
+    const patients = all.filter(s => s.slug !== ATELIER_SLUG);
+    return json(res, 200, {
+      configured: push.configured(),
+      schedulerSecretSet: !!PUSH_RUN_SECRET,
+      phones: patients.length,
+      cards: new Set(patients.map(s => s.slug)).size,
+      // How many have a dose still to come — a phone whose schedule ran
+      // out months ago is subscribed and will never be nudged again.
+      withUpcoming: patients.filter(s =>
+        (s.due || []).some(t => Date.parse(t) > Date.now())).length,
+      atelierDevices: all.length - patients.length,
+      lastRun: LAST_RUN
+    });
   }
 
   /* How many phones are listening for this card — so the dashboard only
