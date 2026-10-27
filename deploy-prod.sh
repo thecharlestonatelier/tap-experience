@@ -32,15 +32,10 @@ command -v gcloud >/dev/null || die \
   "gcloud is not installed. Run this in Google Cloud Shell or after
    installing the Cloud SDK."
 
-# Cloud Shell knows which project the console is on even when gcloud's own
-# config has not been set, so take that rather than stopping for it.
-PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
-if [ -z "$PROJECT" ] || [ "$PROJECT" = "(unset)" ]; then
-  PROJECT="${DEVSHELL_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-}}"
-  [ -n "$PROJECT" ] && gcloud config set project "$PROJECT" --quiet >/dev/null 2>&1 || true
-fi
-[ -n "$PROJECT" ] && [ "$PROJECT" != "(unset)" ] || die \
-  "No project selected. Run: gcloud config set project atelier-tap"
+PROJECT="atelier-tap"
+# Pin the project for this run: gcloud otherwise inherits whatever project
+# the local config has active. Scoped to this script — config is untouched.
+export CLOUDSDK_CORE_PROJECT="$PROJECT"
 
 bold "Project : $PROJECT"
 bold "Service : $SERVICE ($REGION)"

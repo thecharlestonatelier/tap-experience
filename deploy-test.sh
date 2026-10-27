@@ -21,7 +21,10 @@ SERVICE="${SERVICE:-atelier-tap-test}"
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*"; }
-die()  { printf '\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
+die() {
+  printf '\033[31m%s\033[0m\n' "$*" >&2
+  exit 1
+}
 step() { printf '\n\033[1m── %s\033[0m\n' "$*"; }
 
 # ---------------------------------------------------------------- checks
@@ -34,52 +37,46 @@ command -v gcloud >/dev/null || die \
   "gcloud is not installed. Run this in Google Cloud Shell or after
    installing the Cloud SDK."
 
-# Cloud Shell knows which project the console is on even when gcloud's own
-# config has not been set, so take that rather than stopping for it.
-PROJECT="$(gcloud config get-value project 2>/dev/null || true)"
-if [ -z "$PROJECT" ] || [ "$PROJECT" = "(unset)" ]; then
-  PROJECT="${DEVSHELL_PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-}}"
-  [ -n "$PROJECT" ] && gcloud config set project "$PROJECT" --quiet >/dev/null 2>&1 || true
-fi
-[ -n "$PROJECT" ] && [ "$PROJECT" != "(unset)" ] || die \
-  "No project selected. Run: gcloud config set project atelier-tap"
+PROJECT="atelier-tap"
+# Every gcloud call below takes the project from gcloud's own config unless
+# told otherwise, and that config may point anywhere. Pin it for this run:
+# the override is scoped to this script and leaves ~/.config/gcloud alone.
+export CLOUDSDK_CORE_PROJECT="$PROJECT"
 
 bold "Project : $PROJECT"
 bold "Service : $SERVICE ($REGION)"
 
 # ---------------------------------------------------------------- secrets
-put_secret() {           # put_secret NAME VALUE
+put_secret() { # put_secret NAME VALUE
   local name="$1" value="$2"
-  if gcloud secrets describe "$name" >/dev/null 2>&1; then
-    printf '%s' "$value" | gcloud secrets versions add "$name" --data-file=- --quiet >/dev/null
-    echo "  $name updated."
+  if gcloud secrets describe "$name" --quiet >/dev/null 2>&1; then
+    printf '%s' "$value" | gcloud secrets versions add "$name" --data-file=- --quiet >/dev/null \
+      && echo "  $name updated." \
+      || die "Could not update secret '$name' in project $PROJECT."
   else
-    printf '%s' "$value" | gcloud secrets create "$name" --data-file=- --quiet >/dev/null
-    echo "  $name created."
+    printf '%s' "$value" | gcloud secrets create "$name" --data-file=- --quiet >/dev/null \
+      && echo "  $name created." \
+      || die "Could not create secret '$name' in project $PROJECT."
   fi
 }
 
-step "The passphrase that opens the TEST Card Studio"
-echo "Pick something long. It opens the test dashboard only — production has its own."
-PASS=""
-while [ ${#PASS} -lt 12 ]; do
-  read -r -s -p "Test Studio passphrase (12+ characters, hidden): " PASS; echo
-  [ ${#PASS} -lt 12 ] && warn "Too short — keep going."
-done
-put_secret studio-passphrase-test "$PASS"
-unset PASS
-
-step "Shared secrets (VAPID + push-run)"
 # These two services sign reminders with the same VAPID pair, and Cloud
 # Scheduler proves itself with the same push-run secret. They must already
-# exist — portal/setup.sh creates them. A missing one here means the base
-# setup has not been run, and the deploy would come up without reminders.
+# exist — portal/setup.sh creates them. Check first so a missing
+# prerequisite fails fast, before anything is written.
+step "Shared secrets (VAPID + push-run)"
 for s in vapid-public-key vapid-private-key push-run-secret; do
-  gcloud secrets describe "$s" >/dev/null 2>&1 || \
+  gcloud secrets describe "$s" --quiet >/dev/null 2>&1 ||
     die "The shared secret '$s' is missing. Run 'bash portal/setup.sh' once
    to create it (it also deploys production), then run this again."
 done
 echo "  reusing vapid-public-key, vapid-private-key, push-run-secret."
+
+# The test Studio opens with its own passphrase, separate from production.
+# Override with TEST_STUDIO_PASS when this script must not carry one.
+PASS="${TEST_STUDIO_PASS:-thisisatestenvironment}"
+put_secret studio-passphrase-test "$PASS"
+unset PASS
 
 step "Letting the service read those secrets"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
@@ -101,8 +98,7 @@ for role in \
   roles/storage.objectViewer \
   roles/artifactregistry.writer \
   roles/logging.logWriter \
-  roles/datastore.user
-do
+  roles/datastore.user; do
   gcloud projects add-iam-policy-binding "$PROJECT" \
     --member="serviceAccount:${SA}" \
     --role="$role" --condition=None --quiet >/dev/null
@@ -129,8 +125,8 @@ URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='valu
 # ---------------------------------------------------------------- public
 step "Letting patients reach it without signing in"
 if gcloud run services add-iam-policy-binding "$SERVICE" \
-     --region="$REGION" --member=allUsers --role=roles/run.invoker \
-     --quiet >/dev/null 2>&1; then
+  --region="$REGION" --member=allUsers --role=roles/run.invoker \
+  --quiet >/dev/null 2>&1; then
   echo "done — the test service is publicly reachable."
 else
   warn "Could not open the test service to the public. This is usually the
@@ -152,14 +148,14 @@ if [ -n "$RUN_SECRET" ]; then
     gcloud scheduler jobs update http atelier-reminders-test \
       --location "$REGION" --schedule "*/15 * * * *" \
       --uri "$URL/api/push/run" --http-method POST \
-      --update-headers "x-push-secret=$RUN_SECRET" --quiet >/dev/null && \
+      --update-headers "x-push-secret=$RUN_SECRET" --quiet >/dev/null &&
       echo "  Updated — every 15 minutes."
   else
     gcloud scheduler jobs create http atelier-reminders-test \
       --location "$REGION" --schedule "*/15 * * * *" \
       --uri "$URL/api/push/run" --http-method POST \
       --headers "x-push-secret=$RUN_SECRET" \
-      --attempt-deadline 120s --quiet >/dev/null && \
+      --attempt-deadline 120s --quiet >/dev/null &&
       echo "  Created — every 15 minutes."
   fi
 fi
@@ -174,10 +170,10 @@ echo "  /health     ${HEALTH:-(no answer)}"
 echo "  /api/cards  $GATE  (401 means the test dashboard is locked, which is right)"
 
 case "$HEALTH" in
-  *'"reachable":true'*) echo "  store       reachable." ;;
-  *'"reachable":false'*) warn "The test service is up but cannot reach Firestore.
+*'"reachable":true'*) echo "  store       reachable." ;;
+*'"reachable":false'*) warn "The test service is up but cannot reach Firestore.
    Usually: gcloud run services logs read $SERVICE --region $REGION" ;;
-  *) warn "Health did not answer as expected.
+*) warn "Health did not answer as expected.
    Check: gcloud run services logs read $SERVICE --region $REGION" ;;
 esac
 [ "$GATE" = "401" ] || warn "Expected 401 on /api/cards — if it is 200 the passphrase did not take."
