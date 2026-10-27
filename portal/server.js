@@ -29,6 +29,8 @@ const crypto = require('node:crypto');
 const { openStore, sanitize, publicView, assertSlug, sanitizeState } = require('./store');
 const { openDoses, sanitizeDose } = require('./store/doses');
 const { openFeeds, sanitizeFeed } = require('./store/feeds');
+const { supplyFor, effectiveStart } = require('./lib/supply');
+const { catalogue: serviceCatalogue, servicesFor } = require('./lib/services');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
@@ -57,6 +59,25 @@ const SESSION_SECRET = process.env.SESSION_SECRET
 
 /* Cloud Scheduler proves itself with this rather than a session cookie. */
 const PUSH_RUN_SECRET = process.env.PUSH_RUN_SECRET || '';
+
+/* A read-only overview for an assistant acting for the atelier, proved by
+   a bearer token rather than the dashboard session, because a program has
+   no browser and should not be handed the passphrase.
+
+   Unset means the route does not exist. There is no default and no
+   fallback: a PHI endpoint that turns itself on is not one worth having.
+   Revoking is deleting the secret and redeploying. */
+const AGENT_TOKEN = process.env.AGENT_TOKEN || '';
+
+/* Compared in constant time, and never logged or echoed. */
+function isAgent(req) {
+  if (!AGENT_TOKEN) return false;
+  const raw = String(req.headers.authorization || '');
+  const given = /^Bearer\s+(.+)$/i.exec(raw);
+  if (!given) return false;
+  const a = Buffer.from(given[1]), b = Buffer.from(AGENT_TOKEN);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 const store = openStore();
 const doses = openDoses();
@@ -92,6 +113,33 @@ function adminAuth() {
    Nothing here reads the protocol. The card is consulted only to check it
    still exists and is still active, so a retired patient stops hearing
    from us the moment the card is retired. */
+/* Where the atelier's own subscriptions live. A '~' cannot survive
+   normalizeSlug(), so no card can ever be given this address. */
+const ATELIER_SLUG = '~atelier';
+
+/* The last time the scheduler knocked, and what came of it. In memory, so
+   it resets when Cloud Run replaces the instance — which is itself worth
+   knowing, because "never" after a day of uptime means the job is not
+   running at all. */
+let LAST_RUN = null;
+
+/* Told that something changed, never what. The body is a fixed string
+   with no patient and no drug in it — a notification renders on a locked
+   screen, and the push services are outside the BAA. Tapping it opens
+   Card Studio, which is behind the passphrase and has the detail. */
+async function notifyAtelier(body, tag) {
+  if (!push.configured()) return { sent: 0 };
+  let sent = 0;
+  for (const rec of await subs.forSlug(ATELIER_SLUG)) {
+    const out = await push.sendPush(rec.sub, {
+      title: 'The Charleston Atelier', body, url: '/studio/', tag
+    }).catch(() => ({ ok: false, gone: false }));
+    if (out.gone) { await subs.remove(rec.id); continue; }
+    if (out.ok) sent++;
+  }
+  return { sent };
+}
+
 async function runReminders(now = Date.now()) {
   const all = await subs.listAll();
   const out = { phones: all.length, sent: 0, skipped: 0, dropped: 0, failed: 0 };
@@ -479,7 +527,20 @@ async function route(req, res) {
     if (Array.isArray(body.added)) patch.added = body.added;
     if (Array.isArray(body.dropped)) patch.dropped = body.dropped;
     if (!Object.keys(patch).length) return json(res, 400, { error: 'bad_request' });
+    const before = (rec.dropped || []).slice();
     const saved = await store.put(sanitize(patch, rec));
+
+    /* Stopping a prescription is the one thing a patient can do here that
+       the atelier would want to hear about rather than find later. Only a
+       pen that was not already off counts — her phone re-posts the whole
+       list, so without this every save would ring. */
+    const fresh = (saved.dropped || []).filter(id => !before.includes(id));
+    if (fresh.length) {
+      notifyAtelier(
+        'A patient has taken a prescribed pen off her schedule. Open Card Studio.',
+        'stopped'
+      ).catch(() => {});
+    }
     return json(res, 200, { ok: true, added: saved.added || [], dropped: saved.dropped || [] });
   }
 
@@ -620,9 +681,60 @@ async function route(req, res) {
     return json(res, 200, { signedIn: isClinician(req), required: !!STUDIO_PASSPHRASE });
   }
 
+  /* --- the read-only overview ---
+     What is needed to answer "is she out of anything" and "has anyone
+     stopped a prescription", and nothing else. Deliberately not the card
+     records: no clinician note, no dose history, no injection sites, no
+     times, no push subscriptions. GET only, and it writes nothing.
+
+     It carries patient names, because a supply list nobody can match to a
+     person answers no question worth asking. That makes it PHI, which is
+     why it is behind its own token, off unless one is set, and served
+     only from Cloud Run under the BAA. */
+  if (p === '/api/overview' && req.method === 'GET') {
+    if (!AGENT_TOKEN) return json(res, 404, { error: 'not_found' });
+    if (!isAgent(req)) return json(res, 401, { error: 'unauthorized' });
+
+    const cards = (await store.list()).filter(c => c.status !== 'blank');
+    return json(res, 200, {
+      asOf: new Date().toISOString(),
+      patients: cards.map(c => {
+        const s = supplyFor(c, WEB_ROOT);
+        return {
+          slug: c.slug,
+          name: c.name || '',
+          status: c.status,
+          lastSeen: c.lastSeen || null,
+          startDate: effectiveStart(c),
+          pens: (c.pens || []).map(x => x.template),
+          outOf: s.out,
+          runningLow: s.low,
+          // Named, because a blank here means "nobody can say", which is
+          // not the same as "she is fine".
+          supplyUnknown: s.unknown,
+          stopped: c.dropped || [],
+          addedHerself: (c.added || []).map(a => a.template)
+        };
+      })
+    });
+  }
+
+  /* The treatments the atelier gives in the room, and their cadences.
+     Public: it is the menu, not anybody's record. */
+  if (p === '/api/services') {
+    return json(res, 200, { services: serviceCatalogue() });
+  }
+
   if (p === '/api/cards' && req.method === 'GET') {
     if (!requireClinician(req, res)) return;
-    return json(res, 200, { cards: await store.list(), store: store.kind });
+    // The dashboard reads supply and service cadences from here rather
+    // than working them out in the page, so the list, the editor and the
+    // overview can never disagree.
+    const cards = (await store.list()).map(c => Object.assign({}, c, {
+      supply: supplyFor(c, WEB_ROOT),
+      services: servicesFor(c)
+    }));
+    return json(res, 200, { cards, store: store.kind });
   }
 
   if (p === '/api/cards' && req.method === 'POST') {
@@ -727,6 +839,33 @@ async function route(req, res) {
     return json(res, 201, { ok: true, id: saved.id, due: saved.due.length });
   }
 
+  /* --- the atelier's own phone ---
+     Not a card, so it cannot hang off a slug. The sentinel below is not a
+     valid slug — normalizeSlug() can never produce a leading '~' — so it
+     can never collide with a patient, and runReminders() leaves it alone
+     because it carries no due times. */
+  if (p === '/api/push/atelier') {
+    if (!requireClinician(req, res)) return;
+
+    if (req.method === 'GET') {
+      const found = await subs.forSlug(ATELIER_SLUG);
+      return json(res, 200, { on: found.length, available: push.configured() });
+    }
+
+    if (req.method === 'POST') {
+      if (!push.configured()) return json(res, 503, { error: 'push_not_configured' });
+      const body = await readBody(req);
+      if (body && body.off && body.endpoint) {
+        await subs.remove(subIdFor(body.endpoint));
+        return json(res, 200, { ok: true, on: false });
+      }
+      const rec = sanitizeSub(body, ATELIER_SLUG);
+      if (!rec) return json(res, 400, { error: 'bad_subscription' });
+      await subs.put(rec);
+      return json(res, 201, { ok: true, on: true });
+    }
+  }
+
   if (p === '/api/push/unsubscribe' && req.method === 'POST') {
     const body = await readBody(req);
     if (!body.endpoint) return json(res, 400, { error: 'no_endpoint' });
@@ -738,9 +877,39 @@ async function route(req, res) {
      studio session — a cron job has no cookie. */
   if (p === '/api/push/run' && req.method === 'POST') {
     if (!PUSH_RUN_SECRET || req.headers['x-push-secret'] !== PUSH_RUN_SECRET) {
+      // Recorded, because this is the failure that looks like nothing at
+      // all: the scheduler knocks every quarter hour, is turned away, and
+      // no patient is ever nudged. It switched reminders off in production
+      // for days and the only visible symptom was silence.
+      LAST_RUN = { at: new Date().toISOString(), ok: false,
+                   why: PUSH_RUN_SECRET ? 'wrong secret' : 'no PUSH_RUN_SECRET set' };
       return json(res, 401, { error: 'unauthorized' });
     }
-    return json(res, 200, await runReminders());
+    const out = await runReminders();
+    LAST_RUN = Object.assign({ at: new Date().toISOString(), ok: true }, out);
+    return json(res, 200, out);
+  }
+
+  /* --- are reminders actually working? ---
+     Three things have to be true and none of them is visible from the
+     dashboard otherwise: the signing keys are attached, phones are
+     subscribed, and the scheduler is getting through. */
+  if (p === '/api/push/health') {
+    if (!requireClinician(req, res)) return;
+    const all = await subs.listAll();
+    const patients = all.filter(s => s.slug !== ATELIER_SLUG);
+    return json(res, 200, {
+      configured: push.configured(),
+      schedulerSecretSet: !!PUSH_RUN_SECRET,
+      phones: patients.length,
+      cards: new Set(patients.map(s => s.slug)).size,
+      // How many have a dose still to come — a phone whose schedule ran
+      // out months ago is subscribed and will never be nudged again.
+      withUpcoming: patients.filter(s =>
+        (s.due || []).some(t => Date.parse(t) > Date.now())).length,
+      atelierDevices: all.length - patients.length,
+      lastRun: LAST_RUN
+    });
   }
 
   /* How many phones are listening for this card — so the dashboard only

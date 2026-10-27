@@ -21,8 +21,14 @@ const start = new Date(); start.setDate(start.getDate() - 2);
 const pad = n => String(n).padStart(2, '0');
 const startDate = `${start.getFullYear()}-${pad(start.getMonth()+1)}-${pad(start.getDate())}`;
 
+/* A Studio session when the service has a passphrase set; without one the
+   dashboard is open and the header is simply ignored. */
+let SESSION = '';
+try { SESSION = (await import('node:fs')).readFileSync('/tmp/tok.txt', 'utf8').trim(); } catch {}
+
 const made = await fetch(`${BASE}/api/cards`, {
-  method: 'POST', headers: { 'Content-Type': 'application/json' },
+  method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' },
+    SESSION ? { Cookie: `ca_studio=${SESSION}` } : {}),
   body: JSON.stringify({
     slug: SLUG, firstName: 'Log', lastName: 'Test',
     pens: [{ template: 'nadvial' }, { template: 'ghk' }],

@@ -684,8 +684,11 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
     <p class="modal-eyebrow">Your schedule</p>
     <h2 class="modal-title" id="startTitle">Which day did you start?</h2>
-    <p class="modal-body">Your dosing days, phases, reminders and refill dates are all counted from this day — and your reminders are set for the times you choose.</p>
+    <p class="modal-body" id="startLede"></p>
     <input class="date-field" type="date" id="startInput">
+    <div id="startPens" hidden></div>
+    <p class="modal-body" id="startQuickLabel" hidden
+       style="margin:14px 0 6px">Set them all to:</p>
     <div class="quick" id="startQuick"></div>
     <div id="startTimes"></div>
     <div class="btn-row">
@@ -730,19 +733,61 @@ let LOGS, TRACKING, calCursor, selectedDay, pendingLog, pendingDay, chosenSite;
    The patient sets the day she actually began. Phases, the on/off rhythm,
    pen supply and the calendar all count from it. */
 function openStartPicker() {
-  document.getElementById('startInput').value = iso(START);
-
   const t = today();
+
+  /* One date per pen. Asking once for "the day you started" and applying
+     it to everything is what dragged a pen she had been on for months
+     back to today the first time she added a second one. */
+  const single = PENS.length <= 1;
+  document.getElementById('startTitle').textContent =
+    single ? 'Which day did you start?' : 'When did you start each one?';
+  document.getElementById('startLede').textContent = single
+    ? 'Your dosing days, phases, reminders and refill dates are all counted ' +
+      'from this day — and your reminders are set for the times you choose.'
+    : 'Each one is counted from its own day, so changing one does not move ' +
+      'the others. Your reminders are set for the times you choose.';
+  document.getElementById('startInput').hidden = !single;
+  if (single) document.getElementById('startInput').value = iso(START);
+
+  const list = document.getElementById('startPens');
+  list.hidden = single;
+  list.innerHTML = single ? '' : PENS.map(pen => {
+    // A day taken from her own first logged dose is already right, and
+    // saying so stops her retyping it — and stops a stray tap pinning a
+    // date that would then stop following the record.
+    const obs = firstDoseDay(pen);
+    const fromLog = obs && obs === penStartIso(pen);
+    // A date the atelier set is shown but not editable here. Changing it
+    // on the phone would not change the record, so offering the field
+    // would only let her believe she had.
+    const theirs = !!pen.atelierStart;
+    const note = theirs ? 'set by the atelier'
+               : fromLog ? 'your first logged dose' : '';
+    return `
+    <label class="time-row">
+      <span>${pen.name}${note
+        ? `<br><small style="color:var(--muted)">${note}</small>` : ''}</span>
+      <input class="date-field" type="date" data-penstart="${pen.id}"
+             data-was="${penStartIso(pen)}" value="${penStartIso(pen)}"
+             ${theirs ? 'disabled' : ''}>
+    </label>`;
+  }).join('');
+
   const quick = [
     ['Today', t],
     ['Yesterday', addDays(t, -1)],
     ['This Monday', addDays(t, -(isoDow(t) - 1))]
   ];
+  document.getElementById('startQuickLabel').hidden = single;
   document.getElementById('startQuick').innerHTML = quick.map(([label, d]) =>
     `<button class="site" data-date="${iso(d)}">${label}</button>`).join('');
   document.querySelectorAll('#startQuick .site').forEach(b =>
     b.addEventListener('click', () => {
-      document.getElementById('startInput').value = b.dataset.date;
+      // On a protocol with one pen this fills the one field. On several it
+      // fills them all, which is only ever a starting point — each row is
+      // still edited on its own afterwards.
+      if (single) document.getElementById('startInput').value = b.dataset.date;
+      else list.querySelectorAll('[data-penstart]').forEach(i => { i.value = b.dataset.date; });
       document.querySelectorAll('#startQuick .site').forEach(x => x.setAttribute('aria-pressed', x === b));
     }));
 
@@ -762,8 +807,27 @@ function openStartPicker() {
 const closeStartPicker = () => document.getElementById('startScrim').classList.remove('open');
 
 function commitStart() {
-  const v = document.getElementById('startInput').value;
-  if (v) setStart(v);
+  const rows = [...document.querySelectorAll('#startPens [data-penstart]')];
+  if (rows.length) {
+    rows.forEach(inp => {
+      const pen = PENS.find(p => p.id === inp.dataset.penstart);
+      // Only a date she actually changed is pinned. Saving the sheet to
+      // set her reminder times would otherwise freeze every start day at
+      // whatever was shown, and they would stop following her log.
+      if (pen && inp.value && inp.value !== inp.dataset.was) setPenStart(pen, inp.value);
+    });
+    /* The protocol start day is deliberately NOT touched here.
+
+       It was being set to the earliest pen, which read as tidy and was the
+       same bug in a new place: a pen with no date of its own falls back to
+       it, so typing a date for one pen moved every pen that had not been
+       answered for. It stays as the atelier set it, and is now only ever a
+       fallback. */
+    scheduleChanged();
+  } else {
+    const v = document.getElementById('startInput').value;
+    if (v) setStart(v);
+  }
 
   const picked = {};
   document.querySelectorAll('#startTimes .time-field').forEach(inp => {
@@ -777,15 +841,22 @@ function commitStart() {
   renderAll();
   applyCardLinks();
   const bands = timeBands().map(b => `${b.toLowerCase()} at ${prettyTime(timeFor({ time: b }))}`);
+  const many = PENS.length > 1 && new Set(PENS.map(penStartIso)).size > 1;
   showToast(icsStale()
     ? 'Saved — now bring your calendar up to date below.'
-    : `Set from ${fmtShort(START)}${bands.length ? ' · ' + bands.join(', ') : ''}.`);
+    : many
+      ? `Saved — each one from its own day${bands.length ? ' · ' + bands.join(', ') : ''}.`
+      : `Set from ${fmtShort(START)}${bands.length ? ' · ' + bands.join(', ') : ''}.`);
 }
 
 function renderAll() {
   const btn = document.getElementById('btnStart');
   btn.hidden = false;
-  btn.textContent = `Started ${fmtShort(START)} — change`;
+  // With pens on different days there is no single "started" to print, and
+  // printing one of them would be a quiet lie about the others.
+  btn.textContent = (PENS.length > 1 && new Set(PENS.map(penStartIso)).size > 1)
+    ? 'Start days — change'
+    : `Started ${fmtShort(START)} — change`;
   renderCalNotice();
   renderToday(); renderStopped(); renderRefills(); renderAdherence();
   renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
@@ -1228,25 +1299,7 @@ function renderToday() {
     stack.appendChild(card);
   });
 
-  /* Any pen can come off her own schedule. A prescribed one says so, and
-     says the atelier will see it — stopping a prescription without
-     telling anyone is the thing worth one extra sentence. */
-  stack.querySelectorAll('[data-drop]').forEach(b =>
-    b.addEventListener('click', () => {
-      const pen = PENS.find(p => p.id === b.dataset.drop);
-      if (!pen) return;
-      const prescribed = !pen.addedByPatient;
-      if (!confirm(
-        `Take ${pen.name} off your schedule?\n\n` +
-        (prescribed
-          ? 'This was prescribed for you. The atelier will see that you have ' +
-            'stopped it, and you can put it back here whenever you like.\n\n'
-          : '') +
-        'Doses you have already logged are kept.')) return;
-      removePen(pen);
-      renderAll();
-      showToast(`${pen.name} taken off your schedule.`);
-    }));
+  wireDrops(stack);
 
   stack.querySelectorAll('[data-log]').forEach(b =>
     b.addEventListener('click', () => openLog(b.dataset.log)));
@@ -1419,8 +1472,14 @@ function renderRhythm() {
       <div class="sheet c-${pen.color || 'brass'}">
         <div class="supply-head">
           <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
-          <div><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
-          <div class="dose-meta">${freqShort(pen)} · ${pen.time}</div></div>
+          <div style="flex:1"><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
+          <div class="dose-meta">${freqShort(pen)} · ${pen.time} · from ${fmtShort(penStart(pen))}</div></div>
+          <!-- Every pen appears here, due today or not, which is why the
+               way to take one off lives here as well as on the dose card.
+               A rest day used to leave her with no control at all. -->
+          <button type="button" class="pen-x" data-drop="${pen.id}"
+            title="Take ${pen.name} off my schedule"
+            aria-label="Take ${pen.name} off my schedule">&times;</button>
         </div>
         <div class="rhythm">${cells.join('')}</div>
         ${/* The ring on a circle has to mean something, and it only appears
@@ -1435,6 +1494,32 @@ function renderRhythm() {
       </div>`;
   }).join('');
   wireLogDays(document.getElementById('rhythmList'));
+  wireDrops(document.getElementById('rhythmList'));
+}
+
+/* Any pen can come off her own schedule, from the dose card or from the
+   rhythm sheet — the rhythm sheet matters because it lists every pen,
+   due today or not, and a rest day used to leave her no control at all.
+
+   A prescribed pen says so, and says the atelier will see it: stopping a
+   prescription without telling anyone is the thing worth one more line. */
+function wireDrops(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-drop]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const pen = PENS.find(p => p.id === b.dataset.drop);
+      if (!pen) return;
+      if (!confirm(
+        `Take ${pen.name} off your schedule?\n\n` +
+        (pen.addedByPatient ? ''
+          : 'This was prescribed for you. The atelier will see that you have ' +
+            'stopped it, and you can put it back here whenever you like.\n\n') +
+        'Doses you have already logged are kept.')) return;
+      removePen(pen);
+      renderAll();
+      showToast(`${pen.name} taken off your schedule.`);
+    }));
 }
 
 /* Every circle and every "Log it" that names a pen and a day goes through
@@ -1718,7 +1803,14 @@ async function boot() {
   document.title = `Today's Ritual — ${CFG.patient.name}`;
   document.getElementById('footnote').innerHTML =
     (TRACKING ? 'Injection history is stored on this device only.<br>' : '') +
-    `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.`;
+    `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.` +
+    // Asked once, quietly, at the bottom — and only of someone far enough
+    // in to have something to say. A review prompt in front of a patient
+    // who started yesterday is asking a stranger for a favour.
+    (doseStreak() >= 10 && (CFG.protocol.concierge || {}).reviewUrl
+      ? `<br><a href="${CFG.protocol.concierge.reviewUrl}" target="_blank" rel="noopener">
+           Enjoying your results? Leave us a review</a>.`
+      : '');
 
   await loadLogged();
   renderAll();
@@ -1761,12 +1853,25 @@ async function boot() {
   // tells the patient her card is not set up.
   applyCardLinks(document);
 
-  // First visit on this device: ask which day she actually started, so the
-  // whole schedule is anchored to her, not to a date typed in the chart.
-  // ?change=1 is the link inside every calendar event: she tapped a dose,
-  // wanted it moved, and should land on the sheet that moves it.
+  /* Ask only when nobody anywhere knows when she started.
+
+     This used to ask whenever THIS BROWSER had no saved answer, which is
+     not the same thing at all. Safari clears script storage for a site
+     not visited in seven days, so a patient two months into a protocol
+     would open her card, be asked "which day did you start?", and be
+     shown a date from two months ago — correct, but presented as a
+     question. One tap on "Today" and her phases, her supply, her refill
+     date and her calendar all jumped forward two months.
+
+     A card with a start day on the record, or with a dose already logged,
+     is anchored. It does not need asking and must not be re-asked.
+
+     ?change=1 is the link inside every calendar event: she tapped a dose,
+     wanted it moved, and should land on the sheet that moves it. */
   const wantsChange = new URLSearchParams(location.search).get('change') === '1';
-  if (!saved || wantsChange) openStartPicker();
+  const anchored = !!CFG.protocol.startGiven
+    || PENS.some(p => p.atelierStart || firstDoseDay(p));
+  if ((!saved && !anchored) || wantsChange) openStartPicker();
 
   // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
   const tagged = TRACKING ? new URLSearchParams(location.search).get('log') : null;

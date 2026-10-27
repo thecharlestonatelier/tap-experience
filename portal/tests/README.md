@@ -196,8 +196,9 @@ Also checks that coming back with nothing changed redraws nothing.
 
 The `+` on Today's Ritual. A peptide a patient adds reaches the record
 without touching what was prescribed, comes back on a phone that has
-never seen it, and can be taken off again by her. A prescribed pen
-carries no remove control and `removePen()` refuses it.
+never seen it, and can be taken off again by her. A prescribed pen can
+be taken off too — recorded in `dropped` rather than deleted from
+`pens` — stays off across a reload, and comes back when she asks.
 
 Both need a service with a Studio session; see logging.mjs for the setup,
 and mint a session cookie from STUDIO_PASSPHRASE.
@@ -206,3 +207,86 @@ and mint a session cookie from STUDIO_PASSPHRASE.
 
 The atelier's side of a stopped prescription: Card Studio says she has
 stopped it, offers to put it back, and saving puts it back on her card.
+
+## atelier-alert.mjs
+
+Being told when a patient stops a prescription: the device subscribes
+(and only behind the passphrase), a newly stopped pen sends exactly one
+push, her phone re-posting the same list sends none, adding one of her
+own or putting a pen back sends none, and turning it off makes it quiet.
+It also reads the notification body out of server.js and checks it names
+no drug and no patient — the same rule push-crypto.mjs enforces for the
+patient's reminders.
+
+Needs the push sink and VAPID keys; see push-flow.mjs for both, plus a
+Studio session cookie in /tmp/tok.txt.
+
+## supply-flags.mjs
+
+Who is out of something, read off the dashboard list. A pen is projected
+from the prescription and the start day, so a patient who has not opened
+her card in a fortnight is still flagged; a vial she sized herself —
+tirzepatide, a NAD vial — comes from her card's own report instead,
+because this end cannot know how big it is. Also checks that a start day
+which only ever reached her phone still counts, which it did not before.
+
+## overview.mjs
+
+The read-only overview at /api/overview. What it refuses (no token, a
+wrong token, the studio cookie alone, anything but GET), what it answers
+with, and what it must never carry — the clinician note, dose history,
+injection sites, times, push subscriptions, or any field beyond the
+agreed list. It also pins the milligram-to-unit resolution: templates
+state the dose in milligrams and the pen is dialled in units, and reading
+the file raw makes every pen measure as lasting no days, which reports
+that nobody is ever short of anything.
+
+```bash
+AGENT_TOKEN=test-agent-token-xyz CARD_STORE=file STUDIO_PASSPHRASE=tp \
+  PORT=8095 node server.js &
+node tests/overview.mjs
+```
+
+## pen-starts.mjs
+
+Each pen keeps its own start day. The sheet asks per pen, moving one
+leaves the others where they were, it survives a reload, a pen added
+today starts today without disturbing anything, each pen's day reaches
+the atelier, and every pen carries a remove control in the rhythm sheet
+— due today or not.
+
+## first-dose-start.mjs
+
+The start day is the day of the first dose, not the day it was planned.
+Before any dose a pen follows the atelier's date; the first logged dose
+replaces it; a later dose does not move it; a dose back-filled to an
+earlier day does; a date typed in the sheet pins it and the log stops
+moving it; and saving the sheet without touching a date pins nothing, so
+a pen not yet started still picks up its own first dose.
+
+Every suite takes BASE, so the whole set can be run against one service.
+
+## tirz-vial.mjs
+
+Every tirzepatide vial is 1 mL — 100 units — whatever the patient doses
+out of it. Her own dose at N units a week gives floor(100/N) doses; a
+stored answer claiming a bigger vial cannot resize it; two vials are
+2 mL and twice the doses and do not restart the schedule.
+
+## no-reprompt.mjs
+
+A card that is already anchored must never ask when she started again.
+Safari clears script storage after seven quiet days, and the card used to
+ask whenever THIS BROWSER had no answer — so a patient two months in was
+asked the question and shown a two-month-old date, and one tap on "Today"
+moved her phases, supply, refill date and calendar forward two months.
+Each visit here uses a brand-new browser context, which is exactly what
+that eviction leaves behind.
+
+## services.mjs
+
+Aesthetic treatments and their cadences, in Dr Kendall's own terms: PRX
+weekly four times then monthly, toxin every three months, filler with no
+cadence at all, polynucleotides every four weeks for a course of three,
+liquid lipo at eight to ten weeks for a course of two. Also the colours,
+and that a treatment not on the menu is dropped rather than stored.

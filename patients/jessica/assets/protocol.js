@@ -143,7 +143,18 @@ function applySetup(pen, data) {
   // still on the same protocol — only the supply resets, so count the
   // vials rather than restarting her schedule.
   const vials = Math.max(1, Number(data.vials) || 1);
-  const oneVial = data.vialMl || pen.volumeMl || 1;
+
+  /* The size of ONE vial, captured before anything multiplies it. Reading
+     pen.volumeMl here is reading the running total: apply a two-vial
+     answer and then a one-vial answer, and the second starts from 2 mL
+     and calls it one vial. */
+  if (pen.baseVialMl == null) pen.baseVialMl = pen.vialMl || pen.volumeMl || 1;
+
+  /* A template with a fixed vial size has one, full stop. Tirzepatide is
+     always a 1 mL vial — 100 units — however the patient is dosing out of
+     it, so a stored answer from an older card cannot quietly resize it and
+     make the run-out date wrong. */
+  const oneVial = pen.vialFixed ? pen.baseVialMl : (data.vialMl || pen.baseVialMl);
   pen.volumeMl = oneVial * vials;
   pen.vialMl = oneVial;
   pen.vials = vials;
@@ -533,6 +544,96 @@ function setStart(isoDate) {
   scheduleChanged();
 }
 
+/* ---------- when each pen started ----------
+   One start day for the whole protocol was wrong the moment a second pen
+   existed. A patient three months into a GHK pen who begins tirzepatide
+   today has two start days, and answering "which day did you start?" with
+   today used to drag the GHK back to today with it — new phase, wrong
+   dial number, wrong supply, wrong calendar.
+
+   So each pen carries its own. penStart() already reads pen.startDate and
+   every projection goes through it; what was missing was anywhere for the
+   patient to put one, and anything that kept them apart.
+
+   Her answer lives on her phone, like the protocol start day always has,
+   and is reported to the atelier with the rest of her state. A pen with
+   no answer of its own falls back to the record's date for that pen, and
+   then to the protocol's — which is what every existing card does, so
+   nothing moves for anyone until they say otherwise. */
+function penStartsKey() { return `tca.penstart.${CFG.patient.id}`; }
+
+function loadPenStarts() {
+  try { return JSON.parse(localStorage.getItem(penStartsKey())) || {}; } catch { return {}; }
+}
+
+function savePenStarts(map) {
+  try { localStorage.setItem(penStartsKey(), JSON.stringify(map)); } catch {}
+}
+
+/* The day a pen was first actually injected, as recorded.
+
+   This is the only start day anybody observes rather than predicts. The
+   atelier types a date when it hands the pen over, and the patient gets
+   home, puts the box in the fridge and starts on Thursday — from then on
+   every phase boundary, every refill date and every reminder is two days
+   out, and nothing in the system would ever notice.
+
+   A back-filled dose counts, because a dose carries the day it was given
+   rather than the day it was entered. Only the earliest matters, so a
+   second vial of the same pen never moves it. */
+function firstDoseDay(pen) {
+  const key = penKeyOf(pen);
+  let first = null;
+  for (const day of Object.keys(LOGGED || {})) {
+    if (!(LOGGED[day] || []).includes(key)) continue;
+    if (!first || day < first) first = day;
+  }
+  return first;
+}
+
+/* Applied after the pen list is settled, so it can key off pen ids that
+   only exist once added pens are in and dropped pens are out.
+
+   Precedence, most trustworthy first:
+
+     1. a date somebody typed, which pins it — if she says she started on
+        the 12th but only began logging on the 14th, she is telling us
+        about two doses she did not record, and she is right;
+     2. the first dose on record, which is an observation;
+     3. what the atelier put on the card, which is a plan;
+     4. the protocol's own start day.
+
+   Nothing here is typed by the patient unless she opens the sheet, so in
+   the ordinary case — pen handed over Monday, first injection Thursday —
+   the card corrects itself the moment she logs that first dose. */
+function applyPenStarts() {
+  const mine = loadPenStarts();
+  PENS.forEach(p => {
+    /* A date the atelier put on the record wins over everything. It is
+       the one place with the whole picture — what was dispensed, when,
+       and what the patient said on the phone afterwards — so when it
+       disagrees with a phone it is the phone that is wrong. Blank means
+       "follow her", which is the usual case and the default. */
+    if (p.atelierStart) { p.startDate = p.atelierStart; return; }
+    if (mine[p.id]) { p.startDate = mine[p.id]; return; }
+    const first = firstDoseDay(p);
+    if (first) p.startDate = first;
+  });
+  _supplyCache.clear();
+}
+
+function setPenStart(pen, isoDate) {
+  if (!pen || !isoDate) return;
+  const mine = loadPenStarts();
+  mine[pen.id] = isoDate;
+  savePenStarts(mine);
+  pen.startDate = isoDate;
+  _supplyCache.clear();
+}
+
+/* The day a pen began, as a date string, for anything that has to show it. */
+function penStartIso(pen) { return iso(penStart(pen)); }
+
 /* ---------- card payloads ----------
    A tap card carries its own protocol in the URL fragment, so a card can
    be written at the end of a visit with no server and no record to keep.
@@ -613,6 +714,10 @@ function buildConfig(name, pens, templates, startDate) {
       name: `${name}'s Protocol`,
       // With no date on the card the patient sets her own on first open.
       startDate: startDate || fallback,
+      // Whether that date was actually given to us or quietly defaulted.
+      // "We do not know when she started" and "she started today" are
+      // different facts, and only one of them is worth asking about.
+      startGiven: !!startDate,
       delivery: 'pen',
       /* Logging a dose by hand, from the card itself.
 
@@ -738,7 +843,10 @@ function stateReport() {
       return {
         template: pen.template || pen.id,
         dosesLeft: dosesLeft(pen),
-        lastDose: s.lastDose ? iso(s.lastDose) : ''
+        lastDose: s.lastDose ? iso(s.lastDose) : '',
+        // The day this pen began, which is now its own and not the
+        // protocol's, so the atelier reads what she is actually on.
+        startDate: penStartIso(pen)
       };
     })
   };
@@ -994,7 +1102,9 @@ function hydrateRecord(rec, templates) {
       ? `${base.id}#${i}` : base.id;
     if (entry.phases && entry.phases.length) pen.phases = entry.phases;
     if (entry.schedule) pen.schedule = entry.schedule;
-    if (entry.startDate) pen.startDate = entry.startDate;
+    // Kept under its own name as well, because applyPenStarts() may put a
+    // patient's answer over the top and still has to know this existed.
+    if (entry.startDate) { pen.startDate = entry.startDate; pen.atelierStart = entry.startDate; }
     return pen;
   }).filter(Boolean);
 
@@ -1216,6 +1326,7 @@ async function loadProtocol() {
   START = parse(loadStart() || CFG.protocol.startDate);
   applyAdded(templates);
   applyDropped();
+  applyPenStarts();
   applySetups();
   _supplyCache.clear();
 
@@ -1278,6 +1389,7 @@ async function recheckCard() {
     START = parse(loadStart() || CFG.protocol.startDate);
     applyAdded(templates);
     applyDropped();
+    applyPenStarts();
     applySetups();
     _supplyCache.clear();
 
@@ -1652,6 +1764,10 @@ async function loadLogged(only) {
     const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
     if (res.ok) LOGGED = (await res.json()).days || {};
   } catch { /* a page that cannot reach the service is still a page */ }
+  // A pen's start day can be the day of its first dose, and that is only
+  // knowable once the log is in hand. Every page loads the protocol before
+  // the log, so this is where the two meet.
+  if (typeof PENS !== 'undefined' && PENS.length) applyPenStarts();
   return LOGGED;
 }
 

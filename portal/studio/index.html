@@ -76,6 +76,10 @@
   .pill.link.linked { color:var(--ok); border-color:rgba(92,122,94,.45); background:rgba(92,122,94,.08); }
   tr.link-detail td { background:rgba(138,115,80,.05); font-size:12px; color:var(--muted); }
   tr.link-detail td b { color:var(--espresso); font-weight:600; }
+  /* Louder than warn. A patient who has stopped a prescription is the one
+     thing on this list worth looking at before anything else. */
+  .pill.stop { color:#FBF3E9; border-color:var(--alert); background:var(--alert); }
+  .pens .off { text-decoration:line-through; opacity:.55; }
 
   .url { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--sunk);
          border:1px solid var(--line); border-radius:9px; padding:9px 11px;
@@ -105,6 +109,11 @@
   td.dose { font-size:12.5px; }
   td.dose .spent { color:var(--muted); }
   td.num { font-variant-numeric:tabular-nums; }
+  /* The only red on this list. It means order something today, so nothing
+     else is allowed to use it. */
+  td .urgent { display:inline-block; white-space:nowrap; padding:3px 9px;
+               border-radius:999px; color:#FBF3E9; background:var(--alert);
+               font-weight:600; }
   td.cold { color:var(--muted); }
   @media (max-width:900px) { .stats { grid-template-columns:repeat(2,1fr); } }
   /* Days comes from the peptide, so it is shown rather than asked for. */
@@ -287,6 +296,37 @@
   </section>
 
   <section>
+    <h2>Are reminders working?</h2>
+    <p class="hint">
+      Three things have to be true, and when one is not, the symptom is
+      silence &mdash; nothing errors and no patient complains.
+    </p>
+    <div class="panel">
+      <div class="stats" style="margin-bottom:14px">
+        <div class="stat"><small>Signing keys</small><strong id="pKeys">—</strong></div>
+        <div class="stat"><small>Phones subscribed</small><strong id="pPhones">—</strong></div>
+        <div class="stat"><small>With a dose still to come</small><strong id="pUpcoming">—</strong></div>
+        <div class="stat"><small>Scheduler last seen</small><strong id="pRun">—</strong></div>
+      </div>
+      <p class="hint" id="pWhy" style="margin:0"></p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tell me when a patient changes something</h2>
+    <p class="hint">
+      A patient can take a pen she was prescribed off her own schedule. The
+      list above marks it, but only once you look &mdash; this sends it to
+      this device as it happens. The notification names nobody and no drug;
+      it says a card changed, and you open Studio to see which.
+    </p>
+    <div class="panel">
+      <button class="ghost sm" id="alertToggle">Turn on</button>
+      <span class="hint" id="alertState" style="margin-left:10px">Off on this device.</span>
+    </div>
+  </section>
+
+  <section>
     <h2>Deploy</h2>
     <p class="hint">
       What is running right now, and how to put the latest code behind it.
@@ -364,7 +404,9 @@
       <table>
         <thead>
           <tr>
-            <th>Address</th><th>Patient</th><th>Protocol</th><th>Showing now</th><th>Opens</th><th>Last opened</th><th>Status</th><th></th>
+            <th>Address</th><th>Patient</th><th>Protocol</th><th>Showing now</th>
+            <th>Doses left</th><th>Runs out</th>
+            <th>Opens</th><th>Last opened</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -437,6 +479,20 @@
       </div>
     </div>
 
+    <div style="margin-top:22px">
+      <label>Treatments in the room <span style="text-transform:none;letter-spacing:0">— what she has had, and when the next one is due</span></label>
+      <div id="visitList"></div>
+      <div class="row" style="margin-top:10px">
+        <div><select id="visitPick"><option value="">Log a treatment…</option></select></div>
+        <div style="flex:0 0 auto"><input type="date" id="visitDate"></div>
+        <div style="flex:0 0 auto"><button type="button" class="ghost sm" id="addVisit">Log it</button></div>
+      </div>
+      <div class="row" style="margin-top:8px" id="visitExtra" hidden>
+        <div><select id="visitArea"><option value="">Area or product…</option></select></div>
+        <div style="flex:0 0 auto"><input type="number" id="visitUnits" placeholder="units" min="0" step="0.5" style="width:90px"></div>
+      </div>
+    </div>
+
     <div style="margin-top:20px">
       <label for="editNote">Chart note <span style="text-transform:none;letter-spacing:0">— never shown to the patient</span></label>
       <textarea id="editNote" rows="2"></textarea>
@@ -468,6 +524,7 @@ const ORIGIN = location.origin;
 const ML_PER_UNIT = 0.01;
 
 let TEMPLATES = null;
+let SERVICES = [];
 let CARDS = [];
 let editing = null;
 
@@ -549,9 +606,16 @@ async function start() {
   $('app').hidden = false;
   TEMPLATES = resolveDoses(
     await (await fetch('/templates.json', { cache: 'no-store' })).json());
+  try { SERVICES = (await (await fetch('/api/services')).json()).services || []; } catch {}
+  $('visitPick').innerHTML = '<option value="">Log a treatment…</option>' +
+    SERVICES.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  $('visitDate').value = new Date().toISOString().slice(0, 10);
+
   renderDeck();
   renderVials();
   renderDeploy();
+  renderAlerts();
+  renderPushHealth();
   $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
     TEMPLATES.templates.filter(t => t.id !== 'custom' && !t.retired)
       .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
@@ -588,6 +652,120 @@ function deployCommand(health) {
   ].join(' && ');
 }
 
+/* ---------- told when a patient changes her own protocol ----------
+   Per device, because a push subscription is a browser, not an account.
+   Turning it on on the laptop does not turn it on on the phone, and the
+   state below is this browser's, not the atelier's. */
+async function currentStudioSub() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  const reg = await navigator.serviceWorker.getRegistration('/studio/');
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+function keyToBytes(base64) {
+  const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4))
+    .replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+/* Why reminders are not arriving, in the order the question is actually
+   asked: are the keys there, is anyone subscribed, and is the scheduler
+   getting through. */
+async function renderPushHealth() {
+  if (!$('pKeys')) return;
+  let h;
+  try { h = await api('/api/push/health'); } catch { return; }
+
+  $('pKeys').textContent = h.configured ? 'attached' : 'MISSING';
+  $('pPhones').textContent = `${h.phones} on ${h.cards} card${h.cards === 1 ? '' : 's'}`;
+  $('pUpcoming').textContent = h.withUpcoming;
+  $('pRun').textContent = h.lastRun
+    ? (h.lastRun.ok ? since(h.lastRun.at) : `turned away ${since(h.lastRun.at)}`)
+    : 'not since this instance started';
+
+  const why = [];
+  if (!h.configured) why.push(
+    '<b>No signing keys.</b> Nothing can be sent at all. This is what a ' +
+    '<code>gcloud run deploy --set-secrets</code> naming fewer than all the ' +
+    'secrets does — it replaces the list rather than adding to it. ' +
+    'Fix: <code>bash deploy-prod.sh</code>.');
+  if (!h.schedulerSecretSet) why.push(
+    '<b>No scheduler secret.</b> Cloud Scheduler is being turned away every ' +
+    'time it knocks, so nothing is ever sent on time.');
+  if (h.lastRun && !h.lastRun.ok) why.push(
+    `<b>The scheduler was turned away</b> (${h.lastRun.why}). Reminders are ` +
+    'not going out.');
+  if (h.configured && !h.phones) why.push(
+    'No phone has ever subscribed. The switch is on each patient\'s own card, ' +
+    'under Today\'s Ritual — it has to be turned on there, on the phone, and ' +
+    'iOS only offers it on a card added to the home screen.');
+  if (h.configured && h.phones && !h.withUpcoming) why.push(
+    'Phones are subscribed but none has a dose still to come. A card only ' +
+    'sends its schedule when it is opened, so a patient who has not opened ' +
+    'hers since her last posted dose will not be nudged until she does.');
+  if (!why.length && h.lastRun && h.lastRun.ok) why.push('All three are fine.');
+
+  $('pWhy').innerHTML = why.join('<br><br>');
+}
+
+async function renderAlerts() {
+  const btn = $('alertToggle'), label = $('alertState');
+  if (!btn) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    btn.hidden = true;
+    label.textContent = 'This browser cannot show notifications.';
+    return;
+  }
+  let on = false;
+  try { on = !!(await currentStudioSub()); } catch {}
+  btn.textContent = on ? 'Turn off' : 'Turn on';
+  label.textContent = on
+    ? 'On for this device.'
+    : (Notification.permission === 'denied'
+        ? 'Notifications are blocked for this site in your browser settings.'
+        : 'Off on this device.');
+}
+
+async function toggleAlerts() {
+  const btn = $('alertToggle');
+  btn.disabled = true;
+  try {
+    const existing = await currentStudioSub();
+    if (existing) {
+      await api('/api/push/atelier', {
+        method: 'POST',
+        body: JSON.stringify({ off: true, endpoint: existing.endpoint })
+      });
+      await existing.unsubscribe();
+      toast('Off. This device will not be told.');
+      return;
+    }
+
+    const { available, key } = await api('/api/push/key');
+    if (!available || !key) return toast('Notifications are not configured on the server.', 6000);
+    if (await Notification.requestPermission() !== 'granted') {
+      return toast('Your browser refused notifications for this site.', 6000);
+    }
+
+    const reg = await navigator.serviceWorker.register('sw.js', { scope: '/studio/' });
+    await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: keyToBytes(key)
+    });
+    await api('/api/push/atelier', { method: 'POST', body: JSON.stringify({ sub: sub.toJSON() }) });
+    toast('On. This device will be told when a patient stops a pen.');
+  } catch (e) {
+    toast(`Could not change it — ${e.message}`, 6000);
+  } finally {
+    btn.disabled = false;
+    renderAlerts();
+  }
+}
+
 async function renderDeploy() {
   $('dRev').textContent = '…';
   let health = null;
@@ -606,6 +784,8 @@ $('copyDeploy').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('deployCmd').textContent);
   toast('Command copied — paste it into Cloud Shell.');
 });
+$('alertToggle').addEventListener('click', toggleAlerts);
+
 $('checkDeploy').addEventListener('click', async () => {
   await renderDeploy();
   toast(`Running ${$('dRev').textContent}, up ${$('dSince').textContent}.`);
@@ -675,27 +855,64 @@ async function refresh() {
   sel.value = keep;
 
   $('rows').innerHTML = CARDS.map(c => {
-    const pens = (c.pens || []).map(p => {
+    /* A pen she has stopped is still prescribed, so it stays in this
+       column — struck through, which says both things at once: it was
+       ordered, and it is not being taken. */
+    const off = c.dropped || [];
+    const pens = (c.pens || []).map((p, i) => {
       const t = TEMPLATES.templates.find(x => x.id === p.template);
-      return t ? t.name : p.template;
+      const name = t ? t.name : p.template;
+      const id = (c.pens || []).filter(x => x.template === p.template).length > 1
+        ? `${p.template}#${i}` : p.template;
+      return off.includes(id)
+        ? `<span class="off" title="She has taken this off her schedule">${name}</span>`
+        : name;
     }).join(' · ');
     const now = showingNow(c);
+    const supply = supplyOf(c);
     const taps = Number(c.taps) || 0;
     return `<tr data-slug="${c.slug}" style="cursor:pointer">
       <td class="slug">/${c.slug}</td>
       <td class="who">${c.name || '<span style="color:var(--muted);font-weight:400">unassigned</span>'}</td>
       <td class="pens">${pens || '—'}</td>
       <td class="dose">${now.text}${now.live ? ' <span class="live" title="Reported by her phone">•</span>' : ''}</td>
+      ${supplyCells(supply)}
       <td class="num${taps ? '' : ' cold'}">${taps || '—'}</td>
       <td class="num${c.lastSeen ? '' : ' cold'}">${c.lastSeen ? ago(c.lastSeen) : 'never'}</td>
       <td><span class="pill ${c.status}">${c.status}</span>${
+        // Said first, and in full colour: she has stopped something that
+        // was prescribed for her, and nothing else here would say so.
+        off.length
+          ? ` <span class="pill stop" title="She has taken ${off.length} prescribed ${
+              off.length === 1 ? 'pen' : 'pens'} off her own schedule">stopped ${
+              off.length === 1 ? 'a pen' : `${off.length} pens`}</span>`
+          : ''}${
+        // A treatment she is due for, or past due. Worked out from the
+        // visits on her record rather than from a booking system, so it
+        // shows whether or not anything is in the diary.
+        (c.services || []).filter(s => s.next && (s.next.overdue || s.next.soon))
+          .map(s => ` <span class="pill ${s.next.overdue ? 'stop' : 'warn'}"
+            title="${esc(s.name)} — ${s.next.overdue
+              ? `was due ${s.next.due}` : `due ${s.next.due}`}">${
+            esc(s.name.split(' — ')[0].split(' / ')[0])} ${
+            s.next.overdue ? 'overdue' : 'due'}</span>`).join('')}${
         // A named card with nothing on it opens to "your protocol has not
         // been added yet". Say so here, so it is caught before the card is
         // handed over rather than by the patient.
         (c.name && !(c.pens || []).length)
           ? ' <span class="pill warn" title="This card opens with no protocol on it">no protocol</span>'
           : ''}${
-        now.flag === 'course finished'
+        // Out of something, named. "finished" told you a course had ended
+        // but never which pen, which is no use when you are the one who
+        // has to order it.
+        supply.out.length
+          ? ` <span class="pill stop" title="This pen has given its last dose — she needs a refill">out of ${
+              supply.out.join(', ')}</span>`
+          : ''}${
+        supply.low.map(l =>
+          ` <span class="pill warn" title="${l.name} runs out in ${l.days} day${
+            l.days === 1 ? '' : 's'}">${l.name} ${l.days}d left</span>`).join('')}${
+        (!supply.out.length && now.flag === 'course finished')
           ? ' <span class="pill warn" title="Every pen on this card is spent">finished</span>'
           : ''}${
         // A named, active card nobody has ever opened is usually a card that
@@ -822,6 +1039,7 @@ function openEditor(slug) {
   $('editStatus').value = editing.status || 'active';
   $('editNote').value = editing.note || '';
   renderPens();
+  renderVisits();
   renderSeen();
   renderTimes();
   renderDoses(editing.slug);
@@ -1155,6 +1373,85 @@ function renderStats() {
    opened days ago: walk the schedule from the card's start day and say
    where that lands. It is a second copy of the arithmetic, and it is kept
    only because a card nobody has tapped still has to show something. */
+/* How many days before a pen runs dry counts as "order one". */
+const LOW_DAYS = 10;
+
+/* The start day the patient is actually on.
+
+   Three places hold one and they are not the same: the card's own
+   startDate is what was typed here, settings.startDate is what was sent
+   to her phone, and state.startDate is what her phone says it is using —
+   which wins, because she can move it herself. Reading only the first is
+   why a card with a perfectly good start day sat on this list saying
+   "waiting for her start day", and why nothing here could work out how
+   much she had left. */
+function effectiveStart(rec) {
+  return (rec.state && rec.state.startDate)
+      || (rec.settings && rec.settings.startDate)
+      || rec.startDate || null;
+}
+
+/* What is left in each pen — worked out by the server and sent with the
+   card, not recomputed here. portal/lib/supply.js is the one answer, so
+   this list and the read-only overview cannot drift apart and start
+   telling the atelier two different things about the same patient. */
+function supplyOf(rec) {
+  const s = rec.supply || {};
+  return { out: s.out || [], low: s.low || [], unknown: s.unknown || [],
+           pens: s.pens || [] };
+}
+
+/* Doses left, and the day it runs out, for every pen on the card. Two
+   columns rather than a pill, because this is the question asked of every
+   row every time — not an exception worth flagging.
+
+   Red inside a week. Red is the only thing on this list that means "order
+   something today", so nothing else is allowed to use it. */
+function supplyCells(s) {
+  const pens = s.pens || [];
+  const unknown = s.unknown || [];
+
+  if (!pens.length) {
+    // Named, not blank. A vial she sets up herself on a card she has never
+    // opened has no supply anyone can state, and an empty cell reads as
+    // "she is fine" — the one thing it does not mean.
+    const why = unknown.length ? 'not set up on her phone yet' : '';
+    return `<td class="num cold" title="${why}">${unknown.length ? '?' : '—'}</td>
+            <td class="num cold" title="${why}">${unknown.length ? 'not set up' : '—'}</td>`;
+  }
+
+  const soonest = pens.reduce((a, b) =>
+    (a.days == null) ? b : (b.days == null) ? a : (b.days < a.days ? b : a));
+  const urgent = soonest.days != null && soonest.days <= 7;
+
+  const doses = pens.map(p => p.dosesLeft == null ? '?' : p.dosesLeft).join(' / ');
+  const text = soonest.days == null ? '—'
+    : soonest.days <= 0 ? 'out now'
+    : `${soonest.days}d · ${fmtDay(soonest.runsOut)}`;
+  const when = urgent ? `<span class="urgent">${text}</span>` : text;
+
+  const detail = pens.map(p => `${p.name}: ${
+    p.dosesLeft == null ? 'unknown' : p.dosesLeft + ' left'}${
+    p.runsOut ? `, last dose ${p.runsOut}` : ''}`).join('\n');
+
+  return `<td class="num" title="${esc(detail)}">${doses}</td>
+          <td class="num" style="white-space:nowrap" title="${esc(detail)}">${when}</td>`;
+}
+
+/* Titles carry pen names and dates; keep a stray quote from ending the
+   attribute. */
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fmtDay(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 function showingNow(rec) {
   const s = rec.state;
   if (s && s.at && Date.now() - new Date(s.at) < 36 * 3600000 && (s.today || []).length) {
@@ -1166,9 +1463,10 @@ function showingNow(rec) {
 
   const pens = rec.pens || [];
   if (!pens.length) return { text: '—', flag: rec.name ? 'no protocol' : '' };
-  if (!rec.startDate) return { text: 'waiting for her start day', flag: '' };
+  const startDate = effectiveStart(rec);
+  if (!startDate) return { text: 'waiting for her start day', flag: '' };
 
-  const start = new Date(rec.startDate + 'T00:00:00');
+  const start = new Date(startDate + 'T00:00:00');
   const elapsed = Math.floor((Date.now() - start) / 86400000);
   if (elapsed < 0) return { text: 'not started yet', flag: '' };
 
@@ -1256,6 +1554,86 @@ function stoppedByHer() {
   </div>`;
 }
 
+/* ---------- treatments in the room ----------
+   A visit is a date and a service, and the cadence does the rest. The due
+   date is never stored: the moment a visit is corrected a stored one would
+   be wrong, and nothing would say so. */
+function renderVisits() {
+  const list = $('visitList');
+  if (!list) return;
+  const visits = (editing.visits || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!visits.length) {
+    list.innerHTML = '<p class="hint" style="margin:0">Nothing logged yet.</p>';
+    return;
+  }
+
+  // Grouped by service, newest first, each with where the course stands.
+  const ids = [...new Set(visits.map(v => v.service))];
+  list.innerHTML = ids.map(id => {
+    const s = SERVICES.find(x => x.id === id) || { name: id, hex: '#8A7C6A' };
+    const mine = visits.filter(v => v.service === id);
+    const n = nextVisit(id, editing.visits || []);
+
+    const when = !n ? ''
+      : n.done ? `Course complete — ${n.course}.`
+      : n.none ? 'No set cadence.'
+      : n.overdue ? `<b style="color:var(--alert)">Overdue by ${-n.days} day${n.days === -1 ? '' : 's'}</b> — was due ${fmtDay(n.due)}.`
+      : `Next ${fmtDay(n.due)}${n.days === 0 ? ' — today' : `, in ${n.days} day${n.days === 1 ? '' : 's'}`}.${
+          n.window ? ` Window to ${fmtDay(n.window[1])}.` : ''}${
+          n.course ? ` Session ${n.course}.` : ''}`;
+
+    return `<div class="pen-row" style="border-left:4px solid ${s.hex}">
+      <div class="pen-head">
+        <span class="pen-name">${s.name}</span>
+        <span class="hint" style="margin:0">${mine.length} visit${mine.length === 1 ? '' : 's'}</span>
+      </div>
+      <p class="setup-note" style="margin-bottom:8px">${when}</p>
+      ${mine.map(v => `<div class="phase" style="grid-template-columns:1fr auto auto">
+        <span>${fmtDay(v.date)}${v.area ? ` · ${v.area}` : ''}${v.units ? ` · ${v.units} units` : ''}</span>
+        <span></span>
+        <button type="button" class="x" data-dropvisit="${v.service}|${v.date}"
+          title="Remove this visit">&times;</button>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-dropvisit]').forEach(b =>
+    b.addEventListener('click', () => {
+      const [service, date] = b.dataset.dropvisit.split('|');
+      editing.visits = (editing.visits || [])
+        .filter(v => !(v.service === service && v.date === date));
+      renderVisits();
+    }));
+}
+
+/* The same arithmetic the server does, so the editor and the list agree.
+   Kept here rather than fetched because the editor has to redraw as she
+   types, before anything is saved. */
+function nextVisit(id, visits) {
+  const s = SERVICES.find(x => x.id === id);
+  if (!s) return null;
+  const mine = visits.filter(v => v.service === id).sort((a, b) => a.date.localeCompare(b.date));
+  if (!mine.length) return null;
+  const n = mine.length, last = mine[n - 1].date;
+  if (s.courseOf && n >= s.courseOf) return { done: true, course: `${n} of ${s.courseOf}`, last };
+  const gaps = s.firstGaps || [];
+  const gap = n <= gaps.length ? gaps[n - 1] : s.everyDays;
+  if (!gap) return { none: true, last };
+  const due = addDays(last, gap);
+  const mid = new Date(); mid.setHours(0, 0, 0, 0);
+  const days = Math.round((new Date(due + 'T00:00:00') - mid) / 86400000);
+  return { due, days, last, overdue: days < 0,
+           window: s.windowDays ? [addDays(last, s.windowDays[0]), addDays(last, s.windowDays[1])] : null,
+           course: s.courseOf ? `${n} of ${s.courseOf}` : null };
+}
+
+function addDays(isoDate, days) {
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function renderPens() {
   const list = $('penList');
   const hers = stoppedByHer() + addedByHer();
@@ -1285,6 +1663,15 @@ function renderPens() {
         <span class="pen-name">${t.name || pen.template}</span>
         <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
       </div>
+      <!-- Its own start day. Blank means it follows the card's start day,
+           which is what every pen did before any of them could differ —
+           so an existing card reads exactly as it always has until a date
+           is actually typed here. -->
+      <label class="setup-note" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span>Started</span>
+        <input type="date" data-penstart="${pi}" value="${pen.startDate || ''}">
+        <span style="color:var(--muted)">${pen.startDate ? '' : 'follows the card'}</span>
+      </label>
       ${phases.length ? `<div class="phase phase-head">
         <span>Phase</span><span>Units</span><span>Days</span><span></span>
       </div>` : ''}
@@ -1318,6 +1705,14 @@ function renderPens() {
       if (mgEl) mgEl.textContent = mgLine(t, pen.phases);
       const lifeEl = list.querySelector(`[data-life="${p}"]`);
       if (lifeEl) lifeEl.innerHTML = lifeLine(t, pen.phases);
+    }));
+
+  list.querySelectorAll('[data-penstart]').forEach(inp =>
+    inp.addEventListener('change', () => {
+      const pen = editing.pens[inp.dataset.penstart];
+      if (!pen) return;
+      if (inp.value) pen.startDate = inp.value; else delete pen.startDate;
+      renderPens();
     }));
 
   list.querySelectorAll('[data-undrop]').forEach(b =>
@@ -1368,6 +1763,37 @@ $('addPen').addEventListener('click', () => {
   editing.pens.push({ template: id });
   $('penPick').value = '';
   renderPens();
+});
+
+/* Liquid lipo is priced and given by area, and toxin by the unit, so
+   those two ask one more question. Everything else does not. */
+$('visitPick').addEventListener('change', () => {
+  const s = SERVICES.find(x => x.id === $('visitPick').value);
+  const areas = (s && s.areas) || [];
+  const wantsUnits = !!(s && s.unit === 'unit');
+  $('visitExtra').hidden = !areas.length && !wantsUnits;
+  $('visitArea').hidden = !areas.length;
+  $('visitUnits').hidden = !wantsUnits;
+  $('visitArea').innerHTML = '<option value="">Area…</option>' +
+    areas.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+});
+
+$('addVisit').addEventListener('click', () => {
+  const service = $('visitPick').value;
+  const date = $('visitDate').value;
+  if (!service) return toast('Choose a treatment.');
+  if (!date) return toast('Which day was it?');
+  editing.visits = editing.visits || [];
+  if (editing.visits.some(v => v.service === service && v.date === date)) {
+    return toast('That treatment is already logged for that day.');
+  }
+  const v = { service, date };
+  if ($('visitArea').value) v.area = $('visitArea').value;
+  if ($('visitUnits').value) v.units = Number($('visitUnits').value);
+  editing.visits.push(v);
+  $('visitPick').value = ''; $('visitArea').value = ''; $('visitUnits').value = '';
+  $('visitExtra').hidden = true;
+  renderVisits();
 });
 
 /* What the record kept, against what the editor sent. Returns a sentence
