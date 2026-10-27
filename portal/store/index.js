@@ -187,10 +187,14 @@ function sanitize(input, existing = null) {
   };
   const settings = sanitizeSettings(input.settings, existing);
   if (settings) rec.settings = settings;
-  // A card is blank until it has someone's name or something on it. Saying
-  // so here means the dashboard never has to remember to set it.
-  if (!rec.status) rec.status = (rec.name || rec.pens.length) ? 'active' : 'blank';
-  if (!rec.name && rec.pens.length === 0 && rec.status === 'active') rec.status = 'blank';
+  // A card is blank until it has someone's name, a prescribed pen, or a
+  // pen she added herself — and only then. Saying so here means the
+  // dashboard never has to remember to set it, and a patient who starts
+  // using an unassigned tag becomes visible exactly the way a prescribed
+  // card is. Retired is the atelier's word and is never second-guessed.
+  if (rec.status !== 'retired') {
+    rec.status = (rec.name || rec.pens.length || rec.added.length) ? 'active' : 'blank';
+  }
   return carryCounters(rec, existing);
 }
 

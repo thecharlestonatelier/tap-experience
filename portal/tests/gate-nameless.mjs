@@ -35,6 +35,14 @@ const herOwn     = await mk('ao', { name: '', pens: [],
   added: [{ id: 'bpc+zz', template: 'bpc', startDate: '2026-10-20' }] });
 const retired    = await mk('rt', { name: 'Retired Patient', pens: [{ template: 'ghk' }], status: 'retired' });
 
+/* A tag she starts using on her own, the way the ritual page does it:
+   a blank tag, then the + flow posts the added pen. The card must flip
+   out of blank — it is in use — and still gate. */
+const flipped = await mk('fl', { status: 'blank' });
+await fetch(`${BASE}/api/added/${flipped}`, { method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ added: [{ id: 'bpc+yy', template: 'bpc', startDate: '2026-10-20' }] }) });
+
 /* Assert — the record tells the truth about each name */
 const rec = slug => fetch(`${BASE}/api/cards/${slug}`, { headers: { Cookie: `ca_studio=${TOK}` } })
   .then(r => r.json());
@@ -45,10 +53,14 @@ check('a prescribed card with no name at all stays as it is',
   (await rec(nameless)).name === '', JSON.stringify((await rec(nameless)).name));
 check('a whitespace-only name is treated as no name',
   (await rec(blanked)).name === '', JSON.stringify((await rec(blanked)).name));
+check('a card carrying her own pen is in use, not blank',
+  (await rec(herOwn)).status === 'active', JSON.stringify((await rec(herOwn)).status));
+check('a blank tag she starts using flips out of blank',
+  (await rec(flipped)).status === 'active', JSON.stringify((await rec(flipped)).status));
 
 /* Act — a cold visit to each, with no sign-in */
 const b = await chromium.launch();
-for (const slug of [overridden, nameless, blanked, herOwn, retired]) {
+for (const slug of [overridden, nameless, blanked, herOwn, retired, flipped]) {
   const p = await (await b.newContext({ viewport: { width: 420, height: 900 } })).newPage();
   await p.goto(`${BASE}/ritual.html?c=${slug}`);
   await p.waitForSelector('#auth-gate', { timeout: 25000 });
