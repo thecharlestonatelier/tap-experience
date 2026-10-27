@@ -137,16 +137,22 @@ function sanitizeState(input) {
 }
 
 function sanitize(input, existing = null) {
+  // The display name in order of authority: what was typed, then the
+  // first and last names the dashboard mints cards from, then the name
+  // the record already had. An explicitly empty or whitespace-only name
+  // counts as "not typed" — otherwise clearing the name would silently
+  // leave a prescribed card nameless.
+  const typedName = String(input.name ?? '').trim();
+  const derivedName = (input.firstName || input.lastName)
+    ? [input.firstName, input.lastName]
+        .map(x => String(x ?? '').trim())
+        .filter(Boolean)
+        .join(' ')
+    : '';
   const rec = {
     slug: normalizeSlug(input.slug || (existing && existing.slug)),
-    // The dashboard mints cards from a first and last name; a client that
-    // sends those without a display name still gets one, so a protocol-
-    // carrying card can never sit nameless — and a nameless card would
-    // fall outside the first-tap gate entirely.
-    name: String(input.name ??
-      (input.firstName
-        ? [input.firstName, input.lastName].filter(Boolean).join(' ')
-        : (existing ? existing.name : ''))).trim().slice(0, 60),
+    name: String(typedName || derivedName || (existing ? existing.name : ''))
+      .trim().slice(0, 60),
     startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')
       ? input.startDate
       : (existing ? existing.startDate : null),

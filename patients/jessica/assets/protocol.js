@@ -1303,7 +1303,13 @@ async function loadProtocol() {
     // account before the experience opens. Blank tags have no owner to
     // link yet, and fragment / legacy cards carry their own protocol and
     // never had a record, so neither sees the gate.
-    if (rec.name && rec.status !== 'retired') {
+    //
+    // The marker of "assigned" is the protocol itself — pens, not the
+    // name. A card that carries a dosing protocol must never open
+    // unsigned-in, even if its name was cleared or never typed: gating on
+    // the name alone once let a nameless prescribed card skip the gate
+    // entirely.
+    if ((rec.name || (rec.pens && rec.pens.length > 0)) && rec.status !== 'retired') {
       const gate = await loadAuthGate();
       if (gate) {
         const outcome = await gate.ensureActivated({ slug: CARD_SLUG });
