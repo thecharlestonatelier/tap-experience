@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<title>Injection Tutorial</title>
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Atelier">
+<link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
+<style>
+  :root {
+    --bg:#F3EBE1; --card:#F8F2EA; --espresso:#3B2E20; --espresso-soft:#4A3B2C;
+    --brass:#8A7350; --muted:#8A7C6A; --hairline:rgba(138,115,80,.18);
+    --alert:#A4553F;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    background:var(--bg); color:var(--espresso-soft);
+    font-family:'Jost',-apple-system,BlinkMacSystemFont,sans-serif;
+    min-height:100dvh; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:430px; margin:0 auto; padding:calc(14px + env(safe-area-inset-top)) 22px calc(40px + env(safe-area-inset-bottom)); }
+
+  .topbar { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  .back {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:38px; height:38px; border-radius:50%; background:var(--card);
+    box-shadow:0 1px 3px rgba(59,46,32,.12); color:var(--brass);
+    text-decoration:none; flex:none;
+  }
+  .back svg { width:15px; height:15px; }
+  .eyebrow { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+
+  h1 {
+    font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+    font-size:38px; line-height:1.1; color:var(--espresso); margin-bottom:8px;
+  }
+  .lede { font-size:14px; line-height:1.6; color:var(--muted); margin-bottom:26px; }
+
+  .block { background:var(--card); border-radius:16px; padding:20px; margin-bottom:16px;
+           box-shadow:0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045); }
+  .block h2 {
+    font-family:'Cormorant Garamond',Georgia,serif; font-weight:600;
+    font-size:24px; color:var(--espresso); margin-bottom:4px;
+  }
+  .block .sub { font-size:12px; color:var(--muted); margin-bottom:14px; }
+
+  .body { font-size:13.5px; line-height:1.55; }
+  ul { list-style:none; }
+  ul li { position:relative; padding-left:16px; font-size:13.5px; line-height:1.55; margin-bottom:8px; }
+  ul li::before { content:'·'; position:absolute; left:4px; color:var(--brass); font-weight:700; }
+  ul li:last-child { margin-bottom:0; }
+
+  ol.steps { list-style:none; counter-reset:s; }
+  ol.steps li {
+    counter-increment:s; position:relative; padding-left:30px;
+    font-size:13.5px; line-height:1.55; margin-bottom:10px;
+  }
+  ol.steps li:last-child { margin-bottom:0; }
+  ol.steps li::before {
+    content:counter(s); position:absolute; left:0; top:1px;
+    width:20px; height:20px; border-radius:50%;
+    background:rgba(138,115,80,.13); color:var(--brass);
+    font-size:11px; font-weight:600; display:flex;
+    align-items:center; justify-content:center;
+  }
+
+  .lab { font-size:10px; letter-spacing:.15em; text-transform:uppercase;
+         color:var(--brass); margin:18px 0 8px; }
+  .lab:first-of-type { margin-top:0; }
+
+  /* Site rotation diagram. Its own marks are styled inside the SVG. */
+  .figwrap { margin-top:4px; }
+  .fig {
+    display:block; width:100%; max-width:240px; height:auto;
+    border-radius:12px; background:var(--bg);
+  }
+  .fig-rules { margin-top:11px; }
+
+  /* The film, when there is one. */
+  .film {
+    display:block; text-align:center; padding:14px; border-radius:999px;
+    background:var(--espresso); color:#F6F0E7; text-decoration:none;
+    font-size:13px; font-weight:600; letter-spacing:.07em; text-transform:uppercase;
+  }
+
+  .foot { margin-top:26px; font-size:11.5px; line-height:1.6; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back" href="./" aria-label="Back to portal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </a>
+    <span class="eyebrow">Injection Tutorial</span>
+  </div>
+
+  <h1>Injection Tutorial</h1>
+  <p class="lede" id="lede">Loading your protocol…</p>
+
+  <div id="blocks"></div>
+
+  <p class="foot">
+    This page reflects what is on your card today. If the atelier changes your
+    protocol, it changes here too.
+  </p>
+</div>
+
+<script>
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+const num = a => a.map(s => `<li>${esc(s)}</li>`).join('');
+
+(async function boot() {
+  try {
+    await loadProtocol();
+  } catch {
+    document.getElementById('lede').textContent =
+      'Could not load your protocol. Please contact the atelier.';
+    applyCardLinks(document);
+    return;
+  }
+
+  const PENS = CFG.protocol.pens || [];
+  const H = CFG.protocol.handling || {};
+  document.title = `Injection Tutorial — ${CFG.patient.name}`;
+  document.getElementById('lede').textContent = PENS.length
+    ? 'How to give what is on your card, and where.'
+    : 'There is nothing on this card yet.';
+
+  const out = [];
+
+  // The film, if the atelier has set one.
+  if (H.tutorialVideo) {
+    out.push(`<div class="block">
+      <h2>Watch it done</h2>
+      <div class="sub">Two minutes, start to finish.</div>
+      <a class="film" href="${esc(H.tutorialVideo)}" target="_blank" rel="noopener noreferrer">Play the film</a>
+    </div>`);
+  }
+
+  // A card can hold both a dial pen and a draw-up vial. Show only the
+  // steps that apply to what she actually has.
+  const steps = [];
+  if (PENS.some(p => !isSyringe(p)) && CFG.protocol.injectionSteps) {
+    steps.push(`<div class="lab">With a pen</div>
+      <ol class="steps">${num(CFG.protocol.injectionSteps.map(
+        s => s.replace('{units}', 'your number')))}</ol>`);
+  }
+  if (PENS.some(p => isSyringe(p)) && CFG.protocol.injectionStepsVial) {
+    steps.push(`<div class="lab">Drawing from a vial</div>
+      <ol class="steps">${num(CFG.protocol.injectionStepsVial.map(
+        s => s.replace('{units}', 'your number')))}</ol>`);
+  }
+
+  if (steps.length) {
+    out.push(`<div class="block">
+      <h2>Giving it</h2>
+      <div class="sub">Today's Ritual has your exact number for the day.</div>
+      ${steps.join('')}
+      <div class="lab">Rotating sites</div>
+      <div class="figwrap">${bellyFigure()}</div>
+      <ul class="fig-rules">
+        <li>Rotate sites with every injection</li>
+        <li>Keep two inches clear of your navel</li>
+      </ul>
+    </div>`);
+  }
+
+  document.getElementById('blocks').innerHTML = out.join('');
+  applyCardLinks(document);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<!-- Served at /v/<vial>, so every relative URL needs the site root. -->
+<base href="/">
+<title>Log this dose</title>
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
+<style>
+  :root {
+    --bg:#F3EBE1; --card:#F8F2EA; --espresso:#3B2E20; --espresso-soft:#4A3B2C;
+    --brass:#8A7350; --muted:#8A7C6A; --hairline:rgba(138,115,80,.18);
+    --alert:#A4553F; --ok:#5C7A5E;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    background:var(--bg); color:var(--espresso-soft);
+    font-family:'Jost',-apple-system,BlinkMacSystemFont,sans-serif;
+    min-height:100dvh; -webkit-font-smoothing:antialiased;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .wrap { width:100%; max-width:430px; padding:calc(20px + env(safe-area-inset-top)) 22px calc(30px + env(safe-area-inset-bottom)); }
+
+  .mark { display:block; height:52px; width:auto; margin:0 auto 22px; }
+  .eyebrow { font-size:10.5px; letter-spacing:.18em; text-transform:uppercase;
+             color:var(--brass); text-align:center; margin-bottom:8px; }
+  h1 { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+       font-size:34px; line-height:1.1; color:var(--espresso);
+       text-align:center; margin-bottom:6px; }
+  .lede { font-size:13.5px; line-height:1.55; color:var(--muted);
+          text-align:center; margin-bottom:22px; }
+
+  .card { background:var(--card); border-radius:18px; padding:22px;
+          box-shadow:0 1px 2px rgba(59,46,32,.05), 0 8px 22px rgba(59,46,32,.05); }
+
+  /* One line under the question, so she can see it is her card and what
+     the pen should be turned to without reading a form. */
+  .line { text-align:center; font-size:13px; color:var(--muted); }
+  .line b { font-family:'Cormorant Garamond',Georgia,serif; font-size:19px;
+            font-weight:500; color:var(--espresso); }
+
+  .act { display:block; width:100%; margin-top:20px; padding:16px;
+         border:0; border-radius:999px; background:var(--espresso); color:#F6F0E7;
+         font-family:'Jost',sans-serif; font-size:13.5px; font-weight:600;
+         letter-spacing:.09em; text-transform:uppercase; cursor:pointer;
+         -webkit-tap-highlight-color:transparent; }
+  .act:disabled { opacity:.5; }
+  .ghost { display:block; width:100%; margin-top:10px; padding:13px;
+           background:none; border:1px solid var(--hairline); border-radius:999px;
+           color:var(--brass); font-family:'Jost',sans-serif; font-size:12.5px;
+           letter-spacing:.07em; text-transform:uppercase; text-align:center;
+           text-decoration:none; cursor:pointer; }
+
+  .note { margin-top:18px; font-size:11.5px; line-height:1.6; color:var(--muted); text-align:center; }
+  .bad { color:var(--alert); }
+  .done { text-align:center; }
+  .done .tick { width:54px; height:54px; margin:0 auto 14px; display:block; color:var(--ok); }
+  .done .au-check { width:76px; height:76px; margin:0 auto 12px; display:block;
+                    filter:drop-shadow(0 4px 12px rgba(137,112,57,.4)); }
+  .run { margin:16px auto 0; max-width:320px; padding:14px 16px; border-radius:16px;
+         background:var(--card); box-shadow:0 1px 2px rgba(59,46,32,.05); }
+  .run b { display:block; font-family:'Cormorant Garamond',Georgia,serif;
+           font-size:21px; font-weight:500; color:var(--espresso); }
+  .run span { font-size:12.5px; color:var(--muted); }
+  .au-layer { position:fixed; inset:0; z-index:90; pointer-events:none; }
+  .au-confetti { position:absolute; inset:0; }
+  .au-mark { position:absolute; left:50%; top:42%; margin:-66px 0 0 -66px;
+             width:132px; height:132px; opacity:0; }
+  .au-mark .au-check { width:132px; height:132px;
+                       filter:drop-shadow(0 6px 18px rgba(137,112,57,.45)); }
+  .done .warn { width:54px; height:54px; margin:0 auto 14px; display:block; color:var(--alert); }
+  .done h2.stop { color:var(--alert); }
+  .done h2 { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500;
+             font-size:28px; color:var(--espresso); margin-bottom:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="mark" src="assets/icons/monogram.png" alt="The Charleston Atelier">
+  <div id="view">
+    <p class="lede" id="boot">Reading the label…</p>
+  </div>
+</div>
+
+<script>
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+}
+
+/* The label carries "<template>.<lot>" — the pen and the vial it came
+   from. Never a patient: one printed label is valid for whoever is
+   holding it, and a label naming someone would be PHI sitting on a bench. */
+function readVial() {
+  const raw = String(window.__VIAL__ || '');
+  const dot = raw.indexOf('.');
+  return dot === -1
+    ? { template: raw, lot: '' }
+    : { template: raw.slice(0, dot), lot: raw.slice(dot + 1) };
+}
+
+const V = readVial();
+const view = document.getElementById('view');
+
+let HOME = '/';   // her card, once we know which one it is
+
+/* `actions` is a list of [label, href-or-null]; a null href means the
+   button forgets whose card this phone is holding. */
+function stop(title, why, actions) {
+  view.innerHTML = `<h1>${esc(title)}</h1><p class="lede">${esc(why)}</p>` +
+    (actions || []).map(([label, href], i) => href
+      ? `<a class="ghost" href="${esc(href)}">${esc(label)}</a>`
+      : `<button class="ghost" data-forget="${i}">${esc(label)}</button>`).join('');
+  view.querySelectorAll('[data-forget]').forEach(b =>
+    b.addEventListener('click', () => { forgetCard(); location.reload(); }));
+}
+
+(async function boot() {
+  let templates;
+  try { templates = await loadTemplates(); }
+  catch { return stop('Not right now', 'This page could not load. Try again in a moment.'); }
+
+  const t = (templates.templates || []).find(x => x.id === V.template);
+  if (!t) return stop('Unknown label', 'This vial is not one the atelier recognises. Please message us before injecting.');
+
+  /* THE ATELIER'S OWN PHONE
+     A vial tap logs against whichever card this phone last opened. On a
+     patient's phone that is exactly right. On the atelier's it is not:
+     checking a patient's card leaves that patient remembered, and every
+     tag tapped afterwards reads as hers — a Glow label answering "not
+     part of your protocol" and offering to open somebody else's portal.
+     So a phone signed in to Card Studio is told what the label says and
+     nothing is logged. */
+  /* Having chosen a patient by name, she is logging as that patient for
+     this one dose. The flag lasts the browsing session and is dropped the
+     moment the dose is in, so the next tag tapped on this phone goes back
+     to refusing to guess. */
+  const LOGFOR = 'tca.logfor';
+  const chosen = (() => { try { return sessionStorage.getItem(LOGFOR); } catch { return null; } })();
+  const dropChosen = () => { try { sessionStorage.removeItem(LOGFOR); } catch {} };
+
+  try {
+    const ses = await fetch('/api/session', { cache: 'no-store' }).then(r => r.json());
+    if (ses && ses.signedIn && !chosen) {
+      const mem = recallCard();
+      view.innerHTML = `
+        <p class="eyebrow">Atelier</p>
+        <h1>${esc(t.name)}</h1>
+        <p class="lede">This tag is written correctly.${V.lot ? ` Lot ${esc(V.lot)}.` : ''}</p>
+        <div class="card">
+          <p class="line">Signed in to Card Studio, so nothing has been logged.
+            A dose belongs to a patient, not to a tag.</p>
+          ${mem && mem.slug ? `<p class="line" style="margin-top:10px">This phone is holding
+            <b>/${esc(mem.slug)}</b> &mdash; a vial tapped here would log against it.</p>
+            <button class="ghost" data-forget="0">Forget that card</button>` : ''}
+          <button class="act" id="pick">Log for a patient</button>
+          <a class="ghost" href="/studio/">Open Card Studio</a>
+        </div>
+        <div id="who"></div>`;
+      view.querySelectorAll('[data-forget]').forEach(b =>
+        b.addEventListener('click', () => { forgetCard(); location.reload(); }));
+
+      /* Choosing a patient by name is a different act from inheriting
+         whichever card the phone happened to open last, which is why
+         this is a button and not a default. It is also the only way to
+         log a dose given in the room rather than at home. */
+      document.getElementById('pick').addEventListener('click', async e => {
+        e.currentTarget.disabled = true;
+        let cards = [];
+        try { cards = (await (await fetch('/api/cards', { cache:'no-store' })).json()).cards || []; }
+        catch { return; }
+        const onIt = cards.filter(c => c.name &&
+          (c.pens || []).some(x => x.template === t.id));
+        const el = document.getElementById('who');
+        if (!onIt.length) {
+          el.innerHTML = `<p class="note">No card has ${esc(t.name)} on it yet.
+            Add it in Card Studio first.</p>`;
+          return;
+        }
+        el.innerHTML = `<p class="note">Whose dose is this?</p>` + onIt.map(c =>
+          `<button class="ghost" data-slug="${esc(c.slug)}">${esc(c.name)}</button>`).join('');
+        el.querySelectorAll('[data-slug]').forEach(b =>
+          b.addEventListener('click', () => {
+            // Remember it the same way a tapped card would, then run the
+            // ordinary patient flow against it.
+            rememberCard({ card: null, slug: b.dataset.slug, legacy: false, start: null });
+            try { sessionStorage.setItem(LOGFOR, b.dataset.slug); } catch {}
+            location.reload();
+          }));
+      });
+      return;
+    }
+  } catch { /* not reachable: carry on as a patient would */ }
+
+  // Identity comes from the card this phone has already opened. Without
+  // it there is nobody to log against, and guessing is not an option.
+  /* Four places the phone might know whose card it is, in the order we
+     trust them.
+
+     The address comes first and settles it outright: a sticker written
+     for one patient carries her card in ?c=, so a tap needs nothing from
+     the phone at all — not its storage, not its cookies, not which
+     browser it happens to be. That is the only one of the four that
+     cannot be wiped, cleared, evicted or opened in the wrong browser,
+     which is why it is first and why dispensed vials should carry it.
+
+     The rest are the fallback for a generic sticker: what the phone
+     remembered, then the cookie the card page set server-side. */
+  const mem = recallCard();
+  const slug = readSlug() || (mem && mem.slug) || window.__CARD_MEMORY__ || null;
+  // Having recovered it from the cookie, put it back where it belongs.
+  if (!(mem && mem.slug) && slug) {
+    rememberCard({ card: null, slug, legacy: false, start: null });
+  }
+  if (slug) HOME = '/' + slug;
+  if (!slug) {
+    return stop('Open your card first',
+      'Tap your Atelier card — or open it from your home screen — and then tap this ' +
+      'vial again. The label knows which pen it is, not who is holding it.');
+  }
+
+  let CFGX;
+  try {
+    const res = await fetch(`/api/card/${encodeURIComponent(slug)}`, { cache:'no-store' });
+    if (!res.ok) throw new Error('gone');
+    CFGX = hydrateRecord(await res.json(), templates);
+  } catch {
+    return stop('Could not reach your card', 'Please try again, or message the atelier.',
+      [['Open my card', HOME]]);
+  }
+
+  // The dose is whatever her own protocol says for this pen today — not
+  // a number typed on a label.
+  CFG = CFGX;
+  PENS = CFG.protocol.pens || [];
+  START = parse(loadStart() || CFG.protocol.startDate);
+  applySetups();
+
+  const pen = PENS.find(x => x.template === t.id || x.id === t.id);
+  if (!pen) {
+    // Name the card it checked. Without that this reads as "the atelier
+    // has lost your protocol", when the truth is usually that the phone
+    // is holding somebody else's card.
+    const who = (CFG.patient && CFG.patient.name) || 'this card';
+    return stop(`Not on ${who}'s card`,
+      `${t.name} is not part of ${who}'s protocol. If this is not your phone's card, forget it and tap your own.`,
+      [[`Open ${who}'s card`, HOME], ['Not my card — forget it', null]]);
+  }
+
+  const when = today();
+  const day = iso(when);
+  const dose = doseOn(pen, when);
+  if (!dose) {
+    return stop('Not scheduled today',
+      `Today is a rest day for ${t.name}. Message the atelier if you think that is wrong.`,
+      [['Open my card', HOME]]);
+  }
+
+  /* The green square, once it is green. Shown after a yes, and also on a
+     second tap, so the answer to "did that go through?" is the same
+     screen either way. */
+  /* Two different screens, deliberately. A dose recorded is a tick and a
+     quiet well done. A dose recorded TWICE is not a success — it is a
+     patient standing over a pen with the needle in her hand about to
+     repeat a dose she has already taken, and the only useful thing this
+     page can do is stop her. Same green in both places would read as
+     "fine, carry on". */
+  /* How far she has come, said once, on the screen she is already
+     looking at. The count is of dosing days, so a rest day does not
+     break it. */
+  function runLine() {
+    const n = doseStreak();
+    const note = streakNote(n);
+    if (!n || !note) return '';
+    return `<div class="run"><b>${esc(note[0])}</b><span>${esc(note[1])}</span></div>`;
+  }
+
+  function logged(already) {
+    view.innerHTML = already ? `<div class="done">
+      <svg class="warn" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3.5 1.8 20.5h20.4L12 3.5Z"/><path d="M12 10v4.4"/><circle cx="12" cy="17.6" r=".9" fill="currentColor"/></svg>
+      <h2 class="stop">Stop — already taken</h2>
+      <p class="lede"><b>${esc(pen.name)}, ${dose.units} units</b> is already
+        recorded for today. Do not take another dose.</p>
+      <p class="note">If you are certain you have not injected today,
+        message the atelier before you do.</p>
+      <a class="ghost" href="${esc(smsHref())}">Message the atelier</a>
+      <a class="ghost" href="${esc(HOME)}">Back to my card</a>
+    </div>` : `<div class="done">
+      ${goldCheck(76)}
+      <h2>Logged</h2>
+      <p class="lede">${esc(pen.name)}, ${dose.units} units — today is marked.</p>
+      ${runLine()}
+      <p class="note">If your card is on your home screen, it will show this
+        the next time you open it.</p>
+      <a class="ghost" href="calendar.html?c=${encodeURIComponent(slug)}">See my calendar</a>
+      <a class="ghost" href="${esc(HOME)}">Back to my card</a>
+    </div>`;
+  }
+
+  // Already green? Say so before asking a question she has answered.
+  await loadLogged(slug);
+  if ((LOGGED[day] || []).includes(t.id)) return logged(true);
+
+  // One question, two answers. Everything needed to answer it is on the
+  // line underneath: whose card this is, and what to turn the pen to.
+  //
+  // A vial states the mark and nothing else, the same as her card does.
+  // The milligram figure is not printed on the barrel, and a second
+  // number beside a draw-up instruction is a second candidate for the
+  // line to stop at.
+  view.innerHTML = `
+    <h1>Log today's dose of ${esc(pen.name)}?</h1>
+    <div class="card">
+      <p class="line">${esc(CFG.patient.name)} · <b>${dose.units}</b> units${
+        isSyringe(pen) ? '' : ` · ${round(dose.totalMg, 2)} mg`}</p>
+      <button class="act" id="go">Yes</button>
+      <a class="ghost" href="${esc(HOME)}">No</a>
+    </div>
+    <p class="note">Nothing is recorded until you answer.</p>`;
+
+  document.getElementById('go').addEventListener('click', async e => {
+    const btn = e.currentTarget;
+    btn.disabled = true; btn.textContent = 'One moment…';
+    try {
+      const res = await fetch('/api/dose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug, template: t.id, lot: V.lot, pen: pen.name, frequency: freqText(pen),
+          units: dose.units, mg: round(dose.totalMg, 3),
+          at: new Date().toISOString(), day
+        })
+      });
+      if (!res.ok) throw new Error('refused');
+      const out = await res.json();
+      dropChosen();
+      if (!out.duplicate) {
+        // The log has to be re-read before the streak can count this one.
+        await loadLogged(slug);
+        logged(false);
+        celebrate(document.querySelector('.done .au-check'));
+      } else {
+        logged(true);
+      }
+    } catch {
+      btn.disabled = false; btn.textContent = 'Try again';
+      const p = document.createElement('p');
+      p.className = 'note bad';
+      p.textContent = 'That did not reach the atelier. Your dose still counts — try again, or tell us at your next visit.';
+      btn.parentElement.appendChild(p);
+    }
+  });
+})();
+</script>
+</body>
+</html>

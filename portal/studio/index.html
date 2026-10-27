@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Card Studio — The Charleston Atelier</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg:#F3EBE1; --card:#F8F2EA; --sunk:#EDE3D6;
+    --ink:#3B2E20; --ink-soft:#4A3B2C; --muted:#8A7C6A;
+    --brass:#8A7350; --alert:#A4553F; --ok:#5C7A5E;
+    --line:rgba(138,115,80,.2); --line-hi:rgba(138,115,80,.36);
+    --shadow:0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--ink-soft);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+    font-variant-numeric:lining-nums;
+  }
+  .wrap { max-width:1080px; margin:0 auto; padding:36px 24px 90px; }
+
+  header { border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:30px;
+           display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; }
+  .crest { font-family:Georgia,serif; font-size:12px; letter-spacing:.3em;
+           text-transform:uppercase; color:var(--brass); margin-bottom:8px; }
+  h1 { font-family:Georgia,serif; font-weight:400; font-size:38px; line-height:1.05; color:var(--ink); }
+  .header-note { color:var(--muted); font-size:13.5px; margin-left:auto; text-align:right; }
+
+  h2 { font-family:Georgia,serif; font-weight:500; font-size:22px; color:var(--ink); margin-bottom:4px; }
+  .hint { color:var(--muted); font-size:13.5px; margin-bottom:16px; }
+  section { margin-bottom:38px; }
+
+  .panel { background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:22px; }
+
+  label { display:block; font-size:11px; letter-spacing:.13em; text-transform:uppercase;
+          color:var(--muted); margin-bottom:6px; }
+  input, select, textarea {
+    width:100%; font:inherit; color:var(--ink); background:var(--bg);
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px;
+  }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--brass); outline-offset:1px; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+  .row > div { flex:1 1 160px; min-width:0; }
+
+  button { font:inherit; cursor:pointer; border-radius:999px; border:1px solid transparent;
+           padding:10px 20px; letter-spacing:.02em; }
+  .primary { background:var(--ink); color:#F6F0E7; }
+  .ghost { background:transparent; color:var(--ink-soft); border-color:var(--line-hi); }
+  .danger { background:transparent; color:var(--alert); border-color:rgba(164,85,63,.4); }
+  .sm { padding:6px 13px; font-size:13px; }
+  button:disabled { opacity:.45; cursor:default; }
+
+  .toggle { display:flex; align-items:center; gap:9px; font-size:13.5px; color:var(--ink-soft); }
+  .toggle input { width:auto; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:10.5px; letter-spacing:.13em; text-transform:uppercase;
+       color:var(--muted); font-weight:600; padding:0 12px 10px 0; border-bottom:1px solid var(--line-hi); }
+  td { padding:13px 12px 13px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  .slug { font-family:ui-monospace,Menlo,monospace; font-size:13.5px; color:var(--ink); }
+  .who { color:var(--ink); font-weight:600; }
+  .pens { font-size:13px; color:var(--muted); }
+
+  .pill { display:inline-block; font-size:10px; letter-spacing:.11em; text-transform:uppercase;
+          padding:3px 9px; border-radius:999px; border:1px solid var(--line-hi); color:var(--muted); }
+  .pill.active { color:var(--ok); border-color:rgba(92,122,94,.45); }
+  .pill.blank { color:var(--brass); }
+  .pill.retired { color:var(--alert); border-color:rgba(164,85,63,.35); }
+  .pill.warn { color:var(--alert); border-color:rgba(164,85,63,.45); background:rgba(164,85,63,.06); }
+  .pill.link { cursor:pointer; }
+  .pill.link.linked { color:var(--ok); border-color:rgba(92,122,94,.45); background:rgba(92,122,94,.08); }
+  tr.link-detail td { background:rgba(138,115,80,.05); font-size:12px; color:var(--muted); }
+  tr.link-detail td b { color:var(--espresso); font-weight:600; }
+  /* Louder than warn. A patient who has stopped a prescription is the one
+     thing on this list worth looking at before anything else. */
+  .pill.stop { color:#FBF3E9; border-color:var(--alert); background:var(--alert); }
+  .pens .off { text-decoration:line-through; opacity:.55; }
+
+  .url { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:var(--sunk);
+         border:1px solid var(--line); border-radius:9px; padding:9px 11px;
+         word-break:break-all; color:var(--ink); }
+  .bytes { font-size:12px; color:var(--muted); margin-top:5px; }
+  .bytes b { color:var(--ok); font-weight:600; }
+  .bytes b.tight { color:var(--alert); }
+
+  dialog { border:0; border-radius:20px; padding:0; background:var(--card); color:var(--ink-soft);
+           max-width:640px; width:calc(100% - 36px); box-shadow:0 24px 70px rgba(59,46,32,.3); }
+  dialog::backdrop { background:rgba(59,46,32,.45); }
+  .dlg { padding:26px; max-height:82vh; overflow-y:auto; }
+  .dlg h2 { margin-bottom:14px; }
+  .dlg-foot { display:flex; gap:10px; justify-content:flex-end; margin-top:22px;
+              padding-top:18px; border-top:1px solid var(--line); }
+
+  .pen-row { border:1px solid var(--line); border-radius:13px; padding:14px; margin-bottom:11px; }
+  .pen-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .pen-name { font-weight:600; color:var(--ink); flex:1; }
+  .phase { display:grid; grid-template-columns:1fr 90px 90px 34px; gap:8px; margin-bottom:7px; align-items:center; }
+  .phase-head { font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+  .phase-head span { padding-left:2px; }
+  .phase input { padding:7px 9px; font-size:13.5px; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .stat small { display:block; font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .stat strong { display:block; font-size:26px; font-weight:500; margin-top:4px; }
+  td.dose { font-size:12.5px; }
+  td.dose .spent { color:var(--muted); }
+  td.num { font-variant-numeric:tabular-nums; }
+  /* The only red on this list. It means order something today, so nothing
+     else is allowed to use it. */
+  td .urgent { display:inline-block; white-space:nowrap; padding:3px 9px;
+               border-radius:999px; color:#FBF3E9; background:var(--alert);
+               font-weight:600; }
+  td.cold { color:var(--muted); }
+  @media (max-width:900px) { .stats { grid-template-columns:repeat(2,1fr); } }
+  /* Days comes from the peptide, so it is shown rather than asked for. */
+  .phase .derived { font-size:13px; color:var(--muted); padding:7px 2px; text-align:center; }
+  .life { font-size:12px; color:var(--muted); margin-top:4px; }
+  .life strong { color:var(--alert, #A4553F); font-weight:600; }
+  .x { background:transparent; border:0; color:var(--muted); font-size:19px; line-height:1; padding:2px 7px; }
+  .mg { font-size:12px; color:var(--muted); margin-top:6px; }
+  .setup-note { font-size:12.5px; color:var(--brass); margin-top:8px; }
+
+  /* The mark, in the gold it is drawn in. */
+  header .mark { height:54px; width:auto; display:block; flex:none; }
+
+  /* Write a card and Pen life sit side by side until the screen is too
+     narrow to carry both. */
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:28px; align-items:start; }
+  .split > section { margin-bottom:38px; }
+  @media (max-width:900px) { .split { grid-template-columns:1fr; gap:0; } }
+
+  /* A readout rather than a table: dark ground, hairline rules, figures in
+     a face where the columns line up. The gold is the data. */
+  .deck {
+    background:linear-gradient(168deg,#2E2519,#221B12);
+    border:1px solid rgba(198,166,111,.28); padding:4px 18px 14px;
+    box-shadow:0 1px 2px rgba(59,46,32,.18), 0 10px 30px rgba(40,32,20,.22);
+  }
+  .deck-head, .deck-row {
+    display:grid; grid-template-columns:1fr 52px 74px; gap:12px; align-items:center;
+  }
+  .deck-head {
+    padding:12px 0 9px; border-bottom:1px solid rgba(198,166,111,.22);
+    font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:#9C8B6E;
+  }
+  .deck-head span:not(:first-child), .deck-row b, .deck-row i { text-align:right; }
+  .deck-row {
+    padding:9px 0; border-bottom:1px solid rgba(198,166,111,.1);
+    cursor:default; transition:background .12s ease;
+  }
+  .deck-row:last-child { border-bottom:0; }
+  .deck-row:hover, .deck-row:focus-visible { background:rgba(31,169,127,.10); outline:none; }
+  .deck-row .nm { font-size:12.5px; color:#EFE3CC; line-height:1.25; }
+  .deck-row .nm small {
+    display:block; font-size:8.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:#8B7B60; margin-top:2px;
+  }
+  .deck-row b, .deck-row i {
+    font-family:ui-monospace,Menlo,monospace; font-style:normal; font-weight:500;
+    font-variant-numeric:tabular-nums; font-size:12.5px; color:#1FA97F;
+  }
+  .deck-row i { color:#3FBF95; }
+  .deck-foot {
+    display:flex; gap:16px; flex-wrap:wrap; padding-top:11px; margin-top:2px;
+    border-top:1px solid rgba(198,166,111,.22);
+    font-size:10px; letter-spacing:.06em; color:#8B7B60;
+  }
+  .deck-foot b { color:#1FA97F; font-weight:500; font-variant-numeric:tabular-nums; }
+
+  /* The detail replaces the summary line rather than floating over the rows —
+     a panel you read across should never be covered by its own tooltip. */
+  .deck-foot .det { display:flex; gap:16px; flex-wrap:wrap; }
+  .deck-foot .det span { white-space:nowrap; }
+
+  .empty { color:var(--muted); font-size:14px; padding:22px 0; text-align:center; }
+
+  /* ---------- what her phone reports ---------- */
+  .seen { padding:16px 18px; font-size:13.5px; }
+  .seen .line { display:flex; gap:12px; padding:7px 0; border-top:1px solid var(--line); }
+  .seen .line:first-child { border-top:0; padding-top:0; }
+  .seen .k { flex:0 0 116px; color:var(--muted); font-size:11px; letter-spacing:.12em;
+             text-transform:uppercase; padding-top:3px; }
+  .seen .v { flex:1; color:var(--ink); }
+  .seen .v small { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
+  .seen .off { color:var(--muted); }
+  /* Where her phone and the card disagree — the thing worth ringing about. */
+  .seen .clash { color:var(--alert); }
+  .seen .rest { color:var(--muted); }
+  .time-row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .time-row .band { flex:0 0 108px; font-size:13.5px; color:var(--ink); }
+  .time-row input { flex:0 0 140px; }
+  .time-row .was { font-size:12px; color:var(--muted); }
+  /* Marks a row whose "showing now" came off the patient's own screen
+     rather than being worked out here. */
+  .live { color:var(--ok); font-size:15px; line-height:0; }
+
+  .cmd {
+    background:var(--sunk); border-radius:12px; padding:14px 16px; margin-bottom:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+    line-height:1.7; color:var(--ink); white-space:pre-wrap; word-break:break-word;
+  }
+  .toast { position:fixed; left:50%; bottom:26px; transform:translate(-50%,10px);
+           background:var(--ink); color:#F6F0E7; padding:12px 20px; border-radius:13px;
+           font-size:13.5px; opacity:0; pointer-events:none; transition:.22s; z-index:50; }
+  .toast.on { opacity:1; transform:translate(-50%,0); }
+  .gate { max-width:380px; margin:16vh auto; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="gate" hidden>
+  <div class="gate panel">
+    <p class="crest">The Charleston Atelier</p>
+    <h2>Card Studio</h2>
+    <p class="hint">Enter the studio passphrase.</p>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Passphrase">
+    <div style="margin-top:14px"><button class="primary" id="signIn">Sign in</button></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <img class="mark" src="/studio/monogram.png" alt="" width="327" height="480">
+    <div>
+      <p class="crest">The Charleston Atelier</p>
+      <h1>Card Studio</h1>
+    </div>
+    <p class="header-note" id="storeNote"></p>
+  </header>
+
+  <div class="split">
+  <section>
+    <h2>Write a card</h2>
+    <p class="hint">
+      The address goes on the tag once. What sits behind it is edited here for
+      as long as the card exists — the patient never needs a new one.
+    </p>
+    <div class="panel">
+      <div class="row">
+        <div>
+          <label for="first">First name</label>
+          <input id="first" placeholder="First name" autocomplete="off">
+        </div>
+        <div>
+          <label for="last">Last name</label>
+          <input id="last" placeholder="Last name" autocomplete="off">
+        </div>
+        <div style="flex:0 0 auto">
+          <button class="primary" id="create">Create card</button>
+        </div>
+      </div>
+      <div style="margin-top:14px" class="toggle">
+        <input type="checkbox" id="unique" checked>
+        <label for="unique" style="margin:0; text-transform:none; letter-spacing:0; font-size:13.5px; color:var(--ink-soft)">
+          Add three random characters so the address cannot be guessed
+        </label>
+      </div>
+      <div style="margin-top:16px">
+        <div class="url" id="preview">—</div>
+        <div class="bytes" id="previewBytes"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pen life</h2>
+    <p class="hint">
+      What one pen costs and how far it goes. Read from the same templates the
+      cards are built from, so it never drifts. Hover a row for the detail.
+    </p>
+    <div class="panel deck">
+      <div class="deck-head"><span>Pen</span><span>Cost</span><span>Coverage</span></div>
+      <div id="deck"></div>
+      <div class="deck-foot" id="deckFoot"></div>
+    </div>
+  </section>
+  </div>
+
+  <section>
+    <h2>Blank tags</h2>
+    <p class="hint">
+      Write a tray now, assign them as patients come through. Each one opens
+      the portal and waits to be given a name.
+    </p>
+    <div class="panel row">
+      <div style="flex:0 0 120px">
+        <label for="blankCount">How many</label>
+        <input id="blankCount" type="number" min="1" max="50" value="1">
+      </div>
+      <div style="flex:0 0 auto"><button class="ghost" id="makeBlanks">Mint blanks</button></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Are reminders working?</h2>
+    <p class="hint">
+      Three things have to be true, and when one is not, the symptom is
+      silence &mdash; nothing errors and no patient complains.
+    </p>
+    <div class="panel">
+      <div class="stats" style="margin-bottom:14px">
+        <div class="stat"><small>Signing keys</small><strong id="pKeys">—</strong></div>
+        <div class="stat"><small>Phones subscribed</small><strong id="pPhones">—</strong></div>
+        <div class="stat"><small>With a dose still to come</small><strong id="pUpcoming">—</strong></div>
+        <div class="stat"><small>Scheduler last seen</small><strong id="pRun">—</strong></div>
+      </div>
+      <p class="hint" id="pWhy" style="margin:0"></p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tell me when a patient changes something</h2>
+    <p class="hint">
+      A patient can take a pen she was prescribed off her own schedule. The
+      list above marks it, but only once you look &mdash; this sends it to
+      this device as it happens. The notification names nobody and no drug;
+      it says a card changed, and you open Studio to see which.
+    </p>
+    <div class="panel">
+      <button class="ghost sm" id="alertToggle">Turn on</button>
+      <span class="hint" id="alertState" style="margin-left:10px">Off on this device.</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Deploy</h2>
+    <p class="hint">
+      What is running right now, and how to put the latest code behind it.
+      Changes to cards are live the moment you save &mdash; this is only for
+      changes to the app itself.
+    </p>
+    <div class="panel">
+      <div class="stats" style="margin-bottom:16px">
+        <div class="stat"><small>Running revision</small><strong id="dRev">—</strong></div>
+        <div class="stat"><small>Since</small><strong id="dSince">—</strong></div>
+        <div class="stat"><small>Database</small><strong id="dStore">—</strong></div>
+      </div>
+      <p class="hint" style="margin:0 0 8px">
+        Open <a href="https://shell.cloud.google.com" target="_blank" rel="noopener">Cloud Shell</a>
+        and paste this. Three or four minutes; the revision above changes when it lands.
+      </p>
+      <pre class="cmd" id="deployCmd"></pre>
+      <button class="ghost sm" id="copyDeploy">Copy command</button>
+      <button class="ghost sm" id="checkDeploy">Check again</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Vial stickers</h2>
+    <p class="hint">
+      One address per peptide, not per patient &mdash; write a roll of each and
+      any sticker works for whoever is holding the pen. Tapping one asks
+      &ldquo;log today&rsquo;s dose?&rdquo; and marks the day on that patient&rsquo;s calendar.
+      Add a lot number if you want it recorded with every dose from that box.
+    </p>
+    <div class="panel">
+      <div class="row" style="margin-bottom:12px">
+        <div style="flex:0 0 200px">
+          <label for="vialLot">Lot (optional)</label>
+          <input id="vialLot" placeholder="e.g. K2607" autocomplete="off">
+        </div>
+        <div style="flex:0 0 240px">
+          <label for="vialFor">For one patient (optional)</label>
+          <select id="vialFor"><option value="">Anyone — a generic roll</option></select>
+        </div>
+      </div>
+      <p class="hint" style="margin:-4px 0 14px">
+        Naming a patient puts her card in the sticker, so tapping it works on
+        any phone with nothing remembered &mdash; no &ldquo;open your card
+        first&rdquo;. Use it for a vial dispensed to one person. Leave it blank
+        for a roll that goes on whatever comes out of the fridge.
+      </p>
+      <table>
+        <thead><tr><th>Pen</th><th>Sticker address</th><th>On tag</th><th></th></tr></thead>
+        <tbody id="vialRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>In use</h2>
+    <p class="hint">
+      What the cards are doing. A card is counted once per patient browsing
+      session, so reading the page twice is one open. A green dot beside
+      &ldquo;showing now&rdquo; means that line came off the patient&rsquo;s own
+      screen rather than being worked out here.
+    </p>
+    <div class="panel stats">
+      <div class="stat"><small>Opens, all cards</small><strong id="mTaps">0</strong></div>
+      <div class="stat"><small>Opened in 7 days</small><strong id="mWeek">0</strong></div>
+      <div class="stat"><small>Never opened</small><strong id="mCold">0</strong></div>
+      <div class="stat"><small>Needs a look</small><strong id="mFlag">0</strong></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Cards</h2>
+    <p class="hint" id="cardCount"></p>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Address</th><th>Patient</th><th>Protocol</th><th>Showing now</th>
+            <th>Doses left</th><th>Runs out</th>
+            <th>Opens</th><th>Last opened</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="noCards" hidden>No cards yet.</div>
+    </div>
+  </section>
+</div>
+
+<dialog id="editor">
+  <form method="dialog" class="dlg" id="editForm">
+    <p class="crest">Card</p>
+    <h2 id="editTitle">—</h2>
+    <div class="url" id="editUrl"></div>
+    <div class="bytes" id="editBytes"></div>
+
+    <div class="row" style="margin-top:20px">
+      <div>
+        <label for="editName">Greeting name</label>
+        <input id="editName" placeholder="Phillip" autocomplete="off">
+      </div>
+      <div>
+        <label for="editStart">Start date</label>
+        <input id="editStart" type="date">
+      </div>
+      <div>
+        <label for="editStatus">Status</label>
+        <select id="editStatus">
+          <option value="active">Active</option>
+          <option value="blank">Blank</option>
+          <option value="retired">Retired</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- What her phone says it is showing. Reported by the card itself,
+         because the card is what does the dosing arithmetic. -->
+    <div style="margin-top:22px">
+      <label>On her phone</label>
+      <div class="panel seen" id="seen"></div>
+    </div>
+
+    <!-- The two settings that used to live only on her phone. Changing one
+         here reaches her card the next time she opens it. -->
+    <div style="margin-top:22px">
+      <label>Dose times</label>
+      <p class="hint" style="margin:0 0 10px">
+        The hour her reminder fires and her calendar is written to. Leave a
+        row alone and her own choice stands; change one and her phone takes
+        it on her next tap.
+      </p>
+      <div id="timeRows"></div>
+      <button type="button" class="ghost sm" id="pushSettings" style="margin-top:10px">
+        Send start day &amp; times to her phone
+      </button>
+      <p class="hint" style="margin:8px 0 0">
+        Use this when her phone has drifted and the card was right all along —
+        it sends what is in this form whether or not you changed it.
+      </p>
+    </div>
+
+    <div style="margin-top:22px">
+      <label>Protocol</label>
+      <div id="penList"></div>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <select id="penPick"><option value="">Add a peptide…</option></select>
+        </div>
+        <div style="flex:0 0 auto"><button type="button" class="ghost sm" id="addPen">Add</button></div>
+      </div>
+    </div>
+
+    <div style="margin-top:22px">
+      <label>Treatments in the room <span style="text-transform:none;letter-spacing:0">— what she has had, and when the next one is due</span></label>
+      <div id="visitList"></div>
+      <div class="row" style="margin-top:10px">
+        <div><select id="visitPick"><option value="">Log a treatment…</option></select></div>
+        <div style="flex:0 0 auto"><input type="date" id="visitDate"></div>
+        <div style="flex:0 0 auto"><button type="button" class="ghost sm" id="addVisit">Log it</button></div>
+      </div>
+      <div class="row" style="margin-top:8px" id="visitExtra" hidden>
+        <div><select id="visitArea"><option value="">Area or product…</option></select></div>
+        <div style="flex:0 0 auto"><input type="number" id="visitUnits" placeholder="units" min="0" step="0.5" style="width:90px"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <label for="editNote">Chart note <span style="text-transform:none;letter-spacing:0">— never shown to the patient</span></label>
+      <textarea id="editNote" rows="2"></textarea>
+    </div>
+
+    <div class="dlg-foot">
+      <button type="button" class="danger sm" id="deleteCard">Delete</button>
+      <button type="button" class="ghost sm" id="testPush" hidden>Send test</button>
+      <span style="flex:1"></span>
+      <button type="button" class="ghost" id="cancelEdit">Cancel</button>
+      <button type="button" class="primary" id="saveCard">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ==================================================================
+   Card Studio — the atelier's side of the tap card.
+
+   Everything here talks to /api. The dosing maths and the peptide
+   templates are the portal's, fetched from the same templates.json the
+   patient's phone reads, so a number shown here is the number she sees.
+   ================================================================== */
+
+const $ = id => document.getElementById(id);
+const ORIGIN = location.origin;
+const ML_PER_UNIT = 0.01;
+
+let TEMPLATES = null;
+let SERVICES = [];
+let CARDS = [];
+let editing = null;
+
+/* ---------- plumbing ---------- */
+
+async function api(path, options = {}) {
+  const res = await fetch(path, Object.assign({
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin'
+  }, options));
+  if (res.status === 204) return null;
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(body.error || res.statusText), { body, status: res.status });
+  return body;
+}
+
+/* Say what actually went wrong. "Could not create that card" sends whoever
+   is standing at the dashboard hunting, when the server already said why. */
+function reason(lead, e) {
+  const detail = (e && (e.body && e.body.error || e.message) || '').toString().trim();
+  if (!detail || detail === 'server_error') return `${lead}.`;
+  return `${lead} — ${detail.slice(0, 160)}`;
+}
+
+let toastTimer;
+function toast(msg, ms) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  // A warning has to outlast a confirmation; nobody reads a lost phase in
+  // two and a half seconds.
+  toastTimer = setTimeout(() => t.classList.remove('on'), ms || 2600);
+}
+
+/* A tag stores the address without https:// plus about eight bytes of
+   NDEF overhead. That, not the visible length, is what has to fit. */
+function tagBytes(url) { return url.replace(/^https?:\/\//, '').length + 8; }
+
+function fitsNote(url) {
+  const b = tagBytes(url);
+  const where = b <= 48 ? 'fits Ultralight 64B'
+              : b <= 137 ? 'fits NTAG213'
+              : b <= 496 ? 'fits NTAG215'
+              : b <= 872 ? 'fits NTAG216' : 'too long for most tags';
+  return `${url.length} chars · ${b} bytes on tag · <b class="${b > 496 ? 'tight' : ''}">${where}</b>`;
+}
+
+function cardUrl(slug) { return `${ORIGIN}/${slug}`; }
+
+/* What actually goes on a tag. NDEF stores the scheme as a single byte and
+   every NFC writer puts https:// back, so copying it would waste eight of
+   the sixty-four bytes an Ultralight has — and the byte count beside the
+   address has always been measured this way. */
+function tagAddress(slug) { return cardUrl(slug).replace(/^https?:\/\//, ''); }
+
+/* ---------- sign in ---------- */
+
+async function boot() {
+  const s = await api('/api/session');
+  if (s.required && !s.signedIn) {
+    $('gate').hidden = false;
+    $('pass').focus();
+    return;
+  }
+  await start();
+}
+
+$('signIn').addEventListener('click', async () => {
+  try {
+    await api('/api/session', { method: 'POST', body: JSON.stringify({ passphrase: $('pass').value }) });
+    $('gate').hidden = true;
+    await start();
+  } catch { toast('That passphrase was not accepted.'); }
+});
+$('pass').addEventListener('keydown', e => { if (e.key === 'Enter') $('signIn').click(); });
+
+async function start() {
+  $('app').hidden = false;
+  TEMPLATES = resolveDoses(
+    await (await fetch('/templates.json', { cache: 'no-store' })).json());
+  try { SERVICES = (await (await fetch('/api/services')).json()).services || []; } catch {}
+  $('visitPick').innerHTML = '<option value="">Log a treatment…</option>' +
+    SERVICES.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  $('visitDate').value = new Date().toISOString().slice(0, 10);
+
+  renderDeck();
+  renderVials();
+  renderDeploy();
+  renderAlerts();
+  renderPushHealth();
+  $('penPick').innerHTML = '<option value="">Add a peptide…</option>' +
+    TEMPLATES.templates.filter(t => t.id !== 'custom' && !t.retired)
+      .map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  await refresh();
+  updatePreview();
+}
+
+/* ---------- deploy ----------
+   A card edit is live on the next tap; a change to the app itself is not
+   live until the container is rebuilt. Those are different things and
+   this is the only place that says so.
+
+   The command is written out here rather than kept in a document, because
+   the thing most likely to go wrong is pasting last month's version of
+   it — one that still names a secret nothing reads. */
+const DEPLOY_BRANCH = 'claude/jessica-nfc-patient-portal-4nxcmj';
+
+function deployCommand(health) {
+  const service = (health && health.service && health.service !== 'local')
+    ? health.service : 'atelier-tap';
+  const project = (health && health.project) || '';
+  /* One line, no backslashes. A block with continuations pasted into a
+     shell that is still waiting at a prompt gets eaten a line at a time —
+     the first line becomes the answer to the prompt and the rest come
+     back as syntax errors. This cannot be split. */
+  return [
+    'cd ~/tap-experience',
+    `git pull origin ${DEPLOY_BRANCH}`,
+    `gcloud run deploy ${service} --source .` +
+      (project ? ` --project ${project}` : '') +
+      ' --region us-east1 --allow-unauthenticated' +
+      ' --set-env-vars CARD_STORE=firestore,NODE_ENV=production' +
+      ' --set-secrets STUDIO_PASSPHRASE=studio-passphrase:latest'
+  ].join(' && ');
+}
+
+/* ---------- told when a patient changes her own protocol ----------
+   Per device, because a push subscription is a browser, not an account.
+   Turning it on on the laptop does not turn it on on the phone, and the
+   state below is this browser's, not the atelier's. */
+async function currentStudioSub() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+  const reg = await navigator.serviceWorker.getRegistration('/studio/');
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+function keyToBytes(base64) {
+  const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4))
+    .replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+/* Why reminders are not arriving, in the order the question is actually
+   asked: are the keys there, is anyone subscribed, and is the scheduler
+   getting through. */
+async function renderPushHealth() {
+  if (!$('pKeys')) return;
+  let h;
+  try { h = await api('/api/push/health'); } catch { return; }
+
+  $('pKeys').textContent = h.configured ? 'attached' : 'MISSING';
+  $('pPhones').textContent = `${h.phones} on ${h.cards} card${h.cards === 1 ? '' : 's'}`;
+  $('pUpcoming').textContent = h.withUpcoming;
+  $('pRun').textContent = h.lastRun
+    ? (h.lastRun.ok ? since(h.lastRun.at) : `turned away ${since(h.lastRun.at)}`)
+    : 'not since this instance started';
+
+  const why = [];
+  if (!h.configured) why.push(
+    '<b>No signing keys.</b> Nothing can be sent at all. This is what a ' +
+    '<code>gcloud run deploy --set-secrets</code> naming fewer than all the ' +
+    'secrets does — it replaces the list rather than adding to it. ' +
+    'Fix: <code>bash deploy-prod.sh</code>.');
+  if (!h.schedulerSecretSet) why.push(
+    '<b>No scheduler secret.</b> Cloud Scheduler is being turned away every ' +
+    'time it knocks, so nothing is ever sent on time.');
+  if (h.lastRun && !h.lastRun.ok) why.push(
+    `<b>The scheduler was turned away</b> (${h.lastRun.why}). Reminders are ` +
+    'not going out.');
+  if (h.configured && !h.phones) why.push(
+    'No phone has ever subscribed. The switch is on each patient\'s own card, ' +
+    'under Today\'s Ritual — it has to be turned on there, on the phone, and ' +
+    'iOS only offers it on a card added to the home screen.');
+  if (h.configured && h.phones && !h.withUpcoming) why.push(
+    'Phones are subscribed but none has a dose still to come. A card only ' +
+    'sends its schedule when it is opened, so a patient who has not opened ' +
+    'hers since her last posted dose will not be nudged until she does.');
+  if (!why.length && h.lastRun && h.lastRun.ok) why.push('All three are fine.');
+
+  $('pWhy').innerHTML = why.join('<br><br>');
+}
+
+async function renderAlerts() {
+  const btn = $('alertToggle'), label = $('alertState');
+  if (!btn) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    btn.hidden = true;
+    label.textContent = 'This browser cannot show notifications.';
+    return;
+  }
+  let on = false;
+  try { on = !!(await currentStudioSub()); } catch {}
+  btn.textContent = on ? 'Turn off' : 'Turn on';
+  label.textContent = on
+    ? 'On for this device.'
+    : (Notification.permission === 'denied'
+        ? 'Notifications are blocked for this site in your browser settings.'
+        : 'Off on this device.');
+}
+
+async function toggleAlerts() {
+  const btn = $('alertToggle');
+  btn.disabled = true;
+  try {
+    const existing = await currentStudioSub();
+    if (existing) {
+      await api('/api/push/atelier', {
+        method: 'POST',
+        body: JSON.stringify({ off: true, endpoint: existing.endpoint })
+      });
+      await existing.unsubscribe();
+      toast('Off. This device will not be told.');
+      return;
+    }
+
+    const { available, key } = await api('/api/push/key');
+    if (!available || !key) return toast('Notifications are not configured on the server.', 6000);
+    if (await Notification.requestPermission() !== 'granted') {
+      return toast('Your browser refused notifications for this site.', 6000);
+    }
+
+    const reg = await navigator.serviceWorker.register('sw.js', { scope: '/studio/' });
+    await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: keyToBytes(key)
+    });
+    await api('/api/push/atelier', { method: 'POST', body: JSON.stringify({ sub: sub.toJSON() }) });
+    toast('On. This device will be told when a patient stops a pen.');
+  } catch (e) {
+    toast(`Could not change it — ${e.message}`, 6000);
+  } finally {
+    btn.disabled = false;
+    renderAlerts();
+  }
+}
+
+async function renderDeploy() {
+  $('dRev').textContent = '…';
+  let health = null;
+  try { health = await (await fetch('/health', { cache: 'no-store' })).json(); }
+  catch { /* shown as unknown below */ }
+
+  $('dRev').textContent = (health && health.revision) || 'unknown';
+  $('dSince').textContent = health && health.startedAt ? since(health.startedAt) : '—';
+  $('dStore').textContent = health
+    ? `${health.store}${health.reachable === false ? ' · unreachable' : ''}`
+    : '—';
+  $('deployCmd').textContent = deployCommand(health);
+}
+
+$('copyDeploy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText($('deployCmd').textContent);
+  toast('Command copied — paste it into Cloud Shell.');
+});
+$('alertToggle').addEventListener('click', toggleAlerts);
+
+$('checkDeploy').addEventListener('click', async () => {
+  await renderDeploy();
+  toast(`Running ${$('dRev').textContent}, up ${$('dSince').textContent}.`);
+});
+
+/* ---------- vial stickers ----------
+   The sticker names the pen and, if you want it, the box it came from —
+   never a patient. That is what lets a roll be written in one sitting and
+   stuck on whatever comes out of the fridge: the phone supplies the person,
+   the sticker supplies the drug. */
+function vialUrl(id, lot, slug) {
+  // ?c= names the patient. A sticker carrying it works on any phone in any
+  // state — nothing is read from storage — which is right for a vial
+  // dispensed to one person and wrong for a roll of generic stickers.
+  return `${ORIGIN}/v/${lot ? `${id}.${lot}` : id}${slug ? `?c=${encodeURIComponent(slug)}` : ''}`;
+}
+
+function renderVials() {
+  const lot = ($('vialLot').value || '').trim().replace(/[^A-Za-z0-9-]/g, '');
+  const forSlug = $('vialFor').value || '';
+  const forName = forSlug
+    ? (CARDS.find(c => c.slug === forSlug) || {}).name || forSlug : '';
+  $('vialRows').innerHTML = (TEMPLATES.templates || [])
+    .filter(t => t.id !== 'custom' && !t.retired)
+    .map(t => {
+      // A template that carries its own lot — a single dispensed vial
+      // rather than a stocked pen — fills its own row, so the number that
+      // matters most is not the one being retyped.
+      const mine = lot || (t.lot || '');
+      const url = vialUrl(t.id, mine, forSlug);
+      return `<tr>
+        <td>${t.name}${t.beyondUse ? `<br><small style="color:var(--muted)">use by ${t.beyondUse}</small>` : ''}</td>
+        <td class="slug">/v/${mine ? `${t.id}.${mine}` : t.id}${
+          forSlug ? `<b style="color:var(--brass)">?c=${forSlug}</b>` : ''}</td>
+        <td class="bytes" style="white-space:nowrap">${tagBytes(url)} bytes</td>
+        <td style="text-align:right"><button class="ghost sm" data-vial="${t.id}" data-lot="${mine}" data-for="${forSlug}">Copy</button></td>
+      </tr>`;
+    }).join('');
+
+  $('vialRows').querySelectorAll('[data-vial]').forEach(b =>
+    b.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(
+        vialUrl(b.dataset.vial, b.dataset.lot, b.dataset.for).replace(/^https?:\/\//, ''));
+      toast(b.dataset.for
+        ? `Copied — this sticker is ${forName}'s, and only hers.`
+        : 'Sticker address copied — paste it into NFC Tools.');
+    }));
+}
+
+/* ---------- the card list ---------- */
+
+async function refresh() {
+  const data = await api('/api/cards');
+  CARDS = data.cards || [];
+  $('storeNote').textContent = `${CARDS.length} card${CARDS.length === 1 ? '' : 's'} · ${data.store} store`;
+  $('cardCount').textContent = CARDS.length
+    ? 'Tap a row to edit. Changes reach the patient on her next tap — no rewriting.'
+    : '';
+  $('noCards').hidden = CARDS.length > 0;
+  renderStats();
+
+  // The sticker picker offers the cards that have a name on them.
+  const sel = $('vialFor'), keep = sel.value;
+  sel.innerHTML = '<option value="">Anyone — a generic roll</option>' +
+    CARDS.filter(c => c.name).map(c =>
+      `<option value="${c.slug}">${c.name}</option>`).join('');
+  sel.value = keep;
+
+  $('rows').innerHTML = CARDS.map(c => {
+    /* A pen she has stopped is still prescribed, so it stays in this
+       column — struck through, which says both things at once: it was
+       ordered, and it is not being taken. */
+    const off = c.dropped || [];
+    const pens = (c.pens || []).map((p, i) => {
+      const t = TEMPLATES.templates.find(x => x.id === p.template);
+      const name = t ? t.name : p.template;
+      const id = (c.pens || []).filter(x => x.template === p.template).length > 1
+        ? `${p.template}#${i}` : p.template;
+      return off.includes(id)
+        ? `<span class="off" title="She has taken this off her schedule">${name}</span>`
+        : name;
+    }).join(' · ');
+    const now = showingNow(c);
+    const supply = supplyOf(c);
+    const taps = Number(c.taps) || 0;
+    return `<tr data-slug="${c.slug}" style="cursor:pointer">
+      <td class="slug">/${c.slug}</td>
+      <td class="who">${c.name || '<span style="color:var(--muted);font-weight:400">unassigned</span>'}</td>
+      <td class="pens">${pens || '—'}</td>
+      <td class="dose">${now.text}${now.live ? ' <span class="live" title="Reported by her phone">•</span>' : ''}</td>
+      ${supplyCells(supply)}
+      <td class="num${taps ? '' : ' cold'}">${taps || '—'}</td>
+      <td class="num${c.lastSeen ? '' : ' cold'}">${c.lastSeen ? ago(c.lastSeen) : 'never'}</td>
+      <td><span class="pill ${c.status}">${c.status}</span>${
+        // Said first, and in full colour: she has stopped something that
+        // was prescribed for her, and nothing else here would say so.
+        off.length
+          ? ` <span class="pill stop" title="She has taken ${off.length} prescribed ${
+              off.length === 1 ? 'pen' : 'pens'} off her own schedule">stopped ${
+              off.length === 1 ? 'a pen' : `${off.length} pens`}</span>`
+          : ''}${
+        // A treatment she is due for, or past due. Worked out from the
+        // visits on her record rather than from a booking system, so it
+        // shows whether or not anything is in the diary.
+        (c.services || []).filter(s => s.next && (s.next.overdue || s.next.soon))
+          .map(s => ` <span class="pill ${s.next.overdue ? 'stop' : 'warn'}"
+            title="${esc(s.name)} — ${s.next.overdue
+              ? `was due ${s.next.due}` : `due ${s.next.due}`}">${
+            esc(s.name.split(' — ')[0].split(' / ')[0])} ${
+            s.next.overdue ? 'overdue' : 'due'}</span>`).join('')}${
+        // A named card with nothing on it opens to "your protocol has not
+        // been added yet". Say so here, so it is caught before the card is
+        // handed over rather than by the patient.
+        (c.name && !(c.pens || []).length)
+          ? ' <span class="pill warn" title="This card opens with no protocol on it">no protocol</span>'
+          : ''}${
+        // Out of something, named. "finished" told you a course had ended
+        // but never which pen, which is no use when you are the one who
+        // has to order it.
+        supply.out.length
+          ? ` <span class="pill stop" title="This pen has given its last dose — she needs a refill">out of ${
+              supply.out.join(', ')}</span>`
+          : ''}${
+        supply.low.map(l =>
+          ` <span class="pill warn" title="${l.name} runs out in ${l.days} day${
+            l.days === 1 ? '' : 's'}">${l.name} ${l.days}d left</span>`).join('')}${
+        (!supply.out.length && now.flag === 'course finished')
+          ? ' <span class="pill warn" title="Every pen on this card is spent">finished</span>'
+          : ''}${
+        // A named, active card nobody has ever opened is usually a card that
+        // was never handed over, or a tag that does not read.
+        (c.name && c.status === 'active' && !taps)
+          ? ' <span class="pill warn" title="Assigned but never opened">never opened</span>'
+          : ''}
+        <span class="pill link${c.activatedBy ? ' linked' : ''}" data-link="${c.slug}"
+              title="Who activated this card">${c.activatedBy ? '✓ Linked' : 'Not linked'}</span></td>
+      <td style="text-align:right"><button class="ghost sm" data-copy="${c.slug}">Copy URL</button></td>
+    </tr>
+    <tr class="link-detail" data-slug="${c.slug}" hidden><td colspan="8"></td></tr>`;
+  }).join('');
+
+  $('rows').querySelectorAll('tr').forEach(tr =>
+    tr.addEventListener('click', e => {
+      if (tr.classList.contains('link-detail')) return;
+      if (e.target.closest('[data-link]')) return;
+      if (e.target.dataset.copy) return;
+      openEditor(tr.dataset.slug);
+    }));
+
+  /* The LINKED / NOT LINKED pill opens the detail line under the row: who
+     activated the card, and — for a linked card — the one action that can
+     undo a wrong first link. A fresh record is fetched each time, so the
+     line never shows a stale link. */
+  $('rows').querySelectorAll('[data-link]').forEach(pill =>
+    pill.addEventListener('click', async e => {
+      e.stopPropagation();
+      const slug = pill.dataset.link;
+      const detail = $('rows').querySelector(`tr.link-detail[data-slug="${slug}"]`);
+      if (!detail.hidden) { detail.hidden = true; return; }
+      const rec = await api(`/api/cards/${slug}`);
+      if (!rec) return;
+      const a = rec.activatedBy;
+      detail.firstElementChild.innerHTML = a
+        ? `Activated by <b>${a.name}</b> · <b>${a.provider}</b> · <b>${a.uid}</b> · ${a.at}` +
+          ` <button type="button" class="ghost sm" data-unlink="${slug}">Unlink</button>`
+        : 'Not activated yet.';
+      detail.hidden = false;
+      const unlink = detail.querySelector('[data-unlink]');
+      if (unlink) unlink.addEventListener('click', async () => {
+        if (!confirm('Clear this card\u2019s link? Whoever signs in next becomes its owner.')) return;
+        await api(`/api/cards/${slug}/unlink`, { method: 'POST' });
+        await refresh();
+      });
+    }));
+  $('rows').querySelectorAll('[data-copy]').forEach(b =>
+    b.addEventListener('click', async e => {
+      e.stopPropagation();
+      await navigator.clipboard.writeText(tagAddress(b.dataset.copy));
+      // Copying is usually the last step before the address goes on a tag,
+      // so it is the right moment to say the card is not finished.
+      const card = CARDS.find(c => c.slug === b.dataset.copy);
+      toast(card && card.name && !(card.pens || []).length
+        ? 'Address copied — but this card has no protocol on it yet.'
+        : 'Address copied — paste it into NFC Tools.');
+    }));
+}
+
+/* ---------- creating ---------- */
+
+function slugPreview() {
+  const first = $('first').value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  const last = $('last').value.trim().toLowerCase().replace(/[^a-z]/g, '');
+  if (!first) return '';
+  const stem = first.slice(0, 4) + (last ? '.' + last[0] : '');
+  return $('unique').checked ? stem + '-•••' : stem;
+}
+
+function updatePreview() {
+  const slug = slugPreview();
+  if (!slug) { $('preview').textContent = '—'; $('previewBytes').textContent = ''; return; }
+  const url = cardUrl(slug);
+  $('preview').textContent = url;
+  $('previewBytes').innerHTML = fitsNote(url);
+}
+
+['first', 'last'].forEach(id => $(id).addEventListener('input', updatePreview));
+$('vialLot').addEventListener('input', () => { if (TEMPLATES) renderVials(); });
+$('vialFor').addEventListener('change', () => { if (TEMPLATES) renderVials(); });
+$('unique').addEventListener('change', updatePreview);
+
+$('create').addEventListener('click', async () => {
+  const firstName = $('first').value.trim();
+  if (!firstName) return toast('A first name, at least.');
+  try {
+    const rec = await api('/api/cards', {
+      method: 'POST',
+      body: JSON.stringify({
+        firstName, lastName: $('last').value.trim(),
+        unique: $('unique').checked,
+        name: firstName, status: 'active'
+      })
+    });
+    $('first').value = ''; $('last').value = '';
+    updatePreview();
+    await refresh();
+    await navigator.clipboard.writeText(tagAddress(rec.slug)).catch(() => {});
+    toast(`/${rec.slug} created — address copied.`);
+    openEditor(rec.slug);
+  } catch (e) {
+    toast(e.status === 409 ? 'That address is already taken.' : reason('Could not create that card', e));
+  }
+});
+
+$('makeBlanks').addEventListener('click', async () => {
+  const count = Number($('blankCount').value) || 10;
+  const out = await api('/api/blanks', { method: 'POST', body: JSON.stringify({ count }) });
+  await refresh();
+  toast(`${out.cards.length} blank tag${out.cards.length === 1 ? '' : 's'} minted.`);
+});
+
+/* ---------- editing ---------- */
+
+function openEditor(slug) {
+  editing = JSON.parse(JSON.stringify(CARDS.find(c => c.slug === slug)));
+  if (!editing) return;
+  $('editTitle').textContent = editing.name || 'Unassigned card';
+  $('editUrl').textContent = cardUrl(editing.slug);
+  $('editBytes').innerHTML = fitsNote(cardUrl(editing.slug));
+  $('editName').value = editing.name || '';
+  $('editStart').value = editing.startDate || '';
+  $('editStatus').value = editing.status || 'active';
+  $('editNote').value = editing.note || '';
+  renderPens();
+  renderVisits();
+  renderSeen();
+  renderTimes();
+  renderDoses(editing.slug);
+  // What the fields held when the editor opened. Only what she actually
+  // changes is pushed to the phone — otherwise opening a card and pressing
+  // Save would stamp the atelier's start day over one the patient chose.
+  editing._was = { startDate: $('editStart').value, times: readTimeInputs() };
+  editing._force = false;
+  $('testPush').hidden = true;
+  // Only offer it where there is a phone to send to.
+  api(`/api/push/phones/${editing.slug}`).then(r => {
+    $('testPush').hidden = !(r && r.phones > 0);
+    $('testPush').textContent = r && r.phones > 1 ? `Send test (${r.phones} phones)` : 'Send test';
+  }).catch(() => {});
+  $('editor').showModal();
+}
+
+/* ---------- what she is seeing ----------
+   None of this is recomputed here. The card reports what it drew, which
+   is the only way the dashboard and the phone cannot disagree. */
+const BAND_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
+
+function prettyTime(hhmm) {
+  const [h, m] = String(hhmm || '').split(':').map(Number);
+  if (isNaN(h)) return '—';
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+}
+
+function prettyDate(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined,
+    { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/* The bands this card's pens actually use — a morning pen and an evening
+   pen is two rows, not four. */
+function bandsOf(rec) {
+  const seen = [];
+  (rec.pens || []).forEach(p => {
+    const t = (TEMPLATES.templates || []).find(x => x.id === p.template);
+    if (t && t.time && !seen.includes(t.time)) seen.push(t.time);
+  });
+  return seen;
+}
+
+function renderSeen() {
+  const el = $('seen');
+  const s = editing.state;
+  if (!s || !s.at) {
+    el.innerHTML = `<div class="empty" style="padding:6px 0">Nothing reported yet — this card
+      has not been opened since the portal started asking.</div>`;
+    return;
+  }
+
+  const rows = [];
+  const clash = s.startDate && editing.startDate && s.startDate !== editing.startDate;
+  rows.push(['Start day',
+    `<span class="${clash ? 'clash' : ''}">${prettyDate(s.startDate)}</span>` +
+    (clash ? `<small class="clash">The card says ${prettyDate(editing.startDate)}. Her phone wins
+              until you send the card's day to it — the button under Dose times.</small>` : '')]);
+
+  const todayRows = (s.today || []).map(d => d.rest
+    ? `<div class="rest">${d.pen} — rest day</div>`
+    : `<div><b>${d.pen}</b> ${d.units} units · ${d.mg} mg · ${d.phase || '—'}
+         ${d.at ? `· ${prettyTime(d.at)}` : ''}</div>`);
+  rows.push(['Today', todayRows.length ? todayRows.join('') : '<span class="off">Nothing scheduled</span>']);
+
+  const times = Object.keys(s.times || {});
+  rows.push(['Her times', times.length
+    ? times.map(b => `${b} ${prettyTime(s.times[b])}`).join(' · ')
+    : '<span class="off">—</span>']);
+
+  const supply = (s.supply || []).map(x => {
+    const t = (TEMPLATES.templates || []).find(y => y.id === x.template);
+    return `${t ? t.name : x.template}: ${x.dosesLeft} left${x.lastDose ? `, last ${prettyDate(x.lastDose)}` : ''}`;
+  });
+  if (supply.length) rows.push(['Pen supply', supply.join('<br>')]);
+
+  rows.push(['Reminders', s.reminders
+    ? '<span style="color:var(--ok)">On</span>'
+    : '<span class="off">Off</span>'] );
+  rows.push(['Phone', `${s.homeScreen ? 'Added to home screen' : 'Browser tab'}${
+    s.tz ? ` · ${s.tz}` : ''}<small>Last reported ${since(s.at)}</small>`]);
+
+  // Filled in once the dose log comes back; it is a separate collection.
+  rows.push(['Logged', '<span class="off" id="seenDoses">…</span>']);
+
+  el.innerHTML = rows.map(([k, v]) =>
+    `<div class="line"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+}
+
+/* What the vial stickers have recorded. Behind the passphrase, like the
+   rest of the dashboard — this is the only place a dose log is shown. */
+async function renderDoses(slug) {
+  const el = () => $('seenDoses');
+  let rows = [];
+  try { rows = (await api(`/api/doses/${slug}`)).doses || []; }
+  catch { if (el()) el().textContent = 'could not be read'; return; }
+  if (!el()) return;
+  if (!rows.length) { el().textContent = 'No doses logged from a vial sticker yet.'; return; }
+
+  const week = Date.now() - 7 * 86400000;
+  const recent = rows.filter(d => new Date(d.at).getTime() >= week).length;
+  const last = rows[0];
+  const name = (TEMPLATES.templates.find(t => t.id === last.template) || {}).name || last.template;
+  el().className = 'v';
+  el().innerHTML = `${recent} in the last 7 days · ${rows.length} in all` +
+    `<small>Last: ${name}, ${last.units} units, ${prettyDate(last.day || String(last.at).slice(0,10))}` +
+    `${last.lot ? ` · lot ${last.lot}` : ''}</small>`;
+}
+
+function renderTimes() {
+  const bands = bandsOf(editing);
+  const set = (editing.settings && editing.settings.times) || {};
+  const hers = (editing.state && editing.state.times) || {};
+  $('timeRows').innerHTML = bands.length
+    ? bands.map(b => {
+        const value = set[b] || hers[b] || BAND_AT[b] || '09:00';
+        const note = hers[b] && hers[b] !== value ? `her phone: ${prettyTime(hers[b])}`
+                   : (hers[b] ? 'in use on her phone' : 'not reported yet');
+        return `<div class="time-row">
+          <span class="band">${b}</span>
+          <input type="time" data-band="${b}" value="${value}">
+          <span class="was">${note}</span>
+        </div>`;
+      }).join('')
+    : '<div class="empty" style="padding:4px 0">No pens on this card yet.</div>';
+}
+
+function readTimeInputs() {
+  const out = {};
+  $('timeRows').querySelectorAll('input[data-band]').forEach(i => {
+    if (/^\d{2}:\d{2}$/.test(i.value)) out[i.dataset.band] = i.value;
+  });
+  return out;
+}
+
+/* Only what she actually changed travels to the phone — otherwise opening
+   a card and pressing Save would push the atelier's start day over one the
+   patient picked herself.
+
+   "Send to her phone" overrides that: it takes everything in the form as
+   it stands, changed or not. That is the call where her phone has drifted
+   and the card was right all along. */
+function settingsFromEditor() {
+  const was = editing._was || { startDate: '', times: {} };
+  const out = Object.assign({ startDate: '', times: {} },
+    JSON.parse(JSON.stringify(editing.settings || {})));
+  out.times = out.times || {};
+  const now = readTimeInputs();
+
+  if (editing._force) {
+    out.startDate = $('editStart').value || '';
+    Object.assign(out.times, now);
+    out.force = true;
+    return out;
+  }
+
+  if ($('editStart').value !== was.startDate) out.startDate = $('editStart').value || '';
+  Object.keys(now).forEach(b => { if (now[b] !== was.times[b]) out.times[b] = now[b]; });
+  return out;
+}
+
+$('testPush').addEventListener('click', async () => {
+  if (!editing) return;
+  $('testPush').disabled = true;
+  try {
+    const out = await api('/api/push/test', {
+      method: 'POST', body: JSON.stringify({ slug: editing.slug })
+    });
+    toast(out.sent
+      ? `Sent to ${out.sent} phone${out.sent > 1 ? 's' : ''}.`
+      : 'No phone accepted it — she may have turned reminders off.');
+  } catch (e) {
+    toast(reason('Could not send', e));
+  } finally { $('testPush').disabled = false; }
+});
+
+/* What the dial number comes to in milligrams, for every phase on a pen.
+   Pulled out of the render so typing can refresh it in place. */
+/* A vial reconstituted with a stated diluent gives the concentration
+   outright; fall back to summing components only for a template written
+   before the vial and diluent were recorded. */
+function perMlOf(t) {
+  if (t.vialMg && t.diluentMl) return t.vialMg / t.diluentMl;
+  const total = (t.components || []).reduce((s, c) => s + c.mg, 0);
+  return total / (t.volumeMl || 1);
+}
+
+/* Templates carry the dose in milligrams; the dial is in units. The portal
+   resolves one to the other on load and so must this page — without it every
+   Units box opens blank, the milligram line reads 0.00, and a phase saved
+   from here is dropped on the way to the store for having no units. */
+function resolveDoses(templates) {
+  (templates.templates || []).forEach(t => {
+    const c = perMlOf(t);
+    (t.phases || []).forEach(ph => {
+      if (ph.mg != null && c) ph.units = Math.floor(ph.mg / c / ML_PER_UNIT);
+      else if (ph.units != null && c) ph.mg = Math.round(c * ph.units * ML_PER_UNIT * 1000) / 1000;
+    });
+  });
+  return templates;
+}
+
+/* How far one pen actually goes: every scheduled dose drawn in turn until
+   either the phases run out or the next dose will not fit. This mirrors the
+   engine in protocol.js rather than guessing, so the number here is the
+   number the patient's card will behave like. `left` is what is still in the
+   pen when it is retired — a large figure means the protocol ends long
+   before the pen does. */
+function penLife(t, phases) {
+  const vol = t.volumeMl || 3;
+  const sc = t.schedule || { on: 7, off: 0 };
+  const cyc = sc.weekly ? 7 : (sc.on + sc.off);
+  const on = sc.weekly ? 1 : sc.on;
+  let bound = 0;
+  const ends = (phases || []).map(ph => (bound += (ph.days == null ? 3650 : ph.days)));
+  let ml = vol, doses = 0, last = 0, spent = false;
+  for (let i = 0; i < bound; i++) {
+    if (i % cyc >= on) continue;
+    const pi = ends.findIndex(e => i < e);
+    if (pi === -1) break;
+    const u = Number(phases[pi].units) || 0;
+    if (!u) break;
+    if (u * ML_PER_UNIT > ml + 1e-9) { spent = true; break; }
+    ml -= u * ML_PER_UNIT; doses++; last = i + 1;
+  }
+  return { days: last, doses, left: ml, spent };
+}
+
+function lifeLine(t, phases) {
+  if (!phases || !phases.length) return '';
+  const L = penLife(t, phases);
+  if (!L.doses) return '';
+  const wasted = L.left > 0.05
+    ? ` · <strong>${L.left.toFixed(2)} mL left in the pen</strong>` : '';
+  return `Lasts ${L.days} days — ${L.doses} injection${L.doses > 1 ? 's' : ''}${wasted}`;
+}
+
+function mgLine(t, phases) {
+  const c = perMlOf(t);
+  return (phases || []).map(ph => {
+    const units = Number(ph.units) || 0;
+    return `${units}u ≈ ${(c * units * ML_PER_UNIT).toFixed(2)} mg`;
+  }).join(' · ');
+}
+
+/* The pen deck. Everything here is derived from templates.json — cost, dose,
+   schedule — so correcting a template corrects this at the same moment it
+   corrects the patient's card. Nothing is copied in. */
+function renderDeck() {
+  const pens = (TEMPLATES.templates || [])
+    .filter(t => t.cog && !t.setup && !t.retired && (t.phases || []).length)
+    .map(t => {
+      const L = penLife(t, t.phases);
+      const weeks = L.days / 7;
+      return { t, life: L, weeks, perWeek: weeks ? t.cog / weeks : 0 };
+    })
+    .sort((a, b) => b.weeks - a.weeks);
+
+  $('deck').innerHTML = pens.map((p, i) => `
+    <div class="deck-row" data-deck="${i}" tabindex="0">
+      <div class="nm">${p.t.name}<small>${freqShort(p.t)}</small></div>
+      <b>$${p.t.cog}</b>
+      <i>${p.life.days}d</i>
+    </div>`).join('');
+
+  const cog = pens.reduce((a, p) => a + p.t.cog, 0);
+  const best = pens.reduce((a, b) => (b.perWeek < a.perWeek ? b : a), pens[0]);
+  $('deckFoot').innerHTML = pens.length
+    ? `<span>One of each <b>$${cog}</b></span>
+       <span>Best value <b>${best.t.name} · $${best.perWeek.toFixed(2)}/wk</b></span>`
+    : '';
+
+  const summary = $('deckFoot').innerHTML;
+  const detail = p => `<div class="det">
+    <span>Dose <b>${p.t.phases.map(x => x.units + 'u').join(' → ')}</b></span>
+    <span>Injections <b>${p.life.doses}</b></span>
+    <span>Weeks <b>${p.weeks.toFixed(1)}</b></span>
+    <span>Per week <b>$${p.perWeek.toFixed(2)}</b></span>
+    <span>Left <b>${p.life.left > 0.005 ? p.life.left.toFixed(2) + ' mL' : 'none'}</b></span>
+  </div>`;
+  $('deck').querySelectorAll('[data-deck]').forEach(row => {
+    const p = pens[row.dataset.deck];
+    const on = () => { $('deckFoot').innerHTML = detail(p); };
+    const off = () => { $('deckFoot').innerHTML = summary; };
+    row.addEventListener('mouseenter', on);
+    row.addEventListener('focus', on);
+    row.addEventListener('mouseleave', off);
+    row.addEventListener('blur', off);
+  });
+}
+
+/* The rhythm, said the way the patient's pages say it. */
+function freqShort(t) {
+  const sc = t.schedule || {};
+  if (sc.weekly) return 'Weekly';
+  if (!sc.off) return 'Daily';
+  return `${sc.on} on / ${sc.off} off`;
+}
+
+/* The four numbers above the table. "Needs a look" is the count of cards
+   carrying any warning pill, so the strip and the rows can never disagree. */
+function renderStats() {
+  const weekAgo = Date.now() - 7 * 86400000;
+  let total = 0, week = 0, cold = 0, flagged = 0;
+  CARDS.forEach(c => {
+    const taps = Number(c.taps) || 0;
+    total += taps;
+    if (c.lastSeen && new Date(c.lastSeen).getTime() >= weekAgo) week++;
+    if (!taps) cold++;
+    const now = showingNow(c);
+    if ((c.name && !(c.pens || []).length) ||
+        now.flag === 'course finished' ||
+        (c.name && c.status === 'active' && !taps)) flagged++;
+  });
+  $('mTaps').textContent = total;
+  $('mWeek').textContent = week;
+  $('mCold').textContent = cold;
+  $('mFlag').textContent = flagged;
+}
+
+/* What a card is showing today.
+
+   If her phone has reported in today, that IS the answer — it is her
+   screen, drawn by the same engine she is reading, with her own start day
+   and her own setup answers in it. Nothing below can know those.
+
+   The rest is the fallback for a card that has never been opened, or was
+   opened days ago: walk the schedule from the card's start day and say
+   where that lands. It is a second copy of the arithmetic, and it is kept
+   only because a card nobody has tapped still has to show something. */
+/* How many days before a pen runs dry counts as "order one". */
+const LOW_DAYS = 10;
+
+/* The start day the patient is actually on.
+
+   Three places hold one and they are not the same: the card's own
+   startDate is what was typed here, settings.startDate is what was sent
+   to her phone, and state.startDate is what her phone says it is using —
+   which wins, because she can move it herself. Reading only the first is
+   why a card with a perfectly good start day sat on this list saying
+   "waiting for her start day", and why nothing here could work out how
+   much she had left. */
+function effectiveStart(rec) {
+  return (rec.state && rec.state.startDate)
+      || (rec.settings && rec.settings.startDate)
+      || rec.startDate || null;
+}
+
+/* What is left in each pen — worked out by the server and sent with the
+   card, not recomputed here. portal/lib/supply.js is the one answer, so
+   this list and the read-only overview cannot drift apart and start
+   telling the atelier two different things about the same patient. */
+function supplyOf(rec) {
+  const s = rec.supply || {};
+  return { out: s.out || [], low: s.low || [], unknown: s.unknown || [],
+           pens: s.pens || [] };
+}
+
+/* Doses left, and the day it runs out, for every pen on the card. Two
+   columns rather than a pill, because this is the question asked of every
+   row every time — not an exception worth flagging.
+
+   Red inside a week. Red is the only thing on this list that means "order
+   something today", so nothing else is allowed to use it. */
+function supplyCells(s) {
+  const pens = s.pens || [];
+  const unknown = s.unknown || [];
+
+  if (!pens.length) {
+    // Named, not blank. A vial she sets up herself on a card she has never
+    // opened has no supply anyone can state, and an empty cell reads as
+    // "she is fine" — the one thing it does not mean.
+    const why = unknown.length ? 'not set up on her phone yet' : '';
+    return `<td class="num cold" title="${why}">${unknown.length ? '?' : '—'}</td>
+            <td class="num cold" title="${why}">${unknown.length ? 'not set up' : '—'}</td>`;
+  }
+
+  const soonest = pens.reduce((a, b) =>
+    (a.days == null) ? b : (b.days == null) ? a : (b.days < a.days ? b : a));
+  const urgent = soonest.days != null && soonest.days <= 7;
+
+  const doses = pens.map(p => p.dosesLeft == null ? '?' : p.dosesLeft).join(' / ');
+  const text = soonest.days == null ? '—'
+    : soonest.days <= 0 ? 'out now'
+    : `${soonest.days}d · ${fmtDay(soonest.runsOut)}`;
+  const when = urgent ? `<span class="urgent">${text}</span>` : text;
+
+  const detail = pens.map(p => `${p.name}: ${
+    p.dosesLeft == null ? 'unknown' : p.dosesLeft + ' left'}${
+    p.runsOut ? `, last dose ${p.runsOut}` : ''}`).join('\n');
+
+  return `<td class="num" title="${esc(detail)}">${doses}</td>
+          <td class="num" style="white-space:nowrap" title="${esc(detail)}">${when}</td>`;
+}
+
+/* Titles carry pen names and dates; keep a stray quote from ending the
+   attribute. */
+function esc(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fmtDay(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function showingNow(rec) {
+  const s = rec.state;
+  if (s && s.at && Date.now() - new Date(s.at) < 36 * 3600000 && (s.today || []).length) {
+    const live = s.today.map(d => d.rest
+      ? `${d.pen}: rest day`
+      : `${d.pen}: ${d.units}u`).join(' · ');
+    return { text: live, flag: '', live: true };
+  }
+
+  const pens = rec.pens || [];
+  if (!pens.length) return { text: '—', flag: rec.name ? 'no protocol' : '' };
+  const startDate = effectiveStart(rec);
+  if (!startDate) return { text: 'waiting for her start day', flag: '' };
+
+  const start = new Date(startDate + 'T00:00:00');
+  const elapsed = Math.floor((Date.now() - start) / 86400000);
+  if (elapsed < 0) return { text: 'not started yet', flag: '' };
+
+  const bits = [], done = [];
+  for (const pen of pens) {
+    const t = (TEMPLATES.templates || []).find(x => x.id === pen.template);
+    if (!t) { bits.push(`unknown pen "${pen.template}"`); continue; }
+    if (t.setup) { bits.push(`${t.name}: set up on her phone`); continue; }
+    const phases = pen.phases || t.phases || [];
+    const L = penLife(t, phases);
+    if (elapsed >= L.days) { done.push(t.name); continue; }
+
+    // Which phase today falls in, and whether today is a dosing day.
+    const sc = t.schedule || { on: 7, off: 0 };
+    const cyc = sc.weekly ? 7 : sc.on + sc.off;
+    const onDay = sc.weekly ? (elapsed % 7 === 0) : (elapsed % cyc < sc.on);
+    let acc = 0, ph = null;
+    for (const x of phases) { acc += (x.days == null ? 1e9 : x.days); if (elapsed < acc) { ph = x; break; } }
+    if (!ph) { done.push(t.name); continue; }
+    bits.push(`${t.name}: ${onDay ? ph.units + 'u' : 'rest day'}`);
+  }
+  if (done.length) bits.push(`<span class="spent">${done.join(', ')} spent</span>`);
+  return { text: bits.join(' · ') || '—', flag: done.length ? 'course finished' : '' };
+}
+
+/* "Opened 9 days ago" is enough for a card; "reported 4 minutes ago" is
+   what tells you whether she has her phone in her hand right now. */
+function since(iso) {
+  if (!iso) return 'never';
+  const m = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+  return ago(iso);
+}
+
+function ago(iso) {
+  if (!iso) return '';
+  const d = Math.floor((Date.now() - new Date(iso)) / 86400000);
+  if (d <= 0) return 'today';
+  if (d === 1) return 'yesterday';
+  if (d < 30) return `${d} days ago`;
+  return new Date(iso).toISOString().slice(0, 10);
+}
+
+/* Peptides the patient chose on her own card. They are not prescribed and
+   are not edited here — she can take them off herself — but the atelier
+   should not have to hear about them on the phone. */
+function addedByHer() {
+  const list = editing.added || [];
+  if (!list.length) return '';
+  return `<div class="pen-row" style="border-color:var(--brass)">
+    <div class="pen-head"><span class="pen-name">Added on her own card</span></div>
+    <p class="setup-note">${list.map(a => {
+      const t = TEMPLATES.templates.find(x => x.id === a.template) || {};
+      return `${t.name || a.template}${a.startDate ? ` — since ${a.startDate}` : ''}`;
+    }).join('<br>')}</p>
+    <p class="setup-note" style="margin-top:8px">She chose these from the library
+    and can remove them herself. They are not part of what you prescribed.</p>
+  </div>`;
+}
+
+/* Prescriptions the patient has stopped on her own card. This is the one
+   thing on this screen the atelier most needs to see unprompted: the pen
+   is still prescribed, she is not taking it, and nothing else would say
+   so. Putting it back here puts it back on her card. */
+function stoppedByHer() {
+  const off = editing.dropped || [];
+  if (!off.length) return '';
+  const name = id => {
+    const base = String(id).split('#')[0];
+    const pen = (editing.pens || []).find(p => p.template === base);
+    const t = TEMPLATES.templates.find(x => x.id === (pen ? pen.template : base));
+    return (t && t.name) || base;
+  };
+  return `<div class="pen-row" style="border-color:var(--alert,#9B4A3C)">
+    <div class="pen-head"><span class="pen-name">She has stopped these</span></div>
+    <p class="setup-note">Still prescribed, not on her schedule. She took
+    ${off.length === 1 ? 'it' : 'them'} off her own card.</p>
+    ${off.map(id => `<div class="phase" style="grid-template-columns:1fr auto">
+      <span class="pen-name" style="font-size:13px">${name(id)}</span>
+      <button type="button" class="ghost sm" data-undrop="${id}">Put it back</button>
+    </div>`).join('')}
+  </div>`;
+}
+
+/* ---------- treatments in the room ----------
+   A visit is a date and a service, and the cadence does the rest. The due
+   date is never stored: the moment a visit is corrected a stored one would
+   be wrong, and nothing would say so. */
+function renderVisits() {
+  const list = $('visitList');
+  if (!list) return;
+  const visits = (editing.visits || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!visits.length) {
+    list.innerHTML = '<p class="hint" style="margin:0">Nothing logged yet.</p>';
+    return;
+  }
+
+  // Grouped by service, newest first, each with where the course stands.
+  const ids = [...new Set(visits.map(v => v.service))];
+  list.innerHTML = ids.map(id => {
+    const s = SERVICES.find(x => x.id === id) || { name: id, hex: '#8A7C6A' };
+    const mine = visits.filter(v => v.service === id);
+    const n = nextVisit(id, editing.visits || []);
+
+    const when = !n ? ''
+      : n.done ? `Course complete — ${n.course}.`
+      : n.none ? 'No set cadence.'
+      : n.overdue ? `<b style="color:var(--alert)">Overdue by ${-n.days} day${n.days === -1 ? '' : 's'}</b> — was due ${fmtDay(n.due)}.`
+      : `Next ${fmtDay(n.due)}${n.days === 0 ? ' — today' : `, in ${n.days} day${n.days === 1 ? '' : 's'}`}.${
+          n.window ? ` Window to ${fmtDay(n.window[1])}.` : ''}${
+          n.course ? ` Session ${n.course}.` : ''}`;
+
+    return `<div class="pen-row" style="border-left:4px solid ${s.hex}">
+      <div class="pen-head">
+        <span class="pen-name">${s.name}</span>
+        <span class="hint" style="margin:0">${mine.length} visit${mine.length === 1 ? '' : 's'}</span>
+      </div>
+      <p class="setup-note" style="margin-bottom:8px">${when}</p>
+      ${mine.map(v => `<div class="phase" style="grid-template-columns:1fr auto auto">
+        <span>${fmtDay(v.date)}${v.area ? ` · ${v.area}` : ''}${v.units ? ` · ${v.units} units` : ''}</span>
+        <span></span>
+        <button type="button" class="x" data-dropvisit="${v.service}|${v.date}"
+          title="Remove this visit">&times;</button>
+      </div>`).join('')}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-dropvisit]').forEach(b =>
+    b.addEventListener('click', () => {
+      const [service, date] = b.dataset.dropvisit.split('|');
+      editing.visits = (editing.visits || [])
+        .filter(v => !(v.service === service && v.date === date));
+      renderVisits();
+    }));
+}
+
+/* The same arithmetic the server does, so the editor and the list agree.
+   Kept here rather than fetched because the editor has to redraw as she
+   types, before anything is saved. */
+function nextVisit(id, visits) {
+  const s = SERVICES.find(x => x.id === id);
+  if (!s) return null;
+  const mine = visits.filter(v => v.service === id).sort((a, b) => a.date.localeCompare(b.date));
+  if (!mine.length) return null;
+  const n = mine.length, last = mine[n - 1].date;
+  if (s.courseOf && n >= s.courseOf) return { done: true, course: `${n} of ${s.courseOf}`, last };
+  const gaps = s.firstGaps || [];
+  const gap = n <= gaps.length ? gaps[n - 1] : s.everyDays;
+  if (!gap) return { none: true, last };
+  const due = addDays(last, gap);
+  const mid = new Date(); mid.setHours(0, 0, 0, 0);
+  const days = Math.round((new Date(due + 'T00:00:00') - mid) / 86400000);
+  return { due, days, last, overdue: days < 0,
+           window: s.windowDays ? [addDays(last, s.windowDays[0]), addDays(last, s.windowDays[1])] : null,
+           course: s.courseOf ? `${n} of ${s.courseOf}` : null };
+}
+
+function addDays(isoDate, days) {
+  const d = new Date(isoDate + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function renderPens() {
+  const list = $('penList');
+  const hers = stoppedByHer() + addedByHer();
+  if (!editing.pens || !editing.pens.length) {
+    list.innerHTML = hers ||
+      '<p class="hint" style="margin:0">Nothing on this card yet.</p>';
+    return;
+  }
+  list.innerHTML = hers + editing.pens.map((pen, pi) => {
+    const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
+    const phases = pen.phases || t.phases || [];
+
+    // A pen the patient sets up herself has no phases to show here.
+    if (t.setup) {
+      return `<div class="pen-row">
+        <div class="pen-head">
+          <span class="pen-name">${t.name}</span>
+          <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
+        </div>
+        <p class="setup-note">The patient chooses her vial size, regimen and injection day
+        the first time she taps this card.</p>
+      </div>`;
+    }
+
+    return `<div class="pen-row">
+      <div class="pen-head">
+        <span class="pen-name">${t.name || pen.template}</span>
+        <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
+      </div>
+      <!-- Its own start day. Blank means it follows the card's start day,
+           which is what every pen did before any of them could differ —
+           so an existing card reads exactly as it always has until a date
+           is actually typed here. -->
+      <label class="setup-note" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span>Started</span>
+        <input type="date" data-penstart="${pi}" value="${pen.startDate || ''}">
+        <span style="color:var(--muted)">${pen.startDate ? '' : 'follows the card'}</span>
+      </label>
+      ${phases.length ? `<div class="phase phase-head">
+        <span>Phase</span><span>Units</span><span>Days</span><span></span>
+      </div>` : ''}
+      ${phases.map((ph, fi) => `
+        <div class="phase">
+          <input data-p="${pi}" data-f="${fi}" data-k="name" value="${ph.name || ''}" placeholder="Phase">
+          <input data-p="${pi}" data-f="${fi}" data-k="units" type="number" min="1" value="${ph.units || ''}" placeholder="units">
+          <span class="derived" title="Set by the peptide, not per patient">${
+            ph.days == null ? 'till empty' : ph.days + ' d'}</span>
+          <button type="button" class="x" data-dropphase="${pi}:${fi}" title="Remove phase">×</button>
+        </div>`).join('')}
+      <div class="mg" data-mg="${pi}">${mgLine(t, phases)}</div>
+      <div class="life" data-life="${pi}">${lifeLine(t, phases)}</div>
+      <button type="button" class="ghost sm" data-addphase="${pi}" style="margin-top:10px">Add phase</button>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('input').forEach(inp =>
+    inp.addEventListener('input', () => {
+      const { p, f, k } = inp.dataset;
+      const pen = editing.pens[p];
+      const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
+      pen.phases = pen.phases || JSON.parse(JSON.stringify(t.phases || []));
+      pen.phases[f][k] = k === 'name' ? inp.value
+        : (inp.value === '' ? 0 : Number(inp.value));
+
+      // Redraw only the milligram line. Re-rendering the whole pen would
+      // take the caret out of the box being typed in, which is why this
+      // used to sit stale showing the dose before the change.
+      const mgEl = list.querySelector(`[data-mg="${p}"]`);
+      if (mgEl) mgEl.textContent = mgLine(t, pen.phases);
+      const lifeEl = list.querySelector(`[data-life="${p}"]`);
+      if (lifeEl) lifeEl.innerHTML = lifeLine(t, pen.phases);
+    }));
+
+  list.querySelectorAll('[data-penstart]').forEach(inp =>
+    inp.addEventListener('change', () => {
+      const pen = editing.pens[inp.dataset.penstart];
+      if (!pen) return;
+      if (inp.value) pen.startDate = inp.value; else delete pen.startDate;
+      renderPens();
+    }));
+
+  list.querySelectorAll('[data-undrop]').forEach(b =>
+    b.addEventListener('click', () => {
+      editing.dropped = (editing.dropped || []).filter(id => id !== b.dataset.undrop);
+      renderPens();
+    }));
+
+  list.querySelectorAll('[data-drop]').forEach(b =>
+    b.addEventListener('click', () => {
+      const pen = editing.pens[b.dataset.drop];
+      const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
+      // Taking a pen off a card takes it off her phone on the next tap.
+      // Worth one question, since the usual reason is that it was added
+      // by mistake and the usual cost of getting it wrong is a dose.
+      if (!confirm(`Remove ${t.name || pen.template} from this card?\n\n` +
+                   `It disappears from her protocol the next time she opens it. ` +
+                   `Nothing is saved until you press Save.`)) return;
+      editing.pens.splice(b.dataset.drop, 1);
+      renderPens();
+    }));
+
+  list.querySelectorAll('[data-dropphase]').forEach(b =>
+    b.addEventListener('click', () => {
+      const [pi, fi] = b.dataset.dropphase.split(':').map(Number);
+      const pen = editing.pens[pi];
+      pen.phases = pen.phases || JSON.parse(JSON.stringify(
+        (TEMPLATES.templates.find(x => x.id === pen.template) || {}).phases || []));
+      pen.phases.splice(fi, 1);
+      renderPens();
+    }));
+
+  list.querySelectorAll('[data-addphase]').forEach(b =>
+    b.addEventListener('click', () => {
+      const pen = editing.pens[b.dataset.addphase];
+      const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
+      pen.phases = pen.phases || JSON.parse(JSON.stringify(t.phases || []));
+      const last = pen.phases[pen.phases.length - 1];
+      pen.phases.push({ name: 'Next', units: last ? last.units : 10, days: 14 });
+      renderPens();
+    }));
+}
+
+$('addPen').addEventListener('click', () => {
+  const id = $('penPick').value;
+  if (!id) return;
+  editing.pens = editing.pens || [];
+  editing.pens.push({ template: id });
+  $('penPick').value = '';
+  renderPens();
+});
+
+/* Liquid lipo is priced and given by area, and toxin by the unit, so
+   those two ask one more question. Everything else does not. */
+$('visitPick').addEventListener('change', () => {
+  const s = SERVICES.find(x => x.id === $('visitPick').value);
+  const areas = (s && s.areas) || [];
+  const wantsUnits = !!(s && s.unit === 'unit');
+  $('visitExtra').hidden = !areas.length && !wantsUnits;
+  $('visitArea').hidden = !areas.length;
+  $('visitUnits').hidden = !wantsUnits;
+  $('visitArea').innerHTML = '<option value="">Area…</option>' +
+    areas.map(a => `<option value="${a.name}">${a.name}</option>`).join('');
+});
+
+$('addVisit').addEventListener('click', () => {
+  const service = $('visitPick').value;
+  const date = $('visitDate').value;
+  if (!service) return toast('Choose a treatment.');
+  if (!date) return toast('Which day was it?');
+  editing.visits = editing.visits || [];
+  if (editing.visits.some(v => v.service === service && v.date === date)) {
+    return toast('That treatment is already logged for that day.');
+  }
+  const v = { service, date };
+  if ($('visitArea').value) v.area = $('visitArea').value;
+  if ($('visitUnits').value) v.units = Number($('visitUnits').value);
+  editing.visits.push(v);
+  $('visitPick').value = ''; $('visitArea').value = ''; $('visitUnits').value = '';
+  $('visitExtra').hidden = true;
+  renderVisits();
+});
+
+/* What the record kept, against what the editor sent. Returns a sentence
+   to show, or null when everything landed. */
+function phasesLost(sent, saved) {
+  if (!saved || !Array.isArray(saved.pens)) return 'Saved, but the card could not be read back — reopen it and check the protocol.';
+  const names = id => (TEMPLATES.templates.find(t => t.id === id) || {}).name || id;
+  const bad = [];
+  (sent.pens || []).forEach((pen, i) => {
+    const want = (pen.phases || []).length;
+    if (!want) return;                       // no phases sent: the template's stand
+    const got = ((saved.pens[i] || {}).phases || []).length;
+    if (got < want) bad.push(`${names(pen.template)} kept ${got} of ${want} phases`);
+  });
+  if (!bad.length) return null;
+  return `Not all of it saved — ${bad.join('; ')}. A phase with no dial number is dropped; reopen the card and fill it in.`;
+}
+
+$('pushSettings').addEventListener('click', () => {
+  if (!editing) return;
+  editing._force = true;
+  $('saveCard').click();
+});
+
+$('saveCard').addEventListener('click', async () => {
+  editing.name = $('editName').value.trim();
+  editing.startDate = $('editStart').value || null;
+  editing.status = $('editStatus').value;
+  editing.note = $('editNote').value;
+  editing.settings = settingsFromEditor();
+  if (editing.name && editing.status === 'blank') editing.status = 'active';
+
+  const before = (editing.settings && editing.settings.rev) || 0;
+  const sent = JSON.parse(JSON.stringify(editing));
+  const saved = await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
+
+  // Did the record actually take what was typed? A phase with no dial
+  // number is dropped on the way in, and a protocol that quietly lost a
+  // phase is the kind of thing found weeks later on a patient's phone.
+  // Compare what came back against what went out and say so here.
+  const lost = phasesLost(sent, saved);
+  $('editor').close();
+  await refresh();
+  if (lost) return toast(lost, 8000);
+
+  // A settings change is the one edit that has to travel to a device, so
+  // say plainly that it is waiting rather than already done.
+  toast((saved && saved.settings && saved.settings.rev > before)
+    ? 'Saved. Her phone takes the new times the next time she opens her card.'
+    : 'Saved. It is live on the next tap.');
+});
+
+$('cancelEdit').addEventListener('click', () => $('editor').close());
+
+$('deleteCard').addEventListener('click', async () => {
+  if (!confirm(`Delete /${editing.slug}? Any tag already written with this address will stop working.`)) return;
+  await api(`/api/cards/${editing.slug}`, { method: 'DELETE' });
+  $('editor').close();
+  await refresh();
+  toast('Card deleted.');
+});
+
+boot().catch(e => {
+  document.body.innerHTML =
+    '<div class="wrap"><p class="hint">Could not reach the card service. ' +
+    (e.message || '') + '</p></div>';
+});
+</script>
+
+</body>
+</html>

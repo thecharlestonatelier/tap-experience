@@ -1,0 +1,116 @@
+/* Each pen keeps its own start day.
+
+   One start day for the whole protocol was wrong the moment a second pen
+   existed: a patient months into one pen who begins another today was
+   asked "which day did you start?", and answering today dragged the first
+   pen back with it — new phase, wrong dial number, wrong supply. */
+import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+
+const BASE = process.env.BASE || 'http://localhost:8095';
+const TOK = readFileSync('/tmp/tok.txt', 'utf8').trim();
+const H = { 'Content-Type': 'application/json', Cookie: `ca_studio=${TOK}` };
+let bad = 0;
+const check = (n, ok, x = '') => {
+  console.log(`${ok ? '  ok  ' : ' FAIL '} ${n}${x ? ' — ' + x : ''}`);
+  if (!ok) bad++;
+};
+const pad = n => String(n).padStart(2, '0');
+const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+
+const slug = `start${Date.now().toString(36)}.t`;
+await fetch(`${BASE}/api/cards`, { method: 'POST', headers: H, body: JSON.stringify({
+  slug, name: 'Two Pens', pens: [{ template: 'ghk' }, { template: 'bpc' }],
+  settings: { startDate: daysAgo(60) } }) });
+
+const br = await chromium.launch();
+const p = await (await br.newContext({ viewport: { width: 420, height: 1000 } })).newPage();
+p.on('pageerror', e => { console.log(' FAIL  page error — ' + e.message); bad++; });
+p.on('dialog', d => d.accept());
+await p.goto(`${BASE}/ritual.html?c=${slug}`);
+await p.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length, null, { timeout: 15000 });
+
+const starts = () => p.evaluate(() =>
+  Object.fromEntries(PENS.map(x => [x.id, penStartIso(x)])));
+
+await p.evaluate(() => { try { closeStartPicker(); } catch {} });
+await p.waitForTimeout(400);
+
+const before = await starts();
+check('both pens begin on the protocol day', before.ghk === before.bpc, JSON.stringify(before));
+
+/* --- the picker asks per pen --- */
+await p.evaluate(() => openStartPicker());
+await p.waitForTimeout(400);
+check('the sheet asks about each one',
+      (await p.locator('#startPens [data-penstart]').count()) === 2,
+      await p.locator('#startTitle').innerText());
+check('and the single-date field steps aside',
+      await p.locator('#startInput').isHidden());
+
+/* --- moving one must not move the other --- */
+const newDay = daysAgo(3);
+await p.evaluate(d => {
+  document.querySelector('[data-penstart="bpc"]').value = d;
+}, newDay);
+await p.click('#startSave');
+await p.waitForTimeout(800);
+
+const after = await starts();
+check('the pen she moved moved', after.bpc === newDay, after.bpc);
+check('and the one she did not is untouched', after.ghk === before.ghk,
+      `${before.ghk} -> ${after.ghk}`);
+
+/* --- and it survives a reload --- */
+await p.reload();
+await p.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length, null, { timeout: 15000 });
+await p.evaluate(() => { try { closeStartPicker(); } catch {} });
+const kept = await starts();
+check('both are remembered', kept.bpc === newDay && kept.ghk === before.ghk,
+      JSON.stringify(kept));
+
+/* --- adding a pen does not disturb the others --- */
+await p.evaluate(async () => {
+  const t = await loadTemplates();
+  addPen(t.templates.find(x => x.id === 'semax'));
+  renderAll();
+});
+await p.waitForTimeout(600);
+const added = await starts();
+check('a pen added today starts today',
+      added[Object.keys(added).find(k => k.startsWith('semax'))] === daysAgo(0));
+check('and the pens already there do not move',
+      added.bpc === newDay && added.ghk === before.ghk, JSON.stringify(added));
+
+/* --- the atelier is told each pen's own day --- */
+// The card reports on its own schedule; ask for one now rather than
+// racing it.
+await p.evaluate(() => reportState(true));
+await p.waitForTimeout(1500);
+// The patient-facing view deliberately omits the state report — it came
+// from her phone and she has no use for it back — so read the dashboard's.
+const list = await (await fetch(`${BASE}/api/cards`, { headers: H })).json();
+const rec = list.cards.find(c => c.slug === slug);
+const reported = Object.fromEntries(
+  ((rec.state && rec.state.supply) || []).map(s => [s.template, s.startDate]));
+check('each pen\'s day reaches the atelier',
+      reported.bpc === newDay && reported.ghk === before.ghk, JSON.stringify(reported));
+
+/* --- and every pen can be taken off, due today or not --- */
+await p.click('.tab[data-panel="rhythm"]');
+await p.waitForTimeout(500);
+check('every pen carries a remove control in the rhythm sheet',
+      (await p.locator('#rhythmList [data-drop]').count()) ===
+      (await p.evaluate(() => PENS.length)),
+      `${await p.locator('#rhythmList [data-drop]').count()} control(s)`);
+
+await p.locator('#rhythmList [data-drop]').first().click();
+await p.waitForTimeout(900);
+check('and it works from there',
+      (await p.evaluate(() => PENS.length)) === Object.keys(added).length - 1,
+      (await p.evaluate(() => PENS.map(x => x.id))).join(', '));
+
+await br.close();
+console.log(bad ? `\n${bad} failing` : '\nall good');
+process.exit(bad ? 1 : 0);

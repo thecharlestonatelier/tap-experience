@@ -1,0 +1,9 @@
+# Local card store — patient data, never committed.
+.data/
+node_modules/
+# Wallet signing material lives in Secret Manager, never here.
+wallet-assets/*.png
+*.key
+*.pem
+*.cer
+*.p12

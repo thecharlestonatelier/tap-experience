@@ -1,0 +1,1927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<title>Today's Ritual</title>
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<!-- The atelier's mark, whichever screen is saved to the home screen. -->
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Atelier">
+<link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
+
+<style>
+  :root {
+    --bg:            #F3EBE1;
+    --card:          #F8F2EA;
+    --espresso:      #3B2E20;
+    --espresso-soft: #4A3B2C;
+    --muted:         #8A7C6A;
+    --brass:         #8A7350;
+    --brass-soft:    #A38C69;
+    --hairline:      rgba(138, 115, 80, 0.18);
+    --shadow:        0 1px 2px rgba(59,46,32,.05), 0 6px 18px rgba(59,46,32,.045);
+
+    --clay:  #A8705A;
+    --sage:  #7E9080;
+    --gold:  #A38C69;
+    --plum:  #8A6B75;
+    --slate: #6B7A87;
+    --pc:    var(--gold);
+    --alert: #A4553F;
+    /* Taken — the same green the calendar page uses. */
+    --done:  #4C7150;
+  }
+  .c-clay { --pc: var(--clay); } .c-sage  { --pc: var(--sage); }
+  .c-brass{ --pc: var(--gold); } .c-plum  { --pc: var(--plum); }
+  .c-slate{ --pc: var(--slate); }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--espresso-soft);
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+    /* Cormorant defaults to old-style figures, which render 10 as "IO".
+       Dose numbers must never be ambiguous — force lining figures. */
+    font-feature-settings: 'lnum' 1;
+  }
+
+  .wrap { width: 100%; max-width: 460px; padding: 14px 20px calc(40px + env(safe-area-inset-bottom)); }
+
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 8px 0 22px; }
+  .back {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--card); box-shadow: var(--shadow);
+    color: var(--brass); text-decoration: none; flex: none;
+  }
+  .back svg { width: 15px; height: 15px; }
+  .topbar-label { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+
+  .eyebrow { font-size: 11.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--brass); margin-bottom: 8px; }
+  h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 500; font-size: 44px; line-height: 1.05;
+    color: var(--espresso); margin-bottom: 6px;
+  }
+  .subhead { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- Dose card ---------- */
+  .dose-card {
+    background: var(--card); border-radius: 20px; box-shadow: var(--shadow);
+    padding: 20px; border-left: 4px solid var(--pc, var(--brass));
+  }
+  .dose-top { display: flex; align-items: flex-start; gap: 13px; }
+  .chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border-radius: 12px;
+    background: var(--pc, var(--brass)); color: #FBF6F0;
+    font-size: 12px; letter-spacing: .04em; flex: none;
+  }
+  .dose-name {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 25px; font-weight: 500; color: var(--espresso); line-height: 1.15;
+  }
+  .dose-meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  .phase-pill {
+    display: inline-block; margin-top: 8px;
+    padding: 4px 11px; border-radius: 999px;
+    background: rgba(138,115,80,.12);
+    font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass);
+  }
+
+  /* The number that matters: what to turn the pen dial to. */
+  .dial {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-top: 16px; padding-top: 15px;
+    border-top: 1px solid var(--hairline);
+  }
+  .dial-lead {
+    font-size: 13px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--espresso-soft);
+  }
+  .dial-num {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 62px; line-height: .85; color: var(--pc, var(--brass));
+    margin-left: auto;
+  }
+  .dial-sub { font-size: 12.5px; color: var(--muted); margin-top: 9px; }
+
+  /* The syringe, drawn to the mark. It sits straight under the number so
+     the two read as one instruction: this number, that line. */
+  .syr-wrap { margin-top: 12px; }
+  .syr-wrap .dial-sub { margin-top: 2px; }
+  .syr { display: block; width: 100%; max-width: 330px; height: auto; margin: 0 auto; }
+
+  /* The vial is spent after today. Offer the next one here rather than
+     letting the schedule simply stop with no explanation. */
+  .last-vial {
+    margin-top: 16px; padding: 14px 16px; border-radius: 14px;
+    background: rgba(138,115,80,.07); border: 1px solid var(--hairline);
+    text-align: center;
+  }
+  .last-vial-head { font-weight: 600; color: var(--espresso); font-size: 14px; }
+  .last-vial p { margin: 6px 0 12px; font-size: 13px; color: var(--espresso-soft); }
+  .last-vial-go {
+    background: var(--espresso); color: #F6F0E7; border: 0; border-radius: 999px;
+    padding: 10px 20px; font-family: 'Jost', sans-serif; font-size: 13px;
+    font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
+  }
+  .last-vial small { display: block; margin-top: 9px; font-size: 11.5px; color: var(--muted); }
+
+  /* Dial → inject → press down, in the patient's own order of operations. */
+  .steps { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: step; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 6px 0 6px 30px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--espresso-soft);
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 6px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(138,115,80,.13);
+    color: var(--brass);
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .steps strong { color: var(--espresso); font-weight: 600; }
+
+  .delivers { margin-top: 13px; }
+  .delivers-head {
+    font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 7px;
+  }
+  .comp {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 5px 0; font-size: 13.5px;
+  }
+  .comp .cn { color: var(--espresso-soft); }
+  .comp .cv { margin-left: auto; color: var(--espresso); font-variant-numeric: tabular-nums; }
+  .comp.primary .cn { color: var(--espresso); }
+  .comp.primary .cv { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 17px; }
+
+  /* Pen supply gauge */
+  .gauge { margin-top: 16px; }
+  .gauge-top { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-bottom: 6px; }
+  .gauge-track { height: 8px; border-radius: 999px; background: #EAE0D2; overflow: hidden; }
+  .gauge-fill { height: 100%; border-radius: 999px; background: var(--pc, var(--brass)); }
+  .gauge-fill.low { background: var(--alert); }
+
+  .advisory {
+    margin-top: 15px; padding: 13px 14px; border-radius: 13px;
+    background: rgba(164,85,63,.09);
+    border-left: 3px solid var(--alert);
+    font-size: 12.5px; line-height: 1.55; color: var(--espresso-soft);
+  }
+  .advisory strong { color: var(--espresso); }
+
+  /* ---------- Refill notice ---------- */
+  .refill-card {
+    background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
+    border-left: 4px solid var(--alert);
+    padding: 17px 18px; margin-bottom: 14px;
+  }
+  .refill-card.done { border-left-color: var(--muted); }
+  .refill-head {
+    font-size: 10.5px; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--alert); margin-bottom: 6px;
+  }
+  .refill-card.done .refill-head { color: var(--muted); }
+  .refill-title {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 22px; color: var(--espresso); line-height: 1.2;
+  }
+  .refill-body { font-size: 13px; color: var(--muted); margin-top: 5px; }
+  .plus {
+    margin-left: auto; width: 34px; height: 34px; border-radius: 50%;
+    border: 1px solid var(--hairline); background: var(--card);
+    color: var(--brass); font-size: 20px; line-height: 1; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice {
+    display: block; width: 100%; text-align: left;
+    padding: 15px 16px; margin-bottom: 9px;
+    border: 1px solid var(--hairline); border-radius: 14px;
+    background: transparent; cursor: pointer;
+    font-family: 'Jost', sans-serif; font-size: 14.5px; color: var(--espresso-soft);
+  }
+  .choice b { display: block; color: var(--espresso); font-weight: 600; margin-bottom: 3px; }
+  .choice small { color: var(--muted); font-size: 12.5px; }
+  .choice[aria-pressed="true"] { background: var(--espresso); border-color: var(--espresso); color: #F6F0E7; }
+  .choice[aria-pressed="true"] b, .choice[aria-pressed="true"] small { color: #F6F0E7; }
+  .wiz-note { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; min-height: 18px; }
+  .wiz-note.bad { color: var(--alert); }
+
+  .refill-btn {
+    display: inline-block; margin-top: 13px;
+    padding: 11px 18px; border-radius: 12px;
+    background: var(--espresso); color: #F6F0E7;
+    font-size: 12px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; text-decoration: none;
+  }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 17px; }
+  .btn {
+    flex: 1; padding: 13px 14px; border: none; border-radius: 13px;
+    font-family: 'Jost', sans-serif; font-size: 12.5px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active { transform: scale(.985); }
+  .btn:disabled { cursor: default; }
+  .btn:disabled:active { transform: none; }
+  .btn-primary { background: var(--espresso); color: #F6F0E7; }
+  .btn-ghost { background: transparent; color: var(--espresso-soft); border: 1px solid var(--hairline); }
+  /* A spent button, not a dead one: the dose is done and the card should
+     look pleased about it, so this keeps full contrast rather than the
+     greyed-out look a disabled control usually gets. */
+  .btn-done {
+    background: var(--done); color: #F6F0E7; opacity: 1;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-done .au-check { width: 18px; height: 18px; flex: none; }
+
+  /* The card's own corner. Outside .dose-name on purpose — the name of a
+     peptide should read as the name of a peptide, not the name with a
+     control stuck to the end of it. */
+  .pen-x {
+    flex: none; align-self: flex-start; width: 26px; height: 26px; padding: 0;
+    line-height: 1; border-radius: 50%; border: 1px solid var(--hairline);
+    background: transparent; color: var(--muted); font-size: 16px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pen-x:active { transform: scale(.92); }
+
+  .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
+  .logged svg { width: 16px; height: 16px; flex: none; }
+
+  /* What she has taken off. Quiet, below everything she is still doing,
+     but always there — a pen stopped and forgotten is the one that never
+     gets restarted. */
+  .stopped { margin-top: 18px; padding: 16px 18px; border-radius: 16px;
+             border: 1px dashed var(--hairline); }
+  .stopped h3 { margin: 0 0 4px; font-size: 11px; letter-spacing: .12em;
+                text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .stopped .sub { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
+  .stopped .row { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
+  .stopped .row .nm { color: var(--espresso-soft); }
+  .stopped .row button {
+    margin-left: auto; flex: none; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--brass); background: transparent; color: var(--brass);
+    font-family: 'Jost', sans-serif; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .rest { background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 28px 22px; text-align: center; }
+  .rest-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 26px; color: var(--espresso); margin-bottom: 6px; }
+  .rest-sub { font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- Adherence ---------- */
+  .adherence {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
+    padding: 16px 18px; margin-top: 14px;
+  }
+  /* display:flex above beats the default [hidden] rule, so hiding it needs
+     an explicit override — otherwise el.hidden = true does nothing. */
+  .adherence[hidden] { display: none; }
+  .stat-num {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px;
+    color: var(--espresso); line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .stat-label { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+  .week-dots { display: flex; gap: 6px; }
+  .wd { width: 9px; height: 9px; border-radius: 50%; background: rgba(138,115,80,.2); }
+  .wd.done { background: var(--sage); }
+  .wd.miss { background: var(--clay); opacity: .5; }
+
+  /* Three buttons do not fit one phone-width row; let them wrap rather
+     than squeeze the labels to two letters. */
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .action {
+    flex: 1 1 150px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px; background: var(--card); border: none; border-radius: 15px;
+    box-shadow: var(--shadow); color: var(--espresso-soft);
+    font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; cursor: pointer;
+  }
+  .action svg { width: 15px; height: 15px; color: var(--brass); flex: none; }
+  .cal-note { margin-top: 10px; font-size: 11.5px; line-height: 1.55; color: var(--muted); }
+  /* Loud enough to be believed, quiet enough not to look like an error —
+     nothing is wrong with her dosing, only with her calendar. */
+  .cal-stale {
+    margin-top: 12px; padding: 12px 14px;
+    background: rgba(164,85,63,.08);
+    border-left: 2px solid var(--alert, #A4553F); border-radius: 0 12px 12px 0;
+    font-size: 12.5px; line-height: 1.55; color: var(--espresso-soft);
+  }
+  .cal-stale b { color: var(--espresso); }
+  .cal-help {
+    margin-top: 12px; background: var(--card); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 15px 17px;
+    font-size: 12.5px; line-height: 1.55; color: var(--espresso-soft);
+  }
+  .cal-help p + p { margin-top: 9px; }
+  .cal-help b { color: var(--espresso); }
+  .cal-help-tel { color: var(--muted); }
+  /* The action row is links and buttons now; keep them identical. */
+  a.action { text-decoration: none; }
+
+  /* ---------- Tabs ---------- */
+  .tabs { display: flex; gap: 6px; margin: 30px 0 18px; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: none; padding: 9px 15px; border: none; border-radius: 999px;
+    background: transparent; color: var(--muted);
+    font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 500;
+    letter-spacing: .09em; text-transform: uppercase; cursor: pointer; white-space: nowrap;
+  }
+  .tab[aria-selected="true"] { background: var(--espresso); color: #F6F0E7; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .section-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 27px; color: var(--espresso); margin-bottom: 4px; }
+  .section-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+
+  .sheet { background: var(--card); border-radius: 20px; box-shadow: var(--shadow); padding: 18px; }
+  .sheet + .sheet { margin-top: 14px; }
+
+  /* ---------- Phase table (mirrors the printed card) ---------- */
+  .ptable { width: 100%; border-collapse: collapse; }
+  .ptable th {
+    font-size: 10px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500; text-align: right; padding-bottom: 10px;
+  }
+  .ptable th:first-child { text-align: left; }
+  .ptable td {
+    padding: 13px 0; border-top: 1px solid var(--hairline);
+    font-size: 14px; text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .ptable td:first-child {
+    text-align: left;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 18px; font-style: italic; color: var(--espresso);
+  }
+  .ptable tr.now td { color: var(--espresso); }
+  .ptable tr.now td:first-child::after {
+    content: ' — now'; font-style: normal; font-family: 'Jost', sans-serif;
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass);
+  }
+
+  /* ---------- Calendar ---------- */
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-month { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 21px; color: var(--espresso); }
+  .cal-nav { background: none; border: none; cursor: pointer; color: var(--brass); padding: 6px 10px; font-size: 17px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-dow { text-align: center; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-bottom: 6px; }
+  .cal-day {
+    aspect-ratio: 1 / 1.15; border: none; background: transparent; border-radius: 11px;
+    display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 4px;
+    cursor: pointer; font-family: 'Jost', sans-serif; font-size: 12.5px;
+    color: var(--espresso-soft); font-variant-numeric: tabular-nums;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .cal-day.out { color: rgba(138,124,106,.4); }
+  .cal-day.today { background: var(--espresso); color: #F6F0E7; }
+  .cal-day.sel { box-shadow: inset 0 0 0 1.5px var(--brass-soft); }
+  .cal-dots { display: flex; gap: 2.5px; justify-content: center; }
+  .cal-dot { width: 5.5px; height: 5.5px; border-radius: 50%; background: var(--dc); }
+  /* Taken. Same green everywhere it appears — the grid, the rhythm and
+     the calendar page all mean one thing by it. */
+  .cal-dot.taken { background: var(--done); box-shadow: 0 0 0 1.5px rgba(76,113,80,.28); }
+  .line.taken .dot { background: var(--done); }
+  .line.taken .amt { color: var(--done); }
+
+  .day-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+  .day-detail-date { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+  .line { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13.5px; }
+  .line .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc); flex: none; }
+  .line .nm { color: var(--espresso); }
+  .line .amt { margin-left: auto; color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .line-log {
+    flex: none; margin-left: 10px; padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--brass); background: transparent; color: var(--brass);
+    font-family: 'Jost', sans-serif; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .line-log:active { transform: scale(.96); }
+
+  /* ---------- Weekly rhythm ---------- */
+  .rhythm { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .r-col { text-align: center; }
+  .r-day { font-size: 10px; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+  .r-pill { height: 54px; border-radius: 999px; background: #EFE7DB; display: flex; align-items: center; justify-content: center; }
+  .r-pill .fill { width: 24px; height: 24px; border-radius: 50%; background: var(--pc);
+                  display: flex; align-items: center; justify-content: center;
+                  transition: background .45s ease, width .35s ease, height .35s ease; }
+  .r-pill.off .fill { background: transparent; }
+  /* A day she has done: the circle fills green and takes the mark. It is
+     bigger than an untaken day on purpose — the eye should find the run
+     of finished days before anything else on the page. */
+  .r-pill.taken .fill { background: var(--done); width: 38px; height: 38px;
+                        box-shadow: 0 2px 8px rgba(76,113,80,.34); }
+  .r-pill.taken .fill .au-check { width: 22px; height: 22px; display: block; }
+  .r-pill.landing .fill { animation: au-land .55s cubic-bezier(.34,1.56,.64,1); }
+  /* A circle she can fill in. It is a real button so it answers a tap and
+     a keyboard alike; these strip the browser's own button off it. */
+  button.r-pill {
+    border: none; padding: 0; width: 100%; font: inherit; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .14s ease, box-shadow .2s ease;
+  }
+  .r-pill.can-log { box-shadow: inset 0 0 0 1.5px rgba(169,136,68,.38); }
+  .r-pill.can-log .fill { opacity: .5; }
+  button.r-pill:active { transform: scale(.93); }
+  .rhythm-hint { margin-top: 10px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  /* Today, so the eye knows where it is in the week. */
+  .r-col.now .r-day { color: var(--espresso); font-weight: 600; }
+  .r-col.now .r-pill { box-shadow: inset 0 0 0 1.5px var(--brass); }
+  @keyframes au-land {
+    0%   { transform: scale(.55); }
+    60%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  /* ---------- the run ---------- */
+  .streak {
+    display: flex; align-items: center; gap: 13px;
+    background: var(--card); border-radius: 16px; box-shadow: var(--shadow);
+    padding: 15px 17px; margin-bottom: 16px;
+  }
+  .streak .n {
+    flex: none; width: 46px; height: 46px; border-radius: 50%;
+    background: var(--done); color: #F6F0E7;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px;
+  }
+  .streak .t { font-size: 15px; color: var(--espresso); }
+  .streak .sb { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+
+  /* ---------- the celebration ---------- */
+  .au-layer { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
+  .au-confetti { position: absolute; inset: 0; }
+  .au-mark { position: absolute; left: 50%; top: 42%; margin: -66px 0 0 -66px;
+             width: 132px; height: 132px; opacity: 0; }
+  .au-mark .au-check { width: 132px; height: 132px;
+                       filter: drop-shadow(0 6px 18px rgba(137,112,57,.45)); }
+
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; font-size: 13.5px; border-top: 1px solid var(--hairline); }
+  .kv:first-of-type { border-top: none; }
+  .kv .k { color: var(--muted); }
+  .kv .v { color: var(--espresso); text-align: right; }
+
+  .supply-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .flag {
+    margin-top: 13px; padding: 12px 14px; border-radius: 12px;
+    background: rgba(138,115,80,.1); font-size: 12.5px; line-height: 1.5;
+  }
+  .flag.soon { background: rgba(164,85,63,.14); color: var(--espresso); }
+
+  /* ---------- Log sheet ---------- */
+  .scrim { position: fixed; inset: 0; background: rgba(59,46,32,.45); display: none; align-items: flex-end; justify-content: center; z-index: 100; }
+  .scrim.open { display: flex; }
+  .modal {
+    width: 100%; max-width: 460px; background: var(--bg);
+    border-radius: 26px 26px 0 0; padding: 26px 22px calc(26px + env(safe-area-inset-bottom));
+  }
+  /* The setup wizard can offer a long list — cap the sheet and scroll the
+     choices inside it so the buttons never slide off the screen. */
+  .modal.wiz { display: flex; flex-direction: column; max-height: 86vh; }
+  .modal.wiz #wizChoices { display: block; flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .modal.wiz .btn-row { flex: 0 0 auto; }
+  .modal-eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--brass); margin-bottom: 8px; }
+  .modal-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 29px; color: var(--espresso); line-height: 1.15; margin-bottom: 8px; }
+  .modal-body { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+  .site-pick { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 20px; }
+  .site {
+    padding: 8px 13px; border-radius: 999px; border: 1px solid var(--hairline);
+    background: transparent; font-family: 'Jost', sans-serif; font-size: 12px;
+    color: var(--muted); cursor: pointer;
+  }
+  .site[aria-pressed="true"] { background: var(--espresso); border-color: var(--espresso); color: #F6F0E7; }
+
+  .time-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 0; border-top: 1px solid var(--hairline);
+  }
+  .time-row span {
+    font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  }
+  .time-field {
+    margin-left: auto; width: auto; padding: 9px 12px;
+    border: 1px solid var(--hairline); border-radius: 10px;
+    background: var(--card); color: var(--espresso);
+    font-family: 'Jost', sans-serif; font-size: 15px;
+    font-feature-settings: 'lnum' 1;
+  }
+  .time-field:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 12px); padding: 13px 20px;
+    background: var(--espresso); color: #F6F0E7; border-radius: 14px;
+    font-size: 13.5px; opacity: 0; pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease; z-index: 150;
+  }
+  .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+  /* Over an open sheet the toast rides above the buttons, not on top of them. */
+  .toast.over-modal { bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+  .footnote { margin-top: 26px; font-size: 11.5px; line-height: 1.6; color: var(--muted); text-align: center; }
+  .footnote a { color: var(--brass); text-decoration: none; border-bottom: 1px solid var(--hairline); }
+
+  /* Start-day control */
+  .linky {
+    background: none; border: none; padding: 0;
+    font-family: 'Jost', sans-serif; font-size: 12.5px;
+    color: var(--brass); cursor: pointer;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 22px;
+  }
+  .date-field {
+    width: 100%; padding: 14px 15px; margin-bottom: 16px;
+    border: 1px solid var(--hairline); border-radius: 13px;
+    background: var(--card); color: var(--espresso);
+    font-family: 'Jost', sans-serif; font-size: 16px;
+    font-feature-settings: 'lnum' 1;
+  }
+  .date-field:focus { outline: none; border-color: var(--brass-soft); }
+  .quick { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media print {
+    .topbar, .tabs, .actions, .btn-row, .scrim, .toast { display: none !important; }
+    .panel { display: block !important; page-break-inside: avoid; }
+    body { background: #fff; }
+    .sheet, .dose-card, .adherence { box-shadow: none; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <a class="back" href="./" aria-label="Back to portal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4-8 8 8 8"/></svg>
+    </a>
+    <span class="topbar-label" id="protocolName">Protocol</span>
+    <button class="plus" id="btnAdd" aria-label="Add a peptide" title="Add a peptide">+</button>
+  </div>
+
+  <p class="eyebrow" id="todayDate">—</p>
+  <h1>Today's Ritual</h1>
+  <p class="subhead" id="todaySummary">Loading your protocol…</p>
+  <button class="linky" id="btnStart" hidden></button>
+
+  <div id="refills"></div>
+
+  <div class="stack" id="todayStack"></div>
+
+  <div class="stopped" id="stopped" hidden></div>
+
+  <div class="adherence" id="adherence" hidden>
+    <div><div class="stat-num" id="statStreak">0</div><div class="stat-label">Day streak</div></div>
+    <div><div class="stat-num" id="statPct">—</div><div class="stat-label">Adherence</div></div>
+    <div><div class="week-dots" id="weekDots"></div><div class="stat-label">Last 7 days</div></div>
+  </div>
+
+  <div class="actions">
+    <a class="action" id="btnSubscribe" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/><path d="M12 13v5M9.5 15.5h5"/></svg>
+      Add to Calendar
+    </a>
+    <button class="action" onclick="window.print()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 9V3h12v6M6 18H4v-6h16v6h-2"/><rect x="8" y="14" width="8" height="7"/></svg>
+      Print
+    </button>
+  </div>
+  <p class="cal-note">
+    Adds a calendar called &ldquo;Atelier Doses&rdquo; that keeps itself in step
+    with your protocol &mdash; change your start day or your hour and it
+    follows, with nothing to re-add. To remove it later, delete that calendar
+    in your Calendar app.
+  </p>
+
+  <p class="cal-stale" id="calStale" hidden></p>
+
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-panel="rhythm"   aria-selected="true">Rhythm</button>
+    <button class="tab" role="tab" data-panel="schedule" aria-selected="false">Schedule</button>
+    <button class="tab" role="tab" data-panel="supply"   aria-selected="false">Supply</button>
+  </div>
+
+  <section class="panel" id="panel-schedule">
+    <h2 class="section-title">Protocol Schedule</h2>
+    <p class="section-sub">Tap any day to see what's scheduled.</p>
+    <div class="sheet">
+      <div class="cal-head">
+        <button class="cal-nav" id="calPrev" aria-label="Previous month">‹</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-nav" id="calNext" aria-label="Next month">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="day-detail" id="dayDetail"></div>
+    </div>
+  </section>
+
+  <section class="panel active" id="panel-rhythm">
+    <h2 class="section-title">Weekly Rhythm</h2>
+    <p class="section-sub">Your week — what you have done, and what is coming.</p>
+    <div class="streak" id="streak" hidden></div>
+    <div id="rhythmList"></div>
+  </section>
+
+  <section class="panel" id="panel-supply">
+    <h2 class="section-title">Pen Supply</h2>
+    <p class="section-sub">How long the pen in your fridge lasts at the current dial setting.</p>
+    <div id="supplyList"></div>
+  </section>
+
+  <p class="footnote" id="footnote"></p>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <p class="modal-eyebrow" id="modalEyebrow">Confirm injection</p>
+    <h2 class="modal-title" id="modalTitle">Log today's dose?</h2>
+    <p class="modal-body" id="modalBody"></p>
+    <div id="modalFig" hidden></div>
+    <div class="site-pick" id="sitePick"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="modalCancel">Not now</button>
+      <button class="btn btn-primary" id="modalConfirm">Log it</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="startScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+    <p class="modal-eyebrow">Your schedule</p>
+    <h2 class="modal-title" id="startTitle">Which day did you start?</h2>
+    <p class="modal-body" id="startLede"></p>
+    <input class="date-field" type="date" id="startInput">
+    <div id="startPens" hidden></div>
+    <p class="modal-body" id="startQuickLabel" hidden
+       style="margin:14px 0 6px">Set them all to:</p>
+    <div class="quick" id="startQuick"></div>
+    <div id="startTimes"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="startCancel">Cancel</button>
+      <button class="btn btn-primary" id="startSave">Set my schedule</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="wizScrim">
+  <div class="modal wiz" role="dialog" aria-modal="true" aria-labelledby="wizTitle">
+    <p class="modal-eyebrow" id="wizEyebrow">Set up</p>
+    <h2 class="modal-title" id="wizTitle"></h2>
+    <p class="modal-body" id="wizBody"></p>
+    <div id="wizChoices" class="site-pick"></div>
+    <input class="date-field" id="wizInput" type="number" min="1" hidden>
+    <p class="wiz-note" id="wizNote"></p>
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="wizBack">Back</button>
+      <button class="btn btn-primary" id="wizNext">Continue</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ==================================================================
+   TODAY'S RITUAL — pen-based protocols
+   ------------------------------------------------------------------
+   Peptides are delivered by prefilled multi-dose pens dialled to a
+   UNIT setting. One unit = 0.01 mL, so the dose a unit delivers depends
+   on the pen's blend concentration. All clinical content comes from
+   protocol.json; this file is the engine.
+
+   Injection logs are stored ON THIS DEVICE only (localStorage).
+   ================================================================== */
+
+let LOGS, TRACKING, calCursor, selectedDay, pendingLog, pendingDay, chosenSite;
+
+/* ---------- start day ----------
+   The patient sets the day she actually began. Phases, the on/off rhythm,
+   pen supply and the calendar all count from it. */
+function openStartPicker() {
+  const t = today();
+
+  /* One date per pen. Asking once for "the day you started" and applying
+     it to everything is what dragged a pen she had been on for months
+     back to today the first time she added a second one. */
+  const single = PENS.length <= 1;
+  document.getElementById('startTitle').textContent =
+    single ? 'Which day did you start?' : 'When did you start each one?';
+  document.getElementById('startLede').textContent = single
+    ? 'Your dosing days, phases, reminders and refill dates are all counted ' +
+      'from this day — and your reminders are set for the times you choose.'
+    : 'Each one is counted from its own day, so changing one does not move ' +
+      'the others. Your reminders are set for the times you choose.';
+  document.getElementById('startInput').hidden = !single;
+  if (single) document.getElementById('startInput').value = iso(START);
+
+  const list = document.getElementById('startPens');
+  list.hidden = single;
+  list.innerHTML = single ? '' : PENS.map(pen => {
+    // A day taken from her own first logged dose is already right, and
+    // saying so stops her retyping it — and stops a stray tap pinning a
+    // date that would then stop following the record.
+    const obs = firstDoseDay(pen);
+    const fromLog = obs && obs === penStartIso(pen);
+    // A date the atelier set is shown but not editable here. Changing it
+    // on the phone would not change the record, so offering the field
+    // would only let her believe she had.
+    const theirs = !!pen.atelierStart;
+    const note = theirs ? 'set by the atelier'
+               : fromLog ? 'your first logged dose' : '';
+    return `
+    <label class="time-row">
+      <span>${pen.name}${note
+        ? `<br><small style="color:var(--muted)">${note}</small>` : ''}</span>
+      <input class="date-field" type="date" data-penstart="${pen.id}"
+             data-was="${penStartIso(pen)}" value="${penStartIso(pen)}"
+             ${theirs ? 'disabled' : ''}>
+    </label>`;
+  }).join('');
+
+  const quick = [
+    ['Today', t],
+    ['Yesterday', addDays(t, -1)],
+    ['This Monday', addDays(t, -(isoDow(t) - 1))]
+  ];
+  document.getElementById('startQuickLabel').hidden = single;
+  document.getElementById('startQuick').innerHTML = quick.map(([label, d]) =>
+    `<button class="site" data-date="${iso(d)}">${label}</button>`).join('');
+  document.querySelectorAll('#startQuick .site').forEach(b =>
+    b.addEventListener('click', () => {
+      // On a protocol with one pen this fills the one field. On several it
+      // fills them all, which is only ever a starting point — each row is
+      // still edited on its own afterwards.
+      if (single) document.getElementById('startInput').value = b.dataset.date;
+      else list.querySelectorAll('[data-penstart]').forEach(i => { i.value = b.dataset.date; });
+      document.querySelectorAll('#startQuick .site').forEach(x => x.setAttribute('aria-pressed', x === b));
+    }));
+
+  // One field per band this protocol actually uses. A morning pair and an
+  // evening pair is two questions, not four.
+  const mine = loadTimes();
+  document.getElementById('startTimes').innerHTML = timeBands().map(band => `
+    <label class="time-row">
+      <span>${band}</span>
+      <input class="time-field" type="time" data-band="${band}"
+             value="${mine[band] || TIME_AT[band] || '09:00'}">
+    </label>`).join('');
+
+  document.getElementById('startScrim').classList.add('open');
+}
+
+const closeStartPicker = () => document.getElementById('startScrim').classList.remove('open');
+
+function commitStart() {
+  const rows = [...document.querySelectorAll('#startPens [data-penstart]')];
+  if (rows.length) {
+    rows.forEach(inp => {
+      const pen = PENS.find(p => p.id === inp.dataset.penstart);
+      // Only a date she actually changed is pinned. Saving the sheet to
+      // set her reminder times would otherwise freeze every start day at
+      // whatever was shown, and they would stop following her log.
+      if (pen && inp.value && inp.value !== inp.dataset.was) setPenStart(pen, inp.value);
+    });
+    /* The protocol start day is deliberately NOT touched here.
+
+       It was being set to the earliest pen, which read as tidy and was the
+       same bug in a new place: a pen with no date of its own falls back to
+       it, so typing a date for one pen moved every pen that had not been
+       answered for. It stays as the atelier set it, and is now only ever a
+       fallback. */
+    scheduleChanged();
+  } else {
+    const v = document.getElementById('startInput').value;
+    if (v) setStart(v);
+  }
+
+  const picked = {};
+  document.querySelectorAll('#startTimes .time-field').forEach(inp => {
+    if (inp.value) picked[inp.dataset.band] = inp.value;
+  });
+  saveTimes(picked);
+
+  closeStartPicker();
+  calCursor = today();
+  selectedDay = today();
+  renderAll();
+  applyCardLinks();
+  const bands = timeBands().map(b => `${b.toLowerCase()} at ${prettyTime(timeFor({ time: b }))}`);
+  const many = PENS.length > 1 && new Set(PENS.map(penStartIso)).size > 1;
+  showToast(icsStale()
+    ? 'Saved — now bring your calendar up to date below.'
+    : many
+      ? `Saved — each one from its own day${bands.length ? ' · ' + bands.join(', ') : ''}.`
+      : `Set from ${fmtShort(START)}${bands.length ? ' · ' + bands.join(', ') : ''}.`);
+}
+
+function renderAll() {
+  const btn = document.getElementById('btnStart');
+  btn.hidden = false;
+  // With pens on different days there is no single "started" to print, and
+  // printing one of them would be a quiet lie about the others.
+  btn.textContent = (PENS.length > 1 && new Set(PENS.map(penStartIso)).size > 1)
+    ? 'Start days — change'
+    : `Started ${fmtShort(START)} — change`;
+  renderCalNotice();
+  renderToday(); renderStopped(); renderRefills(); renderAdherence();
+  renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
+}
+
+/* Ask for a refill a week out, and keep asking once the pen is empty. */
+function renderRefills() {
+  const el = document.getElementById('refills');
+  const notices = PENS.filter(p =>
+    needsRefill(p) || (isSpent(p) && supply(p).endReason === 'supply'));
+
+  el.innerHTML = notices.map(pen => {
+    const s = supply(pen);
+    const left = daysUntilOut(pen);
+    const out = isSpent(pen);
+    return `
+      <div class="refill-card${out ? ' done' : ''}">
+        <div class="refill-head">${out ? 'Pen empty' : 'Refill soon'}</div>
+        <div class="refill-title">${pen.name}</div>
+        <div class="refill-body">${out
+          ? `Your last dose from this ${vessel(pen)} was ${fmtShort(s.lastDose)}. It is paused on your schedule until a new one arrives.`
+          : `Your last dose from this ${vessel(pen)} is ${fmtShort(s.lastDose)} — ${left} day${left === 1 ? '' : 's'} away.`}</div>
+        <a class="refill-btn" href="${refillHref(pen)}">Message for a refill</a>
+      </div>`;
+  }).join('');
+}
+
+/* ---------- setup wizard ----------
+   Items flagged `setup` ask the patient three things before their schedule
+   can be drawn: which vial she was given, whether she follows the printed
+   guide or carries her own number of units, and which day she injects.
+   One question per screen, in that order. */
+let wizPen = null, wizStep = 0, wizData = {}, wizAdding = false;
+
+const WEEKDAYS = [
+  [1,'Monday'],[2,'Tuesday'],[3,'Wednesday'],[4,'Thursday'],
+  [5,'Friday'],[6,'Saturday'],[7,'Sunday']
+];
+
+function openWizard() {
+  document.getElementById('wizScrim').classList.add('open');
+  renderWizard();
+}
+
+function closeWizard() {
+  document.getElementById('wizScrim').classList.remove('open');
+  wizPen = null; wizAdding = false; wizData = {}; wizStep = 0;
+}
+
+function startWizard(pen) {
+  wizPen = pen; wizStep = 0; wizData = {}; wizAdding = false;
+  openWizard();
+}
+
+/* The plus sign starts the same wizard one screen earlier: first which
+   peptide, then whatever that peptide needs to know. */
+function startAdd() {
+  wizPen = null; wizStep = 0; wizData = {}; wizAdding = true;
+  openWizard();
+}
+
+function wizSteps() {
+  const steps = [];
+  if (wizAdding) steps.push('pick');
+  if (wizPen && wizPen.setup) {
+    if (wizPen.vialOptions) steps.push('vial');
+    if (wizPen.guide) steps.push('mode');
+    if (wizData.mode === 'own' || (!wizPen.guide && wizPen.maxUnits)) steps.push('units');
+    // Only a patient carrying her own number is asked about climbing; the
+    // guide already has its own steps built in.
+    if (wizData.mode === 'own' && wizPen.stepUpOptions) steps.push('stepUp');
+    if (wizPen.schedule && wizPen.schedule.weekly) steps.push('day');
+  }
+  return steps;
+}
+
+/* Templates she doesn't already carry — the same list the atelier writes
+   cards from, minus anything already on her protocol. */
+function addableTemplates() {
+  return ((TEMPLATES && TEMPLATES.templates) || [])
+    .filter(t => t.id !== 'custom')
+    .filter(t => !PENS.some(p => p.id === t.id || p.template === t.id));
+}
+
+function renderWizard() {
+  const steps = wizSteps();
+  const step = steps[wizStep];
+  const choices = document.getElementById('wizChoices');
+  const input = document.getElementById('wizInput');
+  const note = document.getElementById('wizNote');
+
+  document.getElementById('wizEyebrow').textContent =
+    `${wizPen ? wizPen.name : 'Add a peptide'} · ${wizStep + 1} of ${steps.length}`;
+  input.hidden = true; note.textContent = ''; note.className = 'wiz-note';
+  choices.innerHTML = '';
+  document.getElementById('wizBack').textContent = wizStep === 0 ? 'Cancel' : 'Back';
+  document.getElementById('wizNext').textContent = wizStep === steps.length - 1 ? 'Done' : 'Continue';
+
+  if (step === 'pick') {
+    document.getElementById('wizTitle').textContent = 'Which peptide are you adding?';
+    document.getElementById('wizBody').textContent =
+      'Only add what the atelier has dispensed to you. It starts from today.';
+    const list = addableTemplates();
+    choices.innerHTML = list.length
+      ? list.map(t => `<button class="choice" data-t="${t.id}" aria-pressed="${wizData.template === t.id}">
+          <b>${t.name}</b><small>${t.components.map(c => `${c.name} ${c.mg} mg`).join(' / ')} · ${t.volumeMl} mL</small>
+        </button>`).join('')
+      : '<p class="modal-body">You already have every peptide we carry on your protocol.</p>';
+  }
+
+  if (step === 'vial') {
+    document.getElementById('wizTitle').textContent = 'Which vial do you have?';
+    document.getElementById('wizBody').textContent = 'It is printed on the label. This only changes how long the vial lasts, never your dose.';
+    choices.innerHTML = wizPen.vialOptions.map(v =>
+      `<button class="choice" data-v="${v}" aria-pressed="${wizData.vialMl === v}">
+        <b>${v} mL vial</b><small>${v * 100} units in total</small></button>`).join('');
+  }
+
+  if (step === 'mode' && wizPen.guide) {
+    document.getElementById('wizTitle').textContent = 'Which are you starting with?';
+    document.getElementById('wizBody').textContent = '';
+    choices.innerHTML = `
+      <button class="choice" data-m="guide" aria-pressed="${wizData.mode === 'guide'}">
+        <b>It's my first time — follow the guide</b>
+        <small>Starts at ${wizPen.guide[0].units} units and steps up on schedule</small></button>
+      <button class="choice" data-m="own" aria-pressed="${wizData.mode === 'own'}">
+        <b>I'm an established patient</b>
+        <small>I have my own number of units</small></button>`;
+  }
+
+  if (step === 'units') {
+    document.getElementById('wizTitle').textContent = 'How many units each week?';
+    document.getElementById('wizBody').textContent = 'The number you draw to on the syringe.';
+    input.hidden = false;
+    input.max = wizPen.maxUnits || 50;
+    input.value = wizData.units || '';
+    input.placeholder = `Up to ${wizPen.maxUnits || 50}`;
+    showUnitsNote();
+  }
+
+  if (step === 'stepUp') {
+    document.getElementById('wizTitle').textContent = 'Are you climbing each week?';
+    document.getElementById('wizBody').textContent =
+      'How many units you add every week. Choose none if you hold the same dose.';
+    const max = wizPen.maxUnits || 50;
+    choices.innerHTML = wizPen.stepUpOptions.map(n => {
+      const label = n === 0 ? 'No increase' : `+${n} unit${n > 1 ? 's' : ''} a week`;
+      const detail = n === 0
+        ? `Stay at ${wizData.units} units`
+        : `${wizData.units} → ${Math.min(wizData.units + n, max)} → ${Math.min(wizData.units + 2 * n, max)} … up to ${max}`;
+      return `<button class="choice" data-s="${n}" aria-pressed="${wizData.stepUp === n}">
+        <b>${label}</b><small>${detail}</small></button>`;
+    }).join('');
+  }
+
+  if (step === 'day') {
+    document.getElementById('wizTitle').textContent = 'Which day do you inject?';
+    document.getElementById('wizBody').textContent = 'Once a week, the same day each week.';
+    choices.innerHTML = WEEKDAYS.map(([n, name]) =>
+      `<button class="choice" data-d="${n}" aria-pressed="${wizData.day === n}">
+        <b>${name}</b></button>`).join('');
+  }
+
+  choices.querySelectorAll('.choice').forEach(b =>
+    b.addEventListener('click', () => {
+      if (b.dataset.t) {
+        wizData = { template: b.dataset.t };
+        wizPen = addableTemplates().find(t => t.id === b.dataset.t) || null;
+      }
+      if (b.dataset.v) wizData.vialMl = Number(b.dataset.v);
+      if (b.dataset.m) wizData.mode = b.dataset.m;
+      if (b.dataset.s !== undefined) wizData.stepUp = Number(b.dataset.s);
+      if (b.dataset.d) wizData.day = Number(b.dataset.d);
+      renderWizard();
+    }));
+}
+
+function showUnitsNote() {
+  const input = document.getElementById('wizInput');
+  const note = document.getElementById('wizNote');
+  const max = wizPen.maxUnits || 50;
+  const v = Number(input.value);
+  if (!v) { note.textContent = ''; return; }
+  if (v > max) {
+    note.className = 'wiz-note bad';
+    note.textContent = `That is above the ${max} unit limit — please check with the atelier.`;
+    return;
+  }
+  note.className = 'wiz-note';
+  const mg = v * ML_PER_UNIT * (wizPen.concentrationMgPerMl || 0);
+  note.textContent = `${v} units = ${round(v * ML_PER_UNIT, 2)} mL${mg ? ` — ${round(mg, 2)} mg` : ''}`;
+}
+
+function wizAdvance() {
+  const steps = wizSteps();
+  const step = steps[wizStep];
+  const max = (wizPen && wizPen.maxUnits) || 50;
+
+  if (step === 'pick' && !wizPen) return showToast('Choose a peptide.');
+  if (step === 'vial' && !wizData.vialMl) return showToast('Choose a vial size.');
+  if (step === 'mode' && !wizData.mode) return showToast('Choose one.');
+  if (step === 'stepUp' && wizData.stepUp === undefined) return showToast('Choose one.');
+  if (step === 'units') {
+    const v = Number(document.getElementById('wizInput').value);
+    if (!v) return showToast('Enter your units.');
+    if (v > max) return showToast(`${max} units is the maximum.`);
+    wizData.units = v;
+  }
+  if (step === 'day' && !wizData.day) return showToast('Choose a day.');
+
+  if (wizStep < wizSteps().length - 1) { wizStep++; renderWizard(); return; }
+
+  // On the last screen wizPen is either a pen already on her protocol, or —
+  // when she came in through the plus sign — the template she just picked.
+  const pen = wizAdding ? addPen(wizPen) : wizPen;
+  if (pen.setup) saveSetup(pen, wizData);
+  const name = pen.name;
+  const added = wizAdding;
+  closeWizard();
+  renderAll();
+  showToast(added ? `${name} added to your protocol.` : `${name} is set up.`);
+}
+
+function wizBack() {
+  if (wizStep === 0) { closeWizard(); return; }
+  wizStep--;
+  // Stepping back to the peptide list clears the pick so nothing is half-set.
+  if (wizSteps()[wizStep] === 'pick') { wizPen = null; wizData = {}; }
+  renderWizard();
+}
+
+/* ---------- log storage (device-only) ---------- */
+const logKey = () => `tca.ritual.${CFG.patient.id}.v2`;
+const loadLogs = () => { try { return JSON.parse(localStorage.getItem(logKey())) || []; } catch { return []; } };
+const saveLogs = () => { try { localStorage.setItem(logKey(), JSON.stringify(LOGS)); } catch {} };
+/* Whether a dose has been taken is now one question with one answer.
+
+   This page used to keep its own list in localStorage and the vial tag
+   used to write to the server, and neither knew about the other: logging
+   here produced no green circle, no streak and nothing on the atelier's
+   dashboard, and a vial tapped in Safari left this page still offering
+   to log a dose she had already taken.
+
+   The server record is the truth. The local list stays for the one thing
+   the server did not carry — which site she used — and is kept in step
+   so the rotation suggestion still works. */
+function isLogged(id, date) {
+  const pen = PENS.find(p => p.id === id);
+  if (pen && takenOn(pen, date)) return true;
+  return LOGS.some(l => l.pen === id && l.date === iso(date));
+}
+
+function addLog(id, date, site) {
+  if (isLogged(id, date)) return;
+  LOGS.push({ pen: id, date: iso(date), site: site || null, at: new Date().toISOString() });
+  saveLogs();
+}
+
+/* View-model over the shared supply engine — what the gauges display. */
+function supplyView(pen) {
+  const s = supply(pen);
+  return {
+    pctLeft: s.pctLeft,
+    mlLeft: s.mlLeft,
+    dosesLeft: dosesLeft(pen),
+    lastDose: s.lastDose,
+    daysLeft: daysUntilOut(pen),
+    spent: isSpent(pen),
+    endReason: s.endReason
+  };
+}
+
+/* Everything she has taken off, with the way back. A prescribed pen that
+   simply vanished when she stopped it would leave her nothing to undo and
+   nothing to recognise — and the one she most needs to find again is the
+   one she stopped because a week was difficult. */
+function renderStopped() {
+  const el = document.getElementById('stopped');
+  if (!el) return;
+  const off = DROPPED_PENS || [];
+  el.hidden = !off.length;
+  if (!off.length) return;
+
+  el.innerHTML = `<h3>Not on your schedule</h3>
+    <p class="sub">You took ${off.length === 1 ? 'this' : 'these'} off. The atelier
+      can see it. Put ${off.length === 1 ? 'it' : 'them'} back whenever you like.</p>
+    ${off.map(p => `<div class="row"><span class="nm">${p.name}</span>
+      <button type="button" data-restore="${p.id}">Put it back</button></div>`).join('')}`;
+
+  el.querySelectorAll('[data-restore]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const id = b.dataset.restore;
+      const name = (DROPPED_PENS.find(p => p.id === id) || {}).name || 'It';
+      b.disabled = true;
+      if (!await restorePen(id)) { b.disabled = false; return; }
+      // The pen comes back out of the record, so re-read rather than
+      // trying to put the object back by hand.
+      await loadProtocol();
+      await loadLogged();
+      renderAll();
+      showToast(`${name} is back on your schedule.`);
+    }));
+}
+
+function renderToday() {
+  const t = today();
+  document.getElementById('todayDate').textContent = fmtLong(t);
+  const due = dueOn(t);
+  const stack = document.getElementById('todayStack');
+  stack.innerHTML = '';
+
+  if (t < START) {
+    document.getElementById('todaySummary').textContent = 'Your protocol hasn\'t started yet.';
+    stack.innerHTML = `<div class="rest">
+      <div class="rest-title">Begins ${fmtLong(START)}</div>
+      <div class="rest-sub">If that isn't right, change your start day above.</div></div>`;
+    return;
+  }
+
+  if (!due.length && !PENS.some(needsSetup)) {
+    // A weekly-only protocol has no cycle to rest from — most days are just quiet.
+    const weeklyOnly = PENS.length > 0 && PENS.every(p => p.schedule.weekly);
+    document.getElementById('todaySummary').textContent =
+      weeklyOnly ? 'Nothing to inject today.' : 'A scheduled day off.';
+    stack.innerHTML = `<div class="rest">
+      <div class="rest-title">${weeklyOnly ? 'No dose today' : 'Rest day'}</div>
+      <div class="rest-sub">Your next dose is ${nextDueText()}.</div></div>`;
+    return;
+  }
+
+  if (!TRACKING) {
+    document.getElementById('todaySummary').textContent =
+      `${due.length} dose${due.length === 1 ? '' : 's'} today.`;
+  } else {
+  const remaining = due.filter(p => !isLogged(p.id, t)).length;
+  document.getElementById('todaySummary').textContent = remaining
+    ? `${remaining} of ${due.length} dose${due.length === 1 ? '' : 's'} still to do.`
+    : 'Everything logged for today.';
+  }
+
+  const pending = PENS.filter(needsSetup);
+  if (pending.length) {
+    stack.innerHTML = pending.map(pen => `
+      <div class="rest">
+        <div class="rest-title">${pen.name}</div>
+        <div class="rest-sub">A few questions before your schedule can start.</div>
+        <div class="btn-row"><button class="btn btn-primary" data-setup="${pen.id}">Set it up</button></div>
+      </div>`).join('') + stack.innerHTML;
+    document.getElementById('todaySummary').textContent = 'Finish setting up your protocol.';
+  }
+
+  due.forEach(pen => {
+    const dose = doseOn(pen, t);
+    if (!dose) return;
+    const supply = supplyView(pen);
+    const done = isLogged(pen.id, t);
+    const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
+
+    const card = document.createElement('div');
+    card.className = `dose-card c-${pen.color || 'brass'}`;
+    card.innerHTML = `
+      <div class="dose-top">
+        <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
+        <div style="flex:1">
+          <div class="dose-name">${pen.name}</div>
+          <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
+          <div class="dose-meta">${pen.time} · ${prettyTime(timeFor(pen))} · ${pen.route}</div>
+          <span class="phase-pill">${dose.phase.name}</span>
+        </div>
+        <button type="button" class="pen-x" data-drop="${pen.id}"
+          title="Take ${pen.name} off my schedule"
+          aria-label="Take ${pen.name} off my schedule">&times;</button>
+      </div>
+
+      <div class="dial">
+        <span class="dial-lead">${dialLead(pen)}</span>
+        <span class="dial-num">${dose.units}</span>
+      </div>
+      ${isSyringe(pen) ? `
+        <div class="syr-wrap">
+          ${syringeFigure(dose.units)}
+          <div class="dial-sub">on a ${SYRINGE_UNITS}-unit insulin syringe</div>
+        </div>`
+      : `<div class="dial-sub">${round(dose.totalMg, 2)} mg &middot; ${round(dose.ml, 2)} mL per dose</div>`}
+      ${onLastDose(pen, selectedDay) && pen.setup ? `
+        <div class="last-vial">
+          <div class="last-vial-head">This is the last dose in your vial.</div>
+          <p>Would you like to start a new vial with these exact settings?</p>
+          <button type="button" class="last-vial-go" data-newvial="${pen.id}">
+            Start a new vial</button>
+          <small>Same dose, same day, same weekly increase — only the supply changes.</small>
+        </div>` : ''}
+
+      <ol class="steps">
+        ${stepsFor(pen).map(s =>
+          `<li>${s.replace('{units}', `<strong>${dose.units}</strong>`)}</li>`).join('')}
+      </ol>
+
+      ${/* A vial card states one number: the mark to draw up to. A
+            milligram figure a few lines below a draw-up instruction is a
+            second number on the same screen that looks just as much like
+            the one to dial — and both syringe templates hold a single
+            peptide, so this panel was only ever restating the dose in a
+            unit that is not printed on the barrel. */
+        isSyringe(pen) ? '' : `
+      <div class="delivers">
+        <div class="delivers-head">Delivers</div>
+        ${dose.components.map(c => `
+          <div class="comp${c.primary ? ' primary' : ''}">
+            <span class="cn">${c.name}</span>
+            <span class="cv">${round(c.mg, 2)} mg</span>
+          </div>`).join('')}
+      </div>`}
+
+      ${supply ? `
+      <div class="gauge">
+        <div class="gauge-top">
+          <span>${supply.dosesLeft} dose${supply.dosesLeft === 1 ? '' : 's'} left in this ${vessel(pen)}</span>
+          <span>${Math.round(supply.pctLeft)}%</span>
+        </div>
+        <div class="gauge-track">
+          <div class="gauge-fill${supply.dosesLeft <= 3 ? ' low' : ''}" style="width:${supply.pctLeft}%"></div>
+        </div>
+      </div>` : ''}
+
+      ${pen.storage ? `<div class="advisory">${pen.storage}</div>` : ''}
+      ${pen.advisory ? `<div class="advisory">${pen.advisory}</div>` : ''}
+
+      ${/* One control, two states, same place on the card. Tapping the
+            vial writes to the same record this button writes to, so a
+            tapped dose comes back and spends the button — it says what
+            happened and cannot be pressed a second time. A line of grey
+            text where a button used to be reads like the button failed. */
+        !TRACKING ? ''
+        : done ? `<div class="btn-row">
+        <button class="btn btn-done" disabled aria-disabled="true">
+          ${goldCheck(18)} Already logged</button></div>`
+      : `<div class="btn-row"><button class="btn btn-primary" data-log="${pen.id}">Log this dose</button></div>`}
+    `;
+    stack.appendChild(card);
+  });
+
+  wireDrops(stack);
+
+  stack.querySelectorAll('[data-log]').forEach(b =>
+    b.addEventListener('click', () => openLog(b.dataset.log)));
+  stack.querySelectorAll('[data-setup]').forEach(b =>
+    b.addEventListener('click', () => startWizard(PENS.find(p => p.id === b.dataset.setup))));
+  stack.querySelectorAll('[data-newvial]').forEach(b =>
+    b.addEventListener('click', () => {
+      const pen = PENS.find(p => p.id === b.dataset.newvial);
+      if (!pen || !addVial(pen)) return showToast('We could not open a new vial.');
+      renderAll();
+      showToast(`New vial — you are on vial ${pen.vials}. Nothing else has changed.`);
+    }));
+}
+
+function nextDueText() {
+  const t = today();
+  for (let i = 1; i <= 60; i++) {
+    const d = addDays(t, i);
+    if (dueOn(d).length) return i === 1 ? 'tomorrow' : fmtLong(d);
+  }
+  return 'not scheduled';
+}
+
+function renderAdherence() {
+  const t = today();
+  const el = document.getElementById('adherence');
+  if (!TRACKING) { el.hidden = true; return; }
+  const since = LOGS.length ? parse(LOGS.map(l => l.date).sort()[0]) : null;
+
+  let expected = 0, taken = 0;
+  if (since) PENS.forEach(p => occurrences(p).forEach(d => {
+    if (d >= since && d <= t) { expected++; if (isLogged(p.id, d)) taken++; }
+  }));
+
+  el.hidden = false;
+  document.getElementById('statPct').textContent = expected ? Math.round((taken/expected)*100) + '%' : '—';
+
+  let streak = 0;
+  for (let i = 0; i < 180; i++) {
+    const d = addDays(t, -i);
+    const due = dueOn(d);
+    if (!due.length) continue;                       // off days don't break it
+    if (due.every(p => isLogged(p.id, d))) streak++;
+    else if (i === 0) continue;                      // today is still in play
+    else break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  const dots = document.getElementById('weekDots');
+  dots.innerHTML = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(t, -i);
+    const due = dueOn(d);
+    const tracked = since && d >= since;
+    const s = document.createElement('span');
+    s.className = 'wd' + (!due.length || !tracked ? ''
+      : due.every(p => isLogged(p.id, d)) ? ' done' : ' miss');
+    dots.appendChild(s);
+  }
+}
+
+
+const primaryHeader = pen => {
+  const c = pen.components.find(x => x.dosedTo);
+  return c ? c.name : 'Total';
+};
+
+/* ---------- render: calendar ---------- */
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  document.getElementById('calMonth').textContent =
+    calCursor.toLocaleDateString(undefined, { month:'long', year:'numeric' });
+
+  WEEK_DOW.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-dow'; h.textContent = d[0];
+    grid.appendChild(h);
+  });
+
+  const first = new Date(calCursor.getFullYear(), calCursor.getMonth(), 1);
+  const start = weekStart(first);
+  const t = today();
+
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i);
+    const due = dueOn(d);
+    const b = document.createElement('button');
+    b.className = 'cal-day'
+      + (d.getMonth() !== calCursor.getMonth() ? ' out' : '')
+      + (iso(d) === iso(t) ? ' today' : '')
+      + (selectedDay && iso(d) === iso(selectedDay) ? ' sel' : '');
+    b.innerHTML = `<span>${d.getDate()}</span><span class="cal-dots">${
+      due.map(p => `<span class="cal-dot${takenOn(p, d) ? ' taken' : ''}" style="--dc:var(--${
+        p.color === 'brass' ? 'gold' : p.color})"></span>`).join('')
+    }</span>`;
+    b.addEventListener('click', () => { selectedDay = d; renderCalendar(); renderDayDetail(); });
+    grid.appendChild(b);
+  }
+}
+
+function renderDayDetail() {
+  const d = selectedDay || today();
+  const due = dueOn(d);
+  document.getElementById('dayDetail').innerHTML = `
+    <div class="day-detail-date">${fmtLong(d)}</div>
+    ${due.length ? due.map(pen => {
+      const dose = doseOn(pen, d);
+      const taken = takenOn(pen, d);
+      // The rhythm strip only reaches three days back. Anything older she
+      // finds here, on the month, so the day she missed is loggable from
+      // the place she went looking for it.
+      const open = canLog(pen, d);
+      return `<div class="line c-${pen.color || 'brass'}${taken ? ' taken' : ''}">
+        <span class="dot"></span><span class="nm">${pen.name}</span>
+        <span class="amt">${taken
+          ? '✓ Taken'
+          : `${isSyringe(pen) ? 'Draw up to' : 'Turn to'} ${dose.units} · ${pen.time}`}</span>
+        ${open ? `<button type="button" class="line-log"
+          data-logday="${pen.id}|${iso(d)}">Log it</button>` : ''}</div>`;
+    }).join('') : '<div class="line"><span class="nm" style="color:var(--muted)">Day off</span></div>'}`;
+  wireLogDays(document.getElementById('dayDetail'));
+}
+
+/* ---------- render: rhythm ---------- */
+function renderStreak() {
+  const el = document.getElementById('streak');
+  if (!el) return;
+  const n = doseStreak();
+  const note = streakNote(n);
+  el.hidden = !n || !note;
+  if (n && note) el.innerHTML =
+    `<span class="n">${n}</span><div><div class="t">${note[0]}</div>
+     <div class="sb">${note[1]}</div></div>`;
+}
+
+function renderRhythm() {
+  renderStreak();
+  const t = today();
+  document.getElementById('rhythmList').innerHTML = PENS.map(pen => {
+    const cells = [];
+    /* Three days behind, today, three ahead. The week ahead alone could
+       never show a single finished day — everything in it is still to
+       come — so the run she has already put together would be invisible
+       on the one screen meant to show it. */
+    for (let i = -3; i <= 3; i++) {
+      const d = addDays(t, i);
+      /* A scheduled day she has not marked yet, and which has already
+         happened, is a circle she can tap to fill in. Today included —
+         that is the same act as the button on the card. A day off, a
+         day already green and a day still to come are not buttons:
+         there is nothing to say about them and a dose cannot be logged
+         before it is given. */
+      const due = isDue(pen, d);
+      const taken = due && takenOn(pen, d);
+      const open = canLog(pen, d);
+      const tag = open ? 'button' : 'div';
+      cells.push(`<div class="r-col${i === 0 ? ' now' : ''}">
+        <div class="r-day">${DOW[isoDow(d)-1][0]}</div>
+        <${tag} class="r-pill${due ? '' : ' off'}${taken ? ' taken' : ''}${open ? ' can-log' : ''}"
+             ${open ? `type="button" data-logday="${pen.id}|${iso(d)}"
+             aria-label="Log ${pen.name} for ${fmtLong(d)}"` : ''}
+             data-cell="${penKeyOf(pen)}.${icsDay(d)}"><span class="fill">${
+          taken ? goldCheck(22) : ''}</span></${tag}>
+      </div>`);
+    }
+    const dose = doseOn(pen, t) || doseOn(pen, addDays(t, 1));
+    const supply = supplyView(pen);
+    return `
+      <div class="sheet c-${pen.color || 'brass'}">
+        <div class="supply-head">
+          <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
+          <div style="flex:1"><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
+          <div class="dose-meta">${freqShort(pen)} · ${pen.time} · from ${fmtShort(penStart(pen))}</div></div>
+          <!-- Every pen appears here, due today or not, which is why the
+               way to take one off lives here as well as on the dose card.
+               A rest day used to leave her with no control at all. -->
+          <button type="button" class="pen-x" data-drop="${pen.id}"
+            title="Take ${pen.name} off my schedule"
+            aria-label="Take ${pen.name} off my schedule">&times;</button>
+        </div>
+        <div class="rhythm">${cells.join('')}</div>
+        ${/* The ring on a circle has to mean something, and it only appears
+              when there is something to do. */
+          cells.some(c => c.indexOf('can-log') !== -1)
+            ? '<div class="rhythm-hint">Tap a ringed day to log a dose you took.</div>' : ''}
+        <div style="margin-top:16px">
+          <div class="kv"><span class="k">Current phase</span><span class="v">${dose ? dose.phase.name : '—'}</span></div>
+          <div class="kv"><span class="k">${dialLead(pen)}</span><span class="v">${dose ? dose.units : '—'}</span></div>
+          ${supply ? `<div class="kv"><span class="k">Doses left in ${vessel(pen)}</span><span class="v">${supply.dosesLeft}</span></div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  wireLogDays(document.getElementById('rhythmList'));
+  wireDrops(document.getElementById('rhythmList'));
+}
+
+/* Any pen can come off her own schedule, from the dose card or from the
+   rhythm sheet — the rhythm sheet matters because it lists every pen,
+   due today or not, and a rest day used to leave her no control at all.
+
+   A prescribed pen says so, and says the atelier will see it: stopping a
+   prescription without telling anyone is the thing worth one more line. */
+function wireDrops(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-drop]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const pen = PENS.find(p => p.id === b.dataset.drop);
+      if (!pen) return;
+      if (!confirm(
+        `Take ${pen.name} off your schedule?\n\n` +
+        (pen.addedByPatient ? ''
+          : 'This was prescribed for you. The atelier will see that you have ' +
+            'stopped it, and you can put it back here whenever you like.\n\n') +
+        'Doses you have already logged are kept.')) return;
+      removePen(pen);
+      renderAll();
+      showToast(`${pen.name} taken off your schedule.`);
+    }));
+}
+
+/* Every circle and every "Log it" that names a pen and a day goes through
+   the same sheet, so the confirmation, the record and the mark are the
+   same wherever she taps. */
+function wireLogDays(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-logday]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const [id, day] = b.dataset.logday.split('|');
+      openLog(id, parse(day));
+    }));
+}
+
+/* ---------- render: supply ---------- */
+function renderSupply() {
+  document.getElementById('supplyList').innerHTML = PENS.map(pen => {
+    const s = supplyView(pen);
+    const dose = doseOn(pen, today());
+    if (!s) return '';
+    const soon = s.daysLeft != null && s.daysLeft <= REFILL_WARNING_DAYS;
+    return `
+      <div class="sheet c-${pen.color || 'brass'}">
+        <div class="supply-head">
+          <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
+          <div><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
+          <div class="dose-meta">${pen.volumeMl} mL ${vessel(pen)}${s.spent ? ' · empty' : ''}</div></div>
+        </div>
+        <div class="gauge">
+          <div class="gauge-top"><span>${round(s.mlLeft, 2)} mL remaining</span><span>${Math.round(s.pctLeft)}%</span></div>
+          <div class="gauge-track"><div class="gauge-fill${soon ? ' low' : ''}" style="width:${s.pctLeft}%"></div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="kv"><span class="k">Current dose</span><span class="v">${dose ? `${dose.units} units · ${round(dose.ml,2)} mL` : '—'}</span></div>
+          <div class="kv"><span class="k">Doses remaining</span><span class="v">${s.dosesLeft}</span></div>
+          <div class="kv"><span class="k">Last dose from this ${vessel(pen)}</span><span class="v">${s.lastDose ? fmtShort(s.lastDose) : '—'}</span></div>
+        </div>
+        <div class="flag${soon || s.spent ? ' soon' : ''}">
+          ${s.spent
+            ? `This pen is empty — its last dose was <strong>${fmtShort(s.lastDose)}</strong>. It is paused on your schedule until a new pen arrives.`
+            : s.daysLeft != null
+              ? `Last dose from this ${vessel(pen)} is <strong>${fmtShort(s.lastDose)}</strong>, about ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} away.${soon ? ' Time to arrange a refill.' : ''}`
+              : 'Supply projection unavailable.'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* ---------- log sheet ----------
+   `when` is the day being logged, and defaults to today. Any other day is
+   a back-fill: she took it on Monday and is only now saying so, which is
+   an ordinary thing to need and used to be impossible.
+
+   A back-fill is a different act from logging a dose she is about to
+   give, so the sheet says so — past tense, the date spelled out, and no
+   draw-up figure, because there is nothing left to draw up. */
+function canLog(pen, d) {
+  if (!pen || !TRACKING) return false;
+  if (d > today()) return false;          // a dose she has not taken yet
+  if (d < START) return false;            // before the protocol began
+  return isDue(pen, d) && !isLogged(pen.id, d);
+}
+
+function openLog(id, when) {
+  const pen = PENS.find(p => p.id === id);
+  const t = today();
+  const d = when || t;
+  const past = iso(d) !== iso(t);
+  if (!pen) return;
+  if (isLogged(pen.id, d)) {
+    showToast(`${pen.name} is already logged for ${past ? fmtShort(d) : 'today'}.`); return;
+  }
+  if (!isDue(pen, d)) { showToast(`${pen.name} isn't scheduled ${past ? `on ${fmtShort(d)}` : 'today'}.`); return; }
+  if (d > t) { showToast('You can only log a dose you have already taken.'); return; }
+  if (d < START) { showToast('That day is before your protocol started.'); return; }
+
+  const dose = doseOn(pen, d);
+  pendingLog = pen;
+  pendingDay = d;
+
+  document.getElementById('modalEyebrow').textContent =
+    past ? 'Add a missing dose' : 'Confirm injection';
+  document.getElementById('modalTitle').textContent =
+    past ? `Log ${pen.name} for ${fmtLong(d)}?` : `Log today's ${pen.name}?`;
+  // "Turn your pen to" on a vial is the wrong instruction in the one place
+  // she is about to act on it. dialLead() already knows which it is.
+  // A vial's dose is stated as the mark and nothing else — see the card.
+  document.getElementById('modalBody').textContent = past
+    ? `This marks ${fmtLong(d)} as taken. Only do this if you did take it.`
+    : isSyringe(pen)
+      ? `${dialLead(pen)} ${dose.units}`
+      : `${dialLead(pen)} ${dose.units} · ${round(dose.ml,2)} mL — ` +
+        `${primaryOf(dose).name} ${round(primaryOf(dose).mg,2)} mg`;
+
+  const fig = document.getElementById('modalFig');
+  fig.innerHTML = (!past && isSyringe(pen)) ? syringeFigure(dose.units) : '';
+  fig.hidden = !fig.innerHTML;
+
+  document.getElementById('modalConfirm').textContent = past ? 'Submit' : 'Log it';
+
+  const sites = CFG.protocol.sites || [];
+  // The rotation suggestion is for the dose she is about to give. Filling in
+  // a past day, the site is whatever she remembers, so nothing is preselected
+  // rather than a guess being recorded as fact.
+  const suggested = (!past && sites.length) ? sites[LOGS.length % sites.length] : null;
+  chosenSite = suggested;
+  document.getElementById('sitePick').innerHTML = sites.map(s =>
+    `<button class="site" data-site="${s}" aria-pressed="${s === suggested}">${s}</button>`).join('');
+  document.querySelectorAll('#sitePick .site').forEach(b =>
+    b.addEventListener('click', () => {
+      chosenSite = b.dataset.site;
+      document.querySelectorAll('#sitePick .site').forEach(x => x.setAttribute('aria-pressed', x === b));
+    }));
+
+  document.getElementById('scrim').classList.add('open');
+}
+
+const closeLog = () => {
+  document.getElementById('scrim').classList.remove('open');
+  pendingLog = null; pendingDay = null;
+};
+
+async function confirmLog() {
+  const pen = pendingLog;
+  const site = chosenSite;
+  const d = pendingDay || today();
+  const past = iso(d) !== iso(today());
+  closeLog();
+  if (!pen) return;
+
+  const dose = doseOn(pen, d);
+  addLog(pen.id, d, site);                 // the site, locally, as before
+
+  // The same record a tapped vial writes, from the same patient's card.
+  // Logged by hand or by tag, the day is the day.
+  const slug = CARD_SLUG || readSlug();
+  let ok = false;
+  if (slug && dose) {
+    try {
+      const res = await fetch('/api/dose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug, template: penKeyOf(pen), pen: pen.name, frequency: freqText(pen),
+          units: dose.units, mg: round(dose.totalMg, 3), site: site || '',
+          // For today, `at` is the moment she pressed the button, which is
+          // the injection. For a day she is filling in afterwards we do not
+          // know the moment, so it is that day at the hour the dose was
+          // scheduled — the server stamps `recordedAt` separately, so the
+          // dashboard can always tell a back-fill from a live log.
+          at: past ? scheduledInstant(pen, d) : new Date().toISOString(),
+          day: iso(d)
+        })
+      });
+      ok = res.ok;
+      if (ok) await loadLogged();
+    } catch { /* the local record still stands */ }
+  }
+
+  renderAll();
+
+  const cell = document.querySelector(`[data-cell="${penKeyOf(pen)}.${icsDay(d)}"] .fill`);
+  const box = cell && cell.getBoundingClientRect();
+  const onScreen = !!(box && box.width > 0);
+
+  if (ok && past) {
+    // A day filled in afterwards gets the mark, not the fanfare. The
+    // confetti is for the dose she just gave herself.
+    if (onScreen) cell.closest('.r-pill').classList.add('landing');
+    haptic();
+    showToast(`${pen.name} marked for ${fmtLong(d)}.`);
+  } else if (ok) {
+    // Logged by hand earns the same burst as logged by tag. The circle it
+    // lands in is the one for today.
+    // Only fly the mark into the circle if the circle is actually on
+    // screen — logging from the Schedule tab would otherwise send it to
+    // a hidden element, which is the top-left corner of nothing.
+    if (onScreen) { cell.closest('.r-pill').classList.add('landing'); celebrate(cell); }
+    else celebrate();
+    const n = doseStreak(), note = streakNote(n);
+    if (note) setTimeout(() => showToast(`${note[0]} — ${note[1]}`), 1500);
+  } else {
+    showToast(`${pen.name} logged on this phone${site ? ` — ${site}` : ''}.` +
+              (slug ? ' It will reach the atelier when you are back online.' : ''));
+  }
+}
+
+/* The hour a dose was meant to be given, on a given day, as an instant.
+   Built from the local clock so an eight-in-the-evening dose in Charleston
+   stays an eight-in-the-evening dose — the same reasoning that keeps the
+   calendar off floating times. */
+function scheduledInstant(pen, d) {
+  const hm = String(timeFor(pen) || '09:00').split(':');
+  const at = new Date(d.getFullYear(), d.getMonth(), d.getDate(),
+                      Number(hm[0]) || 0, Number(hm[1]) || 0, 0, 0);
+  return at.toISOString();
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('over-modal', !!document.querySelector('.scrim.open'));
+  t.classList.add('visible');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('visible'), 2800);
+}
+
+/* The calendar is a subscription now: one address, always current. The
+   download and the removal instructions that went with it are gone —
+   a file that cannot update was the cause of most of the confusion. */
+function renderCalNotice() {
+  const el = document.getElementById('calStale');
+  if (!el) return;
+  // Only anyone still carrying a calendar downloaded before the change.
+  const stale = icsStale();
+  el.hidden = !stale;
+  if (stale) el.innerHTML =
+    '<b>Your calendar is out of date.</b> It was added as a one-off copy and ' +
+    'still follows your old schedule. Tap <b>Add to Calendar</b> above to ' +
+    'subscribe instead, then delete the old doses from your Calendar app.';
+}
+
+/* ---------- boot ---------- */
+function wireTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t === tab));
+      document.querySelectorAll('.panel').forEach(p =>
+        p.classList.toggle('active', p.id === `panel-${tab.dataset.panel}`));
+    });
+  });
+}
+
+async function boot() {
+  try {
+    await loadProtocol();
+  } catch {
+    document.getElementById('todaySummary').textContent =
+      'Could not load your protocol. Please contact the atelier.';
+    applyCardLinks(document);   // she must still be able to get back
+    return;
+  }
+
+  PENS = CFG.protocol.pens || [];
+
+  /* Set before the empty-protocol branch, not after it. A patient who has
+     taken everything off lands in that branch and can put a pen back from
+     it, which redraws the whole page — and the page cannot be drawn from
+     a state the branch skipped setting up. */
+  TRACKING = CFG.protocol.tracking !== false;
+  LOGS = loadLogs();
+  calCursor = today();
+  selectedDay = today();
+
+  // Same rule as the portal: no protocol is not a rest day.
+  if (!PENS.length) {
+    // Unless she is the one who emptied it. A patient who takes off
+    // everything she was prescribed must still be able to put it back,
+    // and "this card has no protocol on it yet" is both wrong and a dead
+    // end — the protocol is there, she has stood it down.
+    const hers = (DROPPED_PENS || []).length;
+    document.getElementById('todaySummary').textContent = hers
+      ? 'Nothing on your schedule right now.'
+      : 'This card has no protocol on it yet.';
+    document.getElementById('todayStack').innerHTML = hers ? '' : `<div class="rest">
+      <div class="rest-title">Nothing to show</div>
+      <div class="rest-sub">Show this screen to the atelier and we will put it
+      right — your dosing has not changed.</div></div>`;
+    document.getElementById('protocolName').textContent = CFG.protocol.name || 'Protocol';
+    renderStopped();
+    applyCardLinks(document);
+    return;
+  }
+
+  const saved = loadStart();
+  START = parse(saved || CFG.protocol.startDate);
+
+  document.getElementById('protocolName').textContent = CFG.protocol.name;
+  document.title = `Today's Ritual — ${CFG.patient.name}`;
+  document.getElementById('footnote').innerHTML =
+    (TRACKING ? 'Injection history is stored on this device only.<br>' : '') +
+    `Questions about your protocol? <a href="${smsHref()}">Message the atelier</a>.` +
+    // Asked once, quietly, at the bottom — and only of someone far enough
+    // in to have something to say. A review prompt in front of a patient
+    // who started yesterday is asking a stranger for a favour.
+    (doseStreak() >= 10 && (CFG.protocol.concierge || {}).reviewUrl
+      ? `<br><a href="${CFG.protocol.concierge.reviewUrl}" target="_blank" rel="noopener">
+           Enjoying your results? Leave us a review</a>.`
+      : '');
+
+  await loadLogged();
+  renderAll();
+  wireSubscribe();
+
+  /* A peptide the atelier adds should appear the next time she looks at
+     her card, not the next time something happens to reload the page —
+     which on a home-screen card is close to never. */
+  watchCard(() => {
+    document.getElementById('protocolName').textContent = CFG.protocol.name;
+    renderAll();
+    wireSubscribe();
+  });
+
+  /* A dose logged on the vial page lands here. Redrawing the circle green
+     would be correct and completely unfelt, so the mark is flown into it
+     the first time this page sees it — once, tracked by what was on
+     screen the last time it drew. */
+  // Celebrate a dose that lands while she is here, and only a dose that
+  // was not already on the page — a record arriving for another day is a
+  // correction, not an achievement.
+  const takenToday = () => PENS.filter(x => isDue(x, today()) && takenOn(x, today()))
+                                .map(penKeyOf).join(',');
+  let before = takenToday();
+  async function afterLog() {
+    await loadLogged();
+    renderAll();
+    const after = takenToday();
+    if (after === before) return;
+    const fresh = after.split(',').find(k => k && !before.split(',').includes(k));
+    before = after;
+    if (!fresh) return;
+    const cell = document.querySelector(`[data-cell="${fresh}.${icsDay(today())}"] .fill`);
+    if (cell) { celebrate(cell); cell.closest('.r-pill').classList.add('landing'); }
+  }
+  watchLogged(() => { afterLog(); });
+
+  // Carry the card on every link out of this page. Without this the back
+  // arrow is a bare "./", which lands on the root with no card on it and
+  // tells the patient her card is not set up.
+  applyCardLinks(document);
+
+  /* Ask only when nobody anywhere knows when she started.
+
+     This used to ask whenever THIS BROWSER had no saved answer, which is
+     not the same thing at all. Safari clears script storage for a site
+     not visited in seven days, so a patient two months into a protocol
+     would open her card, be asked "which day did you start?", and be
+     shown a date from two months ago — correct, but presented as a
+     question. One tap on "Today" and her phases, her supply, her refill
+     date and her calendar all jumped forward two months.
+
+     A card with a start day on the record, or with a dose already logged,
+     is anchored. It does not need asking and must not be re-asked.
+
+     ?change=1 is the link inside every calendar event: she tapped a dose,
+     wanted it moved, and should land on the sheet that moves it. */
+  const wantsChange = new URLSearchParams(location.search).get('change') === '1';
+  const anchored = !!CFG.protocol.startGiven
+    || PENS.some(p => p.atelierStart || firstDoseDay(p));
+  if ((!saved && !anchored) || wantsChange) openStartPicker();
+
+  // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
+  const tagged = TRACKING ? new URLSearchParams(location.search).get('log') : null;
+  if (tagged) {
+    const pen = PENS.find(p => p.id === tagged || p.short === tagged);
+    if (pen) openLog(pen.id);
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
+document.getElementById('calPrev').addEventListener('click', () => {
+  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1); renderCalendar();
+});
+document.getElementById('calNext').addEventListener('click', () => {
+  calCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); renderCalendar();
+});
+
+/* webcal:// is what tells a phone to subscribe rather than download.
+   The address is only known once the card has resolved, so it is set
+   here rather than in the markup. */
+function wireSubscribe() {
+  const a = document.getElementById('btnSubscribe');
+  const url = icsFeedUrl('webcal:');
+  if (!url) { a.hidden = true; return; }        // a fragment card has no feed
+  a.href = url;
+  a.addEventListener('click', () => {
+    // From here on her calendar refetches, so the out-of-date notice is
+    // no longer hers to act on.
+    icsMarkSubscribed();
+    renderCalNotice();
+    showToast('Say yes to subscribe. Keep alerts on if you want calendar reminders.');
+  });
+}
+document.getElementById('modalCancel').addEventListener('click', closeLog);
+document.getElementById('modalConfirm').addEventListener('click', confirmLog);
+document.getElementById('scrim').addEventListener('click', e => { if (e.target.id === 'scrim') closeLog(); });
+document.getElementById('btnStart').addEventListener('click', openStartPicker);
+document.getElementById('startSave').addEventListener('click', commitStart);
+document.getElementById('startCancel').addEventListener('click', closeStartPicker);
+document.getElementById('startScrim').addEventListener('click', e => { if (e.target.id === 'startScrim') closeStartPicker(); });
+document.getElementById('btnAdd').addEventListener('click', startAdd);
+document.getElementById('wizNext').addEventListener('click', wizAdvance);
+document.getElementById('wizBack').addEventListener('click', wizBack);
+document.getElementById('wizInput').addEventListener('input', showUnitsNote);
+document.getElementById('wizInput').addEventListener('keydown', e => { if (e.key === 'Enter') wizAdvance(); });
+document.getElementById('wizScrim').addEventListener('click', e => { if (e.target.id === 'wizScrim') closeWizard(); });
+
+wireTabs();
+boot();
+</script>
+
+</body>
+</html>

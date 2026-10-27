@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F3EBE1">
+<meta name="robots" content="noindex, nofollow">
+<title>Patient Portal</title>
+<meta name="description" content="Private patient portal. Dosing instructions, protocol and concierge access.">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23F3EBE1%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Georgia,serif%27 font-size=%2719%27 fill=%27%238A7350%27 text-anchor=%27middle%27%3ECA%3C/text%3E%3C/svg%3E">
+<!-- What iOS puts on the home screen. Replace these four PNGs to change it;
+     nothing else needs touching. -->
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest" id="manifestLink">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<!-- The label under the icon. Deliberately the practice, not the patient —
+     a home screen is read over shoulders. -->
+<meta name="apple-mobile-web-app-title" content="Atelier">
+
+<link rel="stylesheet" href="assets/fonts.css">
+<script src="assets/protocol.js"></script>
+
+<style>
+  /* ============================================================
+     THE CHARLESTON ATELIER — PATIENT PORTAL
+     Palette lifted from the approved mockup.
+     ============================================================ */
+  :root {
+    --bg:            #F3EBE1;   /* warm ivory page */
+    --card:          #F8F2EA;   /* button face */
+    --card-hover:    #FBF6F0;
+    --espresso:      #3B2E20;   /* patient name */
+    --espresso-soft: #4A3B2C;   /* greeting + button labels */
+    --brass:         #8A7350;   /* chevrons, nav icons, rules */
+    --brass-soft:    #A38C69;
+    --hairline:      rgba(138, 115, 80, 0.18);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--espresso-soft);
+    font-family: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .portal {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 46px 24px calc(20px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Monogram ---------- */
+  .monogram {
+    text-align: center;
+    line-height: 0;
+    margin-bottom: 30px;
+    user-select: none;
+  }
+  /* The mark is the artwork itself, gold and all — not a tinted glyph — so
+     it carries no colour from the theme. Height drives it; width follows. */
+  .monogram .mark { height: 78px; width: auto; display: inline-block; }
+
+  /* ---------- Greeting ---------- */
+  .greeting {
+    text-align: center;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 31px;
+    line-height: 1.1;
+    color: var(--espresso-soft);
+    letter-spacing: 0.005em;
+  }
+
+  .greeting, .patient-name {
+    /* Nothing is shown until we know whose card this is. Painting a name
+       and correcting it is worse than a beat of nothing. */
+    opacity: 0;
+    transition: opacity .22s ease;
+  }
+  body.resolved .greeting, body.resolved .patient-name { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .greeting, .patient-name { transition: none; }
+  }
+
+  .patient-name {
+    text-align: center;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 500;
+    font-size: 56px;
+    line-height: 1.15;
+    letter-spacing: 0.1em;
+    text-indent: 0.1em;          /* optically re-centre the tracked caps */
+    color: var(--espresso);
+    text-transform: uppercase;
+    margin-top: 6px;
+    margin-bottom: 40px;
+    /* A full name wraps between its parts rather than running off the
+       screen. Never mid-word — a name broken across a line is worse than a
+       small one, so fitName() shrinks instead. */
+    text-wrap: balance;
+    overflow-wrap: normal;
+  }
+
+  /* ---------- Buttons ---------- */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .menu-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 78px;
+    padding: 18px 46px;
+    background: var(--card);
+    border: none;
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(59, 46, 32, 0.05),
+                0 6px 18px rgba(59, 46, 32, 0.045);
+    font-family: 'Jost', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.085em;
+    text-transform: uppercase;
+    color: var(--espresso-soft);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .menu-item:hover,
+  .menu-item:focus-visible {
+    background: var(--card-hover);
+    box-shadow: 0 2px 4px rgba(59, 46, 32, 0.06),
+                0 10px 24px rgba(59, 46, 32, 0.07);
+    outline: none;
+  }
+  .menu-item:focus-visible { box-shadow: 0 0 0 2px var(--brass-soft); }
+  .menu-item:active { transform: scale(0.988); }
+
+  .menu-item .chevron {
+    position: absolute;
+    right: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 11px;
+    height: 19px;
+    color: var(--brass);
+    flex: none;
+  }
+
+  /* Buttons with no file/link attached yet still look identical —
+     they simply announce that the item is being prepared. */
+  .menu-item[data-empty="true"] { cursor: default; }
+
+  /* ---------- Bottom navigation ---------- */
+  .nav {
+    margin-top: auto;
+    padding-top: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+  }
+
+  .nav a, .nav button {
+    background: none;
+    border: none;
+    padding: 10px 14px;
+    color: var(--brass);
+    cursor: pointer;
+    display: inline-flex;
+    line-height: 0;
+    border-radius: 12px;
+    transition: color 0.2s ease, transform 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav a:hover, .nav button:hover,
+  .nav a:focus-visible, .nav button:focus-visible {
+    color: var(--espresso);
+    transform: translateY(-1px);
+    outline: none;
+  }
+  .nav svg { width: 25px; height: 25px; }
+
+  /* ---------- Add to Home Screen ---------- */
+  .add-home {
+    display: block; margin: 22px auto 0; padding: 9px 18px;
+    background: none; border: 1px solid var(--hairline); border-radius: 999px;
+    font-family: 'Jost', sans-serif; font-size: 12px; font-weight: 500;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--brass);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .add-home:hover, .add-home:focus-visible { color: var(--espresso); outline: none; }
+
+  /* ---------- Reminders ---------- */
+  .remind { display: none; margin: 14px auto 0; text-align: center; }
+  .remind.on { display: block; }
+  .remind button {
+    background: none; border: 1px solid var(--hairline); border-radius: 999px;
+    padding: 9px 18px; font-family: 'Jost', sans-serif; font-size: 12px;
+    font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--brass); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .remind button:hover, .remind button:focus-visible { color: var(--espresso); outline: none; }
+  .remind button[data-state="on"] { border-color: var(--brass); color: var(--espresso); }
+  .remind p {
+    margin: 9px auto 0; max-width: 280px; font-family: 'Jost', sans-serif;
+    font-size: 11.5px; line-height: 1.6; color: #8A7C6A;
+  }
+
+  .sheet-scrim {
+    position: fixed; inset: 0; background: rgba(59,46,32,.45);
+    display: flex; align-items: flex-end; justify-content: center; z-index: 120;
+  }
+  .sheet-scrim[hidden] { display: none; }
+  .sheet {
+    width: 100%; max-width: 430px; background: var(--bg);
+    border-radius: 26px 26px 0 0; padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+    text-align: center;
+  }
+  .sheet-icon { border-radius: 15px; box-shadow: 0 4px 14px rgba(59,46,32,.18); }
+  .sheet-title {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500;
+    font-size: 26px; color: var(--espresso); margin: 14px 0 18px; line-height: 1.2;
+  }
+  .sheet-steps { list-style: none; text-align: left; margin: 0 0 22px; padding: 0; counter-reset: s; }
+  .sheet-steps li {
+    counter-increment: s; position: relative; padding: 8px 0 8px 34px;
+    font-size: 14.5px; line-height: 1.5; color: var(--espresso-soft);
+  }
+  .sheet-steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 8px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: rgba(138,115,80,.14); color: var(--brass);
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+  }
+  .sheet-steps b { color: var(--espresso); font-weight: 600; }
+  .sheet-close {
+    width: 100%; padding: 14px; border: none; border-radius: 999px;
+    background: var(--espresso); color: #F6F0E7;
+    font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+  }
+
+  /* ---------- Toast (shown for buttons with nothing attached yet) ---------- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    transform: translate(-50%, 14px);
+    max-width: min(360px, calc(100vw - 40px));
+    padding: 13px 20px;
+    background: var(--espresso);
+    color: #F6F0E7;
+    border-radius: 14px;
+    font-size: 13.5px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(59, 46, 32, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease, transform 0.28s ease;
+    z-index: 50;
+  }
+  .toast.visible { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- Small screens ---------- */
+  @media (max-width: 360px) {
+    .portal { padding: 36px 18px calc(16px + env(safe-area-inset-bottom)); }
+    .patient-name { font-size: 42px; }
+    .greeting { font-size: 27px; }
+    .menu-item { font-size: 14.5px; min-height: 70px; padding: 16px 40px; }
+    .monogram .mark { height: 62px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<main class="portal">
+
+  <div class="monogram"><img class="mark" src="assets/icons/monogram.png" alt="The Charleston Atelier" width="327" height="480"></div>
+
+  <p class="greeting">Welcome Back,</p>
+  <h1 class="patient-name" id="patientName"></h1>
+
+  <nav class="menu" id="menu" aria-label="Patient portal"></nav>
+
+  <button class="add-home" id="addHome" hidden>Add to Home Screen</button>
+
+  <div class="remind" id="remind">
+    <button id="remindBtn" type="button" data-state="off">Remind Me</button>
+    <p id="remindNote"></p>
+  </div>
+
+  <div class="nav" id="bottomNav"></div>
+
+  <div class="sheet-scrim" id="a2hsScrim" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="a2hsTitle">
+      <img class="sheet-icon" src="assets/icons/icon-180.png" alt="" width="66" height="66">
+      <h2 class="sheet-title" id="a2hsTitle">Keep this on your home screen</h2>
+      <ol class="sheet-steps" id="a2hsSteps"></ol>
+      <button class="sheet-close" id="a2hsClose">Done</button>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ================================================================
+   ✦ EDIT EVERYTHING HERE ✦
+   ----------------------------------------------------------------
+   This is the only block you need to touch. Each button below is
+   live on the site right now; give it a `href` whenever the file or
+   link is ready and it starts working immediately.
+
+   HOW TO ATTACH A FILE (e.g. Jessica's dosing instructions):
+     1. Drop the PDF into the `files/` folder next to this page,
+        e.g.  files/jessica-dosing-instructions.pdf
+     2. Set the button's href to that path:
+          href: "files/jessica-dosing-instructions.pdf"
+     3. Commit + redeploy. Done.
+
+   HOW TO ATTACH A LINK:
+        href: "https://calendly.com/your-booking-link"
+     External links (http…) open in a new tab automatically.
+
+   A button with an empty href stays on the page and shows a quiet
+   "being prepared" note when tapped — nothing ever looks broken.
+   ================================================================ */
+
+const PORTAL = {
+
+  patientName: "",
+  greeting:    "Welcome Back,",
+
+  // Message shown when a button has no href yet.
+  pendingNote: "Your concierge is preparing this — check back shortly.",
+
+  // The atelier's number — used by the message link in the footer.
+  conciergePhone:  "843-377-3713",
+  messageOpener:   "Hi Dr. Phelps-Polirer — ",   // pre-typed opening line
+
+  buttons: [
+    {
+      id:    "ritual",
+      label: "Today’s Ritual",
+      href:  "ritual.html"
+    },
+    {
+      id:    "protocol",
+      label: "My Protocol",
+      href:  "cards.html"             // the 3×5 peptide cards, swipe and turn over
+    },
+    {
+      id:    "storage",
+      label: "Storage & Use",
+      href:  "storage.html"           // where each pen lives, giving it, travel
+    },
+    {
+      id:    "expect",
+      label: "What to Expect",
+      href:  "expect.html"            // timing, side effects, when to call
+    },
+    {
+      id:    "tutorial",
+      label: "Injection Tutorial",
+      href:  "tutorial.html"           // the steps, and the film once there is one
+    },
+    // An empty href still renders a button — it quietly says the item is
+    // being prepared until the atelier pastes a link in.
+    {
+      id:    "library",
+      label: "Explore Peptide Library",
+      href:  "library.html"           // the 15 branded cards, searchable
+    },
+    {
+      id:    "visit",
+      label: "Schedule Atelier Visit",
+      href:  "https://links.thecharlestonatelier.com/widget/booking/yAeCEbN21r95yJNytC6G"
+    },
+    {
+      id:    "membership",
+      label: "Atelier Membership",
+      href:  ""                        // paste the membership page here
+    },
+    {
+      id:    "review",
+      label: "Leave a Review",
+      href:  ""                        // paste the Google review link here
+    },
+    {
+      id:    "contact",
+      label: "Save Our Contact",
+      href:  "contact.vcf"            // adds Dr. Kendall to her phone
+    }
+  ],
+
+  // Bottom icon row. `linkTo` points at one of the button ids above,
+  // so it inherits that button's href — set the href once, both work.
+  // Or give a nav item its own `href` to override.
+  bottomNav: [
+    { icon: "calendar", label: "Calendar",           href: "calendar.html" },
+    { icon: "book",     label: "Peptide Library",    linkTo: "library" },
+    { icon: "phone",    label: "Message the atelier", action: "message" }
+  ]
+};
+
+/* ================================================================
+   Rendering — no need to edit below this line.
+   ================================================================ */
+
+const ICONS = {
+  calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.2" width="17.6" height="15.6" rx="2.2"/><path d="M3.2 10h17.6M8.4 2.8v4.4M15.6 2.8v4.4"/></svg>',
+  book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.6A1.6 1.6 0 0 1 5.6 3H11a2 2 0 0 1 2 2v15a1.6 1.6 0 0 0-1.6-1.4H5.6A1.6 1.6 0 0 1 4 17V4.6z"/><path d="M20 4.6A1.6 1.6 0 0 0 18.4 3H13a2 2 0 0 0-2 2v15a1.6 1.6 0 0 1 1.6-1.4h5.8A1.6 1.6 0 0 0 20 17V4.6z"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 3.6h2.2l1.7 4.1-2 1.4a11.8 11.8 0 0 0 5.6 5.6l1.4-2 4.1 1.7v2.2a2.4 2.4 0 0 1-2.6 2.4C10.4 18.6 5.4 13.6 4 6.2A2.4 2.4 0 0 1 6.3 3.6z"/></svg>'
+};
+
+/* The atelier's number, with an opening line already typed. iOS wants
+   &body= after the number; Android wants ?body=. */
+function smsHref() {
+  const digits = String(PORTAL.conciergePhone || '').replace(/\D/g, '');
+  if (!digits) return '';
+  const number = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+  const sep = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
+  return `sms:${number}${sep}body=${encodeURIComponent(PORTAL.messageOpener || '')}`;
+}
+
+const CHEVRON = '<svg class="chevron" viewBox="0 0 11 19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m1.4 1.4 8 8.1-8 8.1"/></svg>';
+
+const isExternal = (href) => /^(https?:|mailto:|tel:|sms:)/i.test(href);
+
+// Only real web destinations get a new tab; sms:/tel: hand off to the OS.
+const opensNewTab = (href) => /^https?:/i.test(href) || /.(pdf|jpe?g|png|heic)$/i.test(href);
+
+function renderName() {
+  document.title = PORTAL.patientName
+    ? PORTAL.patientName + " — Patient Portal"
+    : "Patient Portal";
+  document.querySelector(".greeting").textContent = PORTAL.greeting;
+  document.getElementById("patientName").textContent = PORTAL.patientName;
+  fitName();
+}
+
+/* The greeting is set in tracked caps at a size chosen for "JESSICA".
+   A longer name wraps between its parts; anything that still runs wide, or
+   spills past two lines, comes down in size until it sits on the screen. */
+function fitName() {
+  const el = document.getElementById("patientName");
+  el.style.fontSize = "";
+  const start = parseFloat(getComputedStyle(el).fontSize);
+  for (let size = start; size >= 22; size -= 2) {
+    el.style.fontSize = size + "px";
+    const lines = Math.round(el.scrollHeight / (size * 1.15));
+    if (el.scrollWidth <= el.clientWidth && lines <= 2) return;
+  }
+}
+
+addEventListener("resize", fitName);
+
+function renderButtons() {
+  const menu = document.getElementById("menu");
+  menu.innerHTML = "";
+
+  PORTAL.buttons.forEach(item => {
+    const href = (item.href || "").trim();
+    const el = document.createElement(href ? "a" : "button");
+
+    el.className = "menu-item";
+    el.dataset.id = item.id;
+    el.innerHTML = '<span>' + item.label + '</span>' + CHEVRON;
+
+    if (href) {
+      el.href = linkWithCard(href);
+      if (opensNewTab(href)) {
+        el.target = "_blank";
+        el.rel = "noopener noreferrer";
+      }
+    } else {
+      el.type = "button";
+      el.dataset.empty = "true";
+      el.addEventListener("click", () => showToast(PORTAL.pendingNote));
+    }
+
+    menu.appendChild(el);
+  });
+}
+
+function renderNav() {
+  const nav = document.getElementById("bottomNav");
+  nav.innerHTML = "";
+
+  PORTAL.bottomNav.forEach(item => {
+    let href = (item.href || "").trim();
+    if (!href && item.action === "message") href = smsHref();
+    if (!href && item.linkTo) {
+      const target = PORTAL.buttons.find(b => b.id === item.linkTo);
+      href = target ? (target.href || "").trim() : "";
+    }
+
+    const el = document.createElement(href ? "a" : "button");
+    el.innerHTML = ICONS[item.icon] || "";
+    el.setAttribute("aria-label", item.label);
+    el.title = item.label;
+
+    if (href) {
+      el.href = linkWithCard(href);
+      if (opensNewTab(href)) {
+        el.target = "_blank";
+        el.rel = "noopener noreferrer";
+      }
+    } else {
+      el.type = "button";
+      el.addEventListener("click", () => showToast(PORTAL.pendingNote));
+    }
+
+    nav.appendChild(el);
+  });
+}
+
+let toastTimer;
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.add("visible");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("visible"), 2600);
+}
+
+/* ---------- Add to Home Screen ----------
+   The card is the way in, but a card lives in a drawer. On the home screen
+   the portal is one tap from the lock screen, under the atelier's own mark.
+
+   iOS has no programmatic install prompt, so there it is instructions —
+   which is why the sheet shows the icon: the patient is looking for that
+   picture, not for a menu item. Android fires beforeinstallprompt and can
+   simply be asked. */
+let deferredInstall = null;
+
+addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  deferredInstall = e;
+  const btn = document.getElementById("addHome");
+  if (btn) btn.hidden = false;
+});
+
+function isStandalone() {
+  return window.matchMedia("(display-mode: standalone)").matches ||
+         window.navigator.standalone === true;
+}
+
+function setupHomeScreen() {
+  const btn = document.getElementById("addHome");
+  const scrim = document.getElementById("a2hsScrim");
+  if (!btn || !scrim) return;
+
+  // Already installed: there is nothing to offer.
+  if (isStandalone()) return;
+
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // On iOS the button is always useful; elsewhere it waits for the browser
+  // to say an install is possible.
+  if (isIOS || deferredInstall) btn.hidden = false;
+
+  btn.addEventListener("click", async () => {
+    if (deferredInstall) {
+      deferredInstall.prompt();
+      await deferredInstall.userChoice;
+      deferredInstall = null;
+      btn.hidden = true;
+      return;
+    }
+    document.getElementById("a2hsSteps").innerHTML = isIOS
+      ? `<li>Tap the <b>Share</b> button at the bottom of Safari — the square with an arrow pointing up.</li>
+         <li>Scroll down and choose <b>Add to Home Screen</b>.</li>
+         <li>Tap <b>Add</b>. Look for the gold <b>CA</b> on your home screen.</li>`
+      : `<li>Open your browser's menu — the three dots.</li>
+         <li>Choose <b>Add to Home screen</b>, or <b>Install</b>.</li>
+         <li>Confirm. Look for the gold <b>CA</b> on your home screen.</li>`;
+    scrim.hidden = false;
+  });
+
+  document.getElementById("a2hsClose").addEventListener("click", () => { scrim.hidden = true; });
+  scrim.addEventListener("click", e => { if (e.target === scrim) scrim.hidden = true; });
+
+}
+
+/* ---------- Reminders ----------
+   A quiet switch, not a banner. It appears only when this device can
+   actually deliver one — on iPhone that means the card has been added to
+   the Home Screen first, which Apple requires and which is worth saying
+   rather than leaving her tapping a switch that does nothing. */
+async function setupReminders() {
+  const wrap = document.getElementById("remind");
+  const btn  = document.getElementById("remindBtn");
+  const note = document.getElementById("remindNote");
+  if (!wrap || !btn || PORTAL.unassigned) return;
+
+  const meta = await fetch('/api/push/key').then(r => r.json()).catch(() => null);
+  if (!meta || !meta.available) return;      // not configured on the server yet
+
+  const can = pushCapability();
+  if (!can.ok) {
+    if (can.reason === 'ios_needs_home_screen') {
+      wrap.classList.add('on');
+      btn.hidden = true;
+      note.textContent = 'Add this card to your Home Screen and reminders become available.';
+    }
+    return;
+  }
+
+  wrap.classList.add('on');
+
+  const paint = on => {
+    btn.dataset.state = on ? 'on' : 'off';
+    btn.textContent = on ? 'Reminders On' : 'Remind Me';
+    note.textContent = on
+      ? 'We will nudge you when a dose is due. Nothing about your protocol is in the message.'
+      : 'A quiet nudge when a dose is due.';
+  };
+
+  const existing = await currentPushSub().catch(() => null);
+  paint(!!existing);
+
+  // Already on: send the server a fresh schedule, in case a dose changed.
+  if (existing) refreshReminders();
+
+  btn.addEventListener('click', async () => {
+    const on = btn.dataset.state === 'on';
+    btn.disabled = true;
+    note.textContent = on ? 'Turning off…' : 'Turning on…';
+    try {
+      if (on) { await disableReminders(); paint(false); }
+      else {
+        const out = await enableReminders();
+        if (out.ok) paint(true);
+        else {
+          paint(false);
+          note.textContent =
+            out.reason === 'denied'      ? 'Your phone declined. Turn notifications on for this app in Settings, then try again.' :
+            out.reason === 'no_card'     ? 'This card cannot set reminders.' :
+            out.reason === 'not_configured' ? 'Reminders are not switched on yet at the atelier.' :
+                                           'We could not turn reminders on. Try again in a moment.';
+        }
+      }
+    } finally { btn.disabled = false; }
+  });
+}
+
+/* Two kinds of card reach this page. One carries its patient and protocol
+   in the URL fragment. The other is an address — /phil.h — whose record is
+   fetched and can be re-edited without the tag ever being rewritten.
+   Either way the portal greets whoever the card is for. */
+(async function start() {
+  try {
+    const cfg = await loadProtocol();
+    // A card can resolve and still carry nothing — a blank tag, or a pen code
+    // the portal does not know. That must not look like a working portal with
+    // an empty schedule behind it.
+    if (cfg && (!cfg.protocol || !(cfg.protocol.pens || []).length)) {
+      // Carry the name through. A card that resolved to a real record but
+      // has nothing on it yet is a different situation from an address
+      // that resolved to nobody, and the patient should be able to tell:
+      // seeing her own name is what says "this is your card, it isn't
+      // finished" rather than "this is broken, or somebody else's".
+      throw Object.assign(new Error('no_protocol'), {
+        noProtocol: true,
+        who: (cfg.patient && cfg.patient.named) ? cfg.patient.name : ''
+      });
+    }
+    if (cfg && cfg.patient) {
+      // An unassigned tag has a record but no name yet.
+      PORTAL.patientName = cfg.patient.name || PORTAL.patientName;
+      if (cfg.protocol && cfg.protocol.concierge) {
+        PORTAL.conciergePhone = cfg.protocol.concierge.phone || PORTAL.conciergePhone;
+        PORTAL.messageOpener  = cfg.protocol.concierge.messageOpener || PORTAL.messageOpener;
+      }
+      document.title = PORTAL.patientName + ' — Patient Portal';
+    }
+  } catch (e) {
+    // Either the tag has not been assigned yet, or its address carried
+    // nothing we could resolve. Say so. Never fall through to a name.
+    PORTAL.unassigned = true;
+    if (e && e.noProtocol && e.who) {
+      // Her card, waiting on us.
+      PORTAL.greeting = "Almost there,";
+      PORTAL.patientName = e.who;
+      PORTAL.reason = "Your protocol has not been added to this card yet. " +
+                      "Nothing about your dosing has changed.";
+      document.title = e.who + ' — Patient Portal';
+    } else {
+      PORTAL.greeting = "This card is";
+      PORTAL.patientName = (e && (e.noCard || e.noProtocol)) ? "Not Set Up" : "Not Ready";
+      PORTAL.reason = e && e.noCard
+        ? "This link does not carry a protocol yet."
+        : e && e.noProtocol
+          ? "This card has no protocol on it yet."
+          : "We could not load this protocol.";
+    }
+  }
+
+  renderName();
+  renderButtons();
+  renderNav();
+  // Reopened from the home screen, this page is handed back as it was
+  // left. Ask the server whether the protocol has moved since.
+  watchCard(() => { renderName(); renderButtons(); renderNav(); applyCardLinks(document); });
+  applyCardLinks(document);
+  setupHomeScreen();
+  setupReminders();
+  document.body.classList.add("resolved");
+
+  if (PORTAL.unassigned) {
+    // Nothing behind this card yet — the menu would lead nowhere.
+    const menu = document.getElementById("menu");
+    menu.innerHTML =
+      '<p style="text-align:center;font-size:14px;color:#8A7C6A;line-height:1.6;padding:0 12px">' +
+      (PORTAL.reason || '') +
+      (PORTAL.patientName && PORTAL.greeting === 'Almost there,'
+        ? '<br><br>Message the atelier if you were expecting it today.'
+        : '<br><br>Show this screen to the atelier and we will put it right — ' +
+          'your dosing has not changed.') + '</p>';
+    const btn = document.getElementById("addHome");
+    if (btn) btn.hidden = true;
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2185 @@
+/* ==================================================================
+   THE CHARLESTON ATELIER — shared protocol engine
+   ------------------------------------------------------------------
+   One source of truth for dates, phases, dosing and pen supply, used
+   by Today's Ritual, My Protocol and the Calendar. Everything reads
+   protocol.json; nothing here is patient-specific.
+
+   Pens are FINITE. A pen is dispensed with a fixed volume, each dose
+   draws from it, and when the next dose no longer fits the pen is
+   spent — it is not silently replaced. That is what lets the portal
+   warn before a refill is needed and stand the card down afterwards.
+   ================================================================== */
+
+var CFG = null, PENS = [], START = null;
+
+var DAY_MS = 86400000;
+var ML_PER_UNIT = 0.01;              // one unit on the pen dial = 0.01 mL
+var REFILL_WARNING_DAYS = 7;         // start asking for a refill this far out
+var OPEN_PHASE_HORIZON = 730;        // how far to project an open-ended phase.
+                                     // A course ends when the pen is empty, so this
+                                     // only has to outrun the longest pen — CJC /
+                                     // Ipamorelin at 138 days. It is a projection
+                                     // bound, not a protocol length.
+
+var DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+/* ---------- how a month is drawn, which is not how it is counted ----------
+   isoDow() below numbers Monday 1 to Sunday 7, and the dosing schedule
+   depends on it: a weekly pen carries `schedule.day` in those numbers, so
+   tirzepatide on day 1 is Monday. That numbering must not move.
+
+   Which column a month starts in is a separate question, and the answer
+   here is Sunday — an American calendar. These two are kept apart on
+   purpose: changing the grid must never change anybody's dosing day. */
+var WEEK_DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+/* The Sunday that begins the week containing `d`. */
+function weekStart(d) { return addDays(d, -d.getDay()); }
+var TIME_AT = { Morning:'08:00', Midday:'12:30', Afternoon:'15:00', Evening:'20:00' };
+
+/* ---------- dates (local, no timezone drift) ---------- */
+function iso(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function parse(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()+n); }
+function isoDow(d) { return (d.getDay() + 6) % 7 + 1; }
+function today() { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+/* A pen the patient added part-way through carries its own start day, so its
+   phases count from the day it was added rather than from the protocol's. */
+function penStart(pen) { return pen && pen.startDate ? parse(pen.startDate) : START; }
+function dayIndex(d, pen) { return Math.round((d - penStart(pen)) / DAY_MS); }
+function daysBetween(a, b) { return Math.round((b - a) / DAY_MS); }
+
+function fmtLong(d)  { return d.toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' }); }
+function fmtShort(d) { return d.toLocaleDateString(undefined, { month:'short', day:'numeric' }); }
+function round(n, p = 2) { return Number(n.toFixed(p)); }
+
+/* ---------- phases ---------- */
+function phaseDays(pen) {
+  return (pen.phases || []).reduce((n, ph) => n + (ph.days == null ? OPEN_PHASE_HORIZON : ph.days), 0);
+}
+
+function phaseOn(pen, date) {
+  const i = dayIndex(date, pen);
+  if (i < 0) return null;
+  let acc = 0;
+  for (const ph of pen.phases || []) {
+    const len = ph.days == null ? Infinity : ph.days;
+    if (i < acc + len) return ph;
+    acc += len;
+  }
+  return null;
+}
+
+/* The raw rhythm, before supply is considered. Either a rolling N-on/N-off
+   cycle, or one fixed weekday a week — tirzepatide is dosed weekly on a day
+   the patient chooses. */
+function scheduledOn(pen, date) {
+  const i = dayIndex(date, pen);
+  if (i < 0 || i >= phaseDays(pen)) return false;
+  if (pen.schedule.weekly) return isoDow(date) === (pen.schedule.day || 1);
+  const { on, off } = pen.schedule;
+  return (i % (on + off)) < on;
+}
+
+var WEEKDAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+/* How the rhythm reads on the page — a cycle, or the one day a week. */
+function freqText(pen) {
+  if (pen.schedule.weekly) return `Once a week · ${WEEKDAY_NAMES[(pen.schedule.day || 1) - 1]}`;
+  // A cycle with no days off is every day, and should say so — "7 days on
+  // / 0 off" is arithmetic, not an instruction.
+  if (!pen.schedule.off) return 'Every day';
+  return `${pen.schedule.on} days on / ${pen.schedule.off} off`;
+}
+
+function freqShort(pen) {
+  if (pen.schedule.weekly) return `Weekly · ${DOW[(pen.schedule.day || 1) - 1]}`;
+  if (!pen.schedule.off) return 'Daily';
+  return `${pen.schedule.on} on / ${pen.schedule.off} off`;
+}
+
+/* ---------- patient setup ----------
+   Some items need the patient to answer a question before the schedule can
+   be drawn: which vial she was given, whether she follows the printed guide
+   or carries her own number of units, and which day she injects. Her answers
+   live on the device, next to her start day. */
+function setupKey(pen) { return `tca.setup.${CFG.patient.id}.${pen.id}`; }
+
+function loadSetup(pen) {
+  try { return JSON.parse(localStorage.getItem(setupKey(pen))) || null; } catch { return null; }
+}
+
+function saveSetup(pen, data) {
+  try { localStorage.setItem(setupKey(pen), JSON.stringify(data)); } catch {}
+  applySetup(pen, data);
+  _supplyCache.clear();
+  scheduleChanged();
+}
+
+function needsSetup(pen) { return !!pen.setup && !loadSetup(pen); }
+
+/* She has reached the end of the vial and wants to carry on. Same dose,
+   same day, same climb — one more vial's worth of supply. */
+function addVial(pen) {
+  const data = loadSetup(pen);
+  if (!data) return false;
+  data.vials = Math.max(1, Number(data.vials) || 1) + 1;
+  saveSetup(pen, data);
+  return true;
+}
+
+/* Is today the last dose this supply can give? */
+function onLastDose(pen, date) {
+  const s = supply(pen);
+  return !!(s.lastDose && date && s.lastDose.getTime() === date.getTime());
+}
+
+/* Fold the patient's answers into the pen the rest of the engine sees. */
+function applySetup(pen, data) {
+  if (!data) return;
+
+  // Vials are 1 mL. A patient who has finished one and opened another is
+  // still on the same protocol — only the supply resets, so count the
+  // vials rather than restarting her schedule.
+  const vials = Math.max(1, Number(data.vials) || 1);
+
+  /* The size of ONE vial, captured before anything multiplies it. Reading
+     pen.volumeMl here is reading the running total: apply a two-vial
+     answer and then a one-vial answer, and the second starts from 2 mL
+     and calls it one vial. */
+  if (pen.baseVialMl == null) pen.baseVialMl = pen.vialMl || pen.volumeMl || 1;
+
+  /* A template with a fixed vial size has one, full stop. Tirzepatide is
+     always a 1 mL vial — 100 units — however the patient is dosing out of
+     it, so a stored answer from an older card cannot quietly resize it and
+     make the run-out date wrong. */
+  const oneVial = pen.vialFixed ? pen.baseVialMl : (data.vialMl || pen.baseVialMl);
+  pen.volumeMl = oneVial * vials;
+  pen.vialMl = oneVial;
+  pen.vials = vials;
+  if (pen.concentrationMgPerMl && pen.components.length === 1) {
+    pen.components[0].mg = pen.concentrationMgPerMl * pen.volumeMl;
+  }
+
+  if (data.day) pen.schedule = Object.assign({}, pen.schedule, { weekly: true, day: data.day });
+
+  if (data.mode === 'guide' && pen.guide) {
+    pen.phases = JSON.parse(JSON.stringify(pen.guide));
+  } else if (data.mode === 'own' && data.units) {
+    pen.phases = ownPhases(pen, data.units, Number(data.stepUp) || 0);
+  }
+}
+
+/* A patient carrying her own number of units may also be climbing: she
+   picks a starting dose and how many units to add each week. Build that
+   as one phase per week, and hold at the ceiling rather than climbing
+   past it — the schedule should never walk her above the atelier's limit
+   on its own. */
+function ownPhases(pen, start, stepUp) {
+  const max = pen.maxUnits || 50;
+  if (!stepUp) return [{ name: 'Your dose', units: start, days: 364 }];
+
+  const out = [];
+  let units = start;
+  for (let week = 1; week <= 52; week++) {
+    if (units + stepUp > max) {
+      // The last climb would overshoot: hold here for good.
+      out.push({ name: week === 1 ? 'Your dose' : `Week ${week}+`, units, days: 364 });
+      return out;
+    }
+    out.push({ name: `Week ${week}`, units, days: 7 });
+    units += stepUp;
+  }
+  out.push({ name: 'Hold', units: Math.min(units, max), days: 364 });
+  return out;
+}
+
+function applySetups() {
+  PENS.forEach(pen => { const s = loadSetup(pen); if (s) applySetup(pen, s); });
+}
+
+/* ---------- what a dose delivers ---------- */
+function doseOn(pen, date) {
+  const ph = phaseOn(pen, date);
+  if (!ph) return null;
+  const ml = ph.units * ML_PER_UNIT;
+  return {
+    phase: ph,
+    units: ph.units,
+    ml,
+    components: pen.components.map(c => ({
+      name: c.name,
+      mg: (c.mg / pen.volumeMl) * ml,
+      primary: !!c.dosedTo
+    })),
+    totalMg: pen.components.reduce((s, c) => s + (c.mg / pen.volumeMl) * ml, 0)
+  };
+}
+
+function primaryOf(dose) {
+  const marked = dose.components.find(c => c.primary);
+  if (marked) return marked;
+  // One ingredient is its own headline — "total peptide 60 mg" is an odd
+  // way to say "NAD+ 60 mg" when NAD+ is all that is in it.
+  if (dose.components.length === 1) return dose.components[0];
+  return { name: 'total peptide', mg: dose.components.reduce((s, c) => s + c.mg, 0) };
+}
+
+/* ---------- supply ----------
+   Draw every scheduled dose from one pen until the next won't fit.
+   `lastDose` is the final day this pen can actually be given, which is
+   what the schedule and the card status both key off. */
+const _supplyCache = new Map();
+
+function supply(pen) {
+  if (_supplyCache.has(pen.id)) return _supplyCache.get(pen.id);
+
+  const t = today();
+  let remaining = pen.volumeMl;
+  let drawnSoFar = 0;                  // what today's dose has already used up
+  let lastDose = null, exhaustedOn = null, doses = 0;
+
+  for (let i = 0; i < phaseDays(pen); i++) {
+    const d = addDays(penStart(pen), i);
+    if (!scheduledOn(pen, d)) continue;
+    const dose = doseOn(pen, d);
+    if (!dose) continue;
+    if (dose.ml > remaining + 1e-9) { exhaustedOn = d; break; }
+    remaining -= dose.ml;
+    if (d < t) drawnSoFar += dose.ml;
+    lastDose = d;
+    doses++;
+  }
+
+  // The gauge shows what is in the pen NOW, not what will be left when the
+  // course ends — those are different numbers on a pen that empties exactly.
+  const mlNow = Math.max(0, pen.volumeMl - drawnSoFar);
+
+  const out = {
+    lastDose,
+    exhaustedOn,
+    // 'supply' means the pen emptied; 'protocol' means the course simply ended.
+    endReason: exhaustedOn ? 'supply' : 'protocol',
+    mlLeft: mlNow,
+    pctLeft: Math.max(0, Math.min(100, (mlNow / pen.volumeMl) * 100)),
+    mlAtEnd: remaining,
+    totalDoses: doses
+  };
+  _supplyCache.set(pen.id, out);
+  return out;
+}
+
+/* Doses still available from today onward. */
+function dosesLeft(pen) {
+  const t = today(), s = supply(pen);
+  if (!s.lastDose) return 0;
+  let n = 0;
+  for (let i = 0; i < phaseDays(pen); i++) {
+    const d = addDays(penStart(pen), i);
+    if (d < t || d > s.lastDose) continue;
+    if (scheduledOn(pen, d)) n++;
+  }
+  return n;
+}
+
+/* Every day this pen is actually given: in phase, on the rhythm, and still
+   within what the pen holds. The calendar export and the adherence figure
+   both count from this list. */
+function occurrences(pen) {
+  const out = [], s = supply(pen);
+  if (!s.lastDose) return out;
+  for (let i = 0; i < phaseDays(pen); i++) {
+    const d = addDays(penStart(pen), i);
+    if (d > s.lastDose) break;
+    if (scheduledOn(pen, d) && doseOn(pen, d)) out.push(d);
+  }
+  return out;
+}
+
+/* ---------- active / spent ---------- */
+function isActive(pen, date) {
+  const s = supply(pen);
+  return !!s.lastDose && date <= s.lastDose;
+}
+
+function isSpent(pen) {
+  const s = supply(pen);
+  return !s.lastDose || today() > s.lastDose;
+}
+
+/* A pen only appears on the schedule while it is active. */
+function isDue(pen, date) {
+  return scheduledOn(pen, date) && isActive(pen, date);
+}
+
+function dueOn(date) {
+  return PENS.filter(p => isDue(p, date));
+}
+
+/* Days until the final dose this pen can give. Negative once spent. */
+function daysUntilOut(pen) {
+  const s = supply(pen);
+  return s.lastDose ? daysBetween(today(), s.lastDose) : null;
+}
+
+function needsRefill(pen) {
+  const s = supply(pen);
+  if (s.endReason !== 'supply') return false;      // the course ended, not the pen
+  const left = daysUntilOut(pen);
+  return left !== null && left <= REFILL_WARNING_DAYS;
+}
+
+/* ---------- delivery ----------
+   A pen is dialled to a number; a vial is drawn up with a syringe. The verb
+   and the steps both change, and the dose number means the same thing. */
+function isSyringe(pen) { return pen.delivery === 'syringe'; }
+
+/* ---------- site rotation diagram ----------
+   Four spots around the navel, worked through in turn; the dashed ring is
+   the navel to stay clear of. Both What to Expect and Storage & Use show
+   it, so it lives here rather than in either page — two copies of a
+   clinical diagram is two things to keep in step.
+
+   It carries its own styles so a page only has to place it. The custom
+   properties it reads are ones every portal page already defines.
+
+   `star` marks spots as preferred — tesamorelin's page stars the two the
+   site table calls best tolerated. Pass nothing and no spot is starred. */
+var BELLY_SPOTS = [
+  { n: 1, x: 52,  y: 42  }, { n: 2, x: 148, y: 42  },
+  { n: 3, x: 52,  y: 108 }, { n: 4, x: 148, y: 108 }
+];
+var STAR_PATH = 'M0,-6 1.41,-1.94 5.71,-1.85 2.28,0.74 3.53,4.85 ' +
+                '0,2.4 -3.53,4.85 -2.28,0.74 -5.71,-1.85 -1.41,-1.94Z';
+
+function bellyFigure(opts) {
+  const star = (opts && opts.star) || [];
+  const label = 'Four injection spots around the navel, used in turn, keeping ' +
+    'two inches clear of the navel itself' +
+    (star.length ? `. Spots ${star.join(' and ')} are the preferred sites` : '');
+
+  return `<svg class="fig" viewBox="0 0 200 150" role="img" aria-label="${label}">
+    <style>
+      .fig .f-skin  { fill:none; stroke:var(--hairline); stroke-width:1.5; }
+      .fig .f-clear { fill:none; stroke:var(--alert); stroke-width:1.5;
+                      stroke-dasharray:4 4; opacity:.65; }
+      .fig .f-navel { fill:var(--muted); }
+      .fig .f-spot circle { fill:var(--brass); opacity:.9; }
+      .fig .f-num text { fill:#F8F2EA; font-family:'Jost',sans-serif;
+                         font-size:13px; font-weight:600; text-anchor:middle; }
+      .fig .f-star { fill:var(--espresso); }
+    </style>
+    <rect x="14" y="10" width="172" height="130" rx="18" class="f-skin"/>
+    <circle cx="100" cy="75" r="30" class="f-clear"/>
+    <circle cx="100" cy="75" r="4"  class="f-navel"/>
+    <g class="f-spot">${
+      BELLY_SPOTS.map(s => `<circle cx="${s.x}" cy="${s.y}" r="13"/>`).join('')
+    }</g>
+    <g class="f-num">${
+      BELLY_SPOTS.map(s => `<text x="${s.x}" y="${s.y + 5}">${s.n}</text>`).join('')
+    }</g>
+    <g class="f-star">${
+      BELLY_SPOTS.filter(s => star.indexOf(s.n) !== -1)
+        .map(s => `<path transform="translate(${s.x + 11},${s.y - 11})" d="${STAR_PATH}"/>`)
+        .join('')
+    }</g>
+  </svg>`;
+}
+
+function dialLead(pen) {
+  return isSyringe(pen) ? 'Draw up to' : 'Turn your pen to';
+}
+
+/* ---------- syringe draw-up figure ----------
+   A pen has a dial that stops on the number. A vial does not: she is
+   holding a barrel with sixty little lines on it and a number to find
+   among them, in the dark, at eight at night. So draw the syringe.
+
+   The scale is UNITS, which is what is printed on an insulin syringe.
+   A 50-unit syringe holds half a millilitre, so the unit number and the
+   millilitre number differ by a hundredfold and only one of them is on
+   the barrel in her hand. The figure shows that one and nothing else —
+   a millilitre or a milligram printed next to a draw-up mark is an
+   invitation to draw up to the wrong line. */
+var SYRINGE_UNITS = 50;
+
+function syringeFigure(units, cap) {
+  const max = cap || SYRINGE_UNITS;
+  const u = Math.max(0, Math.min(max, Number(units) || 0));
+  const X0 = 60, X1 = 280, PX = (X1 - X0) / max;
+  const at = n => X0 + n * PX;
+  const mark = at(u);
+
+  let ticks = '', nums = '';
+  for (let i = 0; i <= max; i++) {
+    const big = i % 5 === 0;
+    ticks += `<line x1="${at(i).toFixed(1)}" y1="32" x2="${at(i).toFixed(1)}" y2="${big ? 43 : 38}"/>`;
+  }
+  for (let i = 0; i <= max; i += 10)
+    nums += `<text x="${at(i).toFixed(1)}" y="23">${i}</text>`;
+
+  return `<svg class="syr" viewBox="0 0 320 98" role="img"
+    aria-label="A ${max} unit insulin syringe drawn up to the ${u} unit mark">
+    <style>
+      .syr .s-barrel { fill:#FFFCF6; stroke:var(--hairline); stroke-width:1.5; }
+      .syr .s-fill   { fill:var(--brass); opacity:.32; }
+      .syr .s-metal  { fill:none; stroke:var(--muted); stroke-width:1.5;
+                       stroke-linecap:round; }
+      .syr .s-rod    { fill:#EFE7DB; stroke:var(--hairline); stroke-width:1.2; }
+      .syr .s-stop   { fill:var(--espresso); }
+      .syr .s-tick   { stroke:var(--muted); stroke-width:1; opacity:.75; }
+      .syr .s-tick line:nth-child(5n+1) { opacity:1; }
+      .syr .s-num    { fill:var(--muted); font-family:'Jost',sans-serif;
+                       font-size:10px; letter-spacing:.04em; text-anchor:middle; }
+      .syr .s-lead   { stroke:var(--brass); stroke-width:1.6; stroke-dasharray:3 3; }
+      .syr .s-point  { fill:var(--brass); }
+      .syr .s-mark   { fill:var(--brass); font-family:'Jost',sans-serif;
+                       font-size:21px; font-weight:600; text-anchor:middle; }
+    </style>
+
+    <!-- needle and hub -->
+    <line x1="8" y1="46" x2="34" y2="46" class="s-metal"/>
+    <path d="M34 40 L46 42 L46 50 L34 52 Z" class="s-barrel"/>
+
+    <!-- barrel, then what is drawn into it -->
+    <rect x="46" y="31" width="242" height="30" rx="4" class="s-barrel"/>
+    <rect x="52" y="34" width="${Math.max(0, mark - 52).toFixed(1)}" height="24"
+          rx="2" class="s-fill"/>
+
+    <g class="s-tick">${ticks}</g>
+    <g class="s-num">${nums}</g>
+
+    <!-- the plunger sits where the liquid stops -->
+    <rect x="${(mark - 3).toFixed(1)}" y="32" width="7" height="28" rx="1.5" class="s-stop"/>
+    <rect x="${(mark + 4).toFixed(1)}" y="43"
+          width="${Math.max(6, 296 - mark).toFixed(1)}" height="6" rx="3" class="s-rod"/>
+    <rect x="296" y="28" width="7" height="36" rx="3" class="s-rod"/>
+
+    <!-- and the mark she is looking for -->
+    <path d="M${mark.toFixed(1)} 64 l-5 7 l10 0 Z" class="s-point"/>
+    <line x1="${mark.toFixed(1)}" y1="71" x2="${mark.toFixed(1)}" y2="77" class="s-lead"/>
+    <text x="${Math.min(X1, Math.max(X0, mark)).toFixed(1)}" y="95" class="s-mark">${u}</text>
+  </svg>`;
+}
+
+/* What the medication actually comes in — a pen she dials, or a vial she draws
+   from. The copy follows the thing in her hand. */
+function vessel(pen) { return isSyringe(pen) ? 'vial' : 'pen'; }
+
+function stepsFor(pen) {
+  const p = CFG.protocol;
+  // A template may name its own step list — a fridge item must not tell the
+  // patient to thaw it, which the freezer wording of the default would.
+  if (pen.stepsKey && p[pen.stepsKey]) return p[pen.stepsKey];
+  return isSyringe(pen)
+    ? (p.injectionStepsSyringe || p.injectionSteps || [])
+    : (p.injectionSteps || []);
+}
+
+/* ---------- messaging ---------- */
+function smsHref(body) {
+  const c = (CFG && CFG.protocol && CFG.protocol.concierge) || {};
+  if (!c.phone) return '#';
+  const digits = String(c.phone).replace(/\D/g, '');
+  const number = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+  // iOS wants &body= after the number; Android wants ?body=
+  const sep = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) ? '&' : '?';
+  return `sms:${number}${sep}body=${encodeURIComponent(body || c.messageOpener || '')}`;
+}
+
+function refillHref(pen) {
+  const c = (CFG && CFG.protocol && CFG.protocol.concierge) || {};
+  const template = c.refillOpener || 'Hi Dr. Phelps-Polirer — I need a refill of my {pen}.';
+  return smsHref(template.replace('{pen}', pen.name));
+}
+
+/* ---------- start day (device-only) ---------- */
+/* ---------- the hour she takes it ----------
+   The template says Morning or Evening; only the patient knows what that
+   means for her. Her answer lives beside her start day and is what the
+   calendar reminders are set to. */
+function timesKey() { return `tca.times.${CFG.patient.id}`; }
+
+function loadTimes() {
+  try { return JSON.parse(localStorage.getItem(timesKey())) || {}; } catch { return {}; }
+}
+
+function saveTimes(map) {
+  try { localStorage.setItem(timesKey(), JSON.stringify(map || {})); } catch {}
+  scheduleChanged();
+}
+
+/* The clock time for a pen: hers if she set one, otherwise the band default. */
+function timeFor(pen) {
+  const mine = loadTimes();
+  return mine[pen.time] || TIME_AT[pen.time] || '09:00';
+}
+
+/* Which bands this protocol actually uses — a morning pair and an evening
+   pair means two questions, not four. */
+function timeBands() {
+  const seen = [];
+  PENS.forEach(p => { if (p.time && !seen.includes(p.time)) seen.push(p.time); });
+  return seen;
+}
+
+/* "07:30" -> "7:30 am", for reading back on the page. */
+function prettyTime(hhmm) {
+  const [h, m] = String(hhmm || '').split(':').map(Number);
+  if (isNaN(h)) return '';
+  const ampm = h < 12 ? 'am' : 'pm';
+  const hr = h % 12 === 0 ? 12 : h % 12;
+  return `${hr}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function startKey() { return `tca.start.${CFG.patient.id}`; }
+function loadStart() { try { return localStorage.getItem(startKey()); } catch { return null; } }
+function saveStart(s) { try { localStorage.setItem(startKey(), s); } catch {} }
+
+function setStart(isoDate) {
+  START = parse(isoDate);
+  saveStart(isoDate);
+  _supplyCache.clear();          // every projection depends on the start day
+  scheduleChanged();
+}
+
+/* ---------- when each pen started ----------
+   One start day for the whole protocol was wrong the moment a second pen
+   existed. A patient three months into a GHK pen who begins tirzepatide
+   today has two start days, and answering "which day did you start?" with
+   today used to drag the GHK back to today with it — new phase, wrong
+   dial number, wrong supply, wrong calendar.
+
+   So each pen carries its own. penStart() already reads pen.startDate and
+   every projection goes through it; what was missing was anywhere for the
+   patient to put one, and anything that kept them apart.
+
+   Her answer lives on her phone, like the protocol start day always has,
+   and is reported to the atelier with the rest of her state. A pen with
+   no answer of its own falls back to the record's date for that pen, and
+   then to the protocol's — which is what every existing card does, so
+   nothing moves for anyone until they say otherwise. */
+function penStartsKey() { return `tca.penstart.${CFG.patient.id}`; }
+
+function loadPenStarts() {
+  try { return JSON.parse(localStorage.getItem(penStartsKey())) || {}; } catch { return {}; }
+}
+
+function savePenStarts(map) {
+  try { localStorage.setItem(penStartsKey(), JSON.stringify(map)); } catch {}
+}
+
+/* The day a pen was first actually injected, as recorded.
+
+   This is the only start day anybody observes rather than predicts. The
+   atelier types a date when it hands the pen over, and the patient gets
+   home, puts the box in the fridge and starts on Thursday — from then on
+   every phase boundary, every refill date and every reminder is two days
+   out, and nothing in the system would ever notice.
+
+   A back-filled dose counts, because a dose carries the day it was given
+   rather than the day it was entered. Only the earliest matters, so a
+   second vial of the same pen never moves it. */
+function firstDoseDay(pen) {
+  const key = penKeyOf(pen);
+  let first = null;
+  for (const day of Object.keys(LOGGED || {})) {
+    if (!(LOGGED[day] || []).includes(key)) continue;
+    if (!first || day < first) first = day;
+  }
+  return first;
+}
+
+/* Applied after the pen list is settled, so it can key off pen ids that
+   only exist once added pens are in and dropped pens are out.
+
+   Precedence, most trustworthy first:
+
+     1. a date somebody typed, which pins it — if she says she started on
+        the 12th but only began logging on the 14th, she is telling us
+        about two doses she did not record, and she is right;
+     2. the first dose on record, which is an observation;
+     3. what the atelier put on the card, which is a plan;
+     4. the protocol's own start day.
+
+   Nothing here is typed by the patient unless she opens the sheet, so in
+   the ordinary case — pen handed over Monday, first injection Thursday —
+   the card corrects itself the moment she logs that first dose. */
+function applyPenStarts() {
+  const mine = loadPenStarts();
+  PENS.forEach(p => {
+    /* A date the atelier put on the record wins over everything. It is
+       the one place with the whole picture — what was dispensed, when,
+       and what the patient said on the phone afterwards — so when it
+       disagrees with a phone it is the phone that is wrong. Blank means
+       "follow her", which is the usual case and the default. */
+    if (p.atelierStart) { p.startDate = p.atelierStart; return; }
+    if (mine[p.id]) { p.startDate = mine[p.id]; return; }
+    const first = firstDoseDay(p);
+    if (first) p.startDate = first;
+  });
+  _supplyCache.clear();
+}
+
+function setPenStart(pen, isoDate) {
+  if (!pen || !isoDate) return;
+  const mine = loadPenStarts();
+  mine[pen.id] = isoDate;
+  savePenStarts(mine);
+  pen.startDate = isoDate;
+  _supplyCache.clear();
+}
+
+/* The day a pen began, as a date string, for anything that has to show it. */
+function penStartIso(pen) { return iso(penStart(pen)); }
+
+/* ---------- card payloads ----------
+   A tap card carries its own protocol in the URL fragment, so a card can
+   be written at the end of a visit with no server and no record to keep.
+   The fragment never reaches the web server — it stays on the device.
+
+   Compact on purpose: an NTAG213 sticker holds ~130 characters of URL. */
+/* Format:  Name~pen~pen        e.g.  Dustin~wol
+            pen = short  |  short:units-days.units-days
+   Phase names and any titration matching the template are left out — they
+   are already on the site. An NTAG213 holds roughly 130 characters of URL,
+   and this keeps a typical card well inside that. */
+function encodeCard(cfg, templates) {
+  const byId = Object.fromEntries((templates.templates || []).map(t => [t.id, t]));
+
+  const pens = (cfg.protocol.pens || []).map(pen => {
+    const base = byId[pen.templateId || pen.id];
+    const key = (base && base.short) || pen.short || pen.id;
+    const phases = pen.phases.map(ph => `${ph.units}-${ph.days == null ? 0 : ph.days}`).join('.');
+    const stock = base
+      ? base.phases.map(ph => `${ph.units}-${ph.days == null ? 0 : ph.days}`).join('.')
+      : null;
+    return phases === stock ? key : `${key}:${phases}`;   // default titration needs no numbers
+  });
+
+  const parts = [cfg.patient.name, ...pens].join('~');
+  return encodeURIComponent(parts).replace(/%20/g, '+');
+}
+
+function decodeCard(payload, templates, startOverride) {
+  // Cards written before the compact format used base64 JSON — still honoured.
+  if (/^eyJ/.test(payload)) return decodeLegacyCard(payload, templates);
+
+  const parts = decodeURIComponent(payload.replace(/\+/g, ' ')).split('~');
+  const name = parts.shift() || 'Patient';
+  const wasNamed = !!name && name !== 'Patient';
+  const byKey = {};
+  (templates.templates || []).forEach(t => { byKey[t.short] = t; byKey[t.id] = t; });
+
+  const pens = parts.map(chunk => {
+    const [key, spec] = chunk.split(':');
+    const base = byKey[key];
+    if (!base) return null;
+    if (!spec) return JSON.parse(JSON.stringify(base));
+
+    const phases = spec.split('.').map((s, i) => {
+      const [units, days] = s.split('-').map(Number);
+      const named = base.phases[i];
+      return { name: named ? named.name : `Phase ${i + 1}`, units, days: days || null };
+    });
+    return Object.assign(JSON.parse(JSON.stringify(base)), { phases });
+  }).filter(Boolean);
+
+  const built = buildConfig(name, pens, templates, startOverride);
+  built.patient.named = wasNamed;
+  return built;
+}
+
+function decodeLegacyCard(payload, templates) {
+  const b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+  const small = JSON.parse(decodeURIComponent(escape(atob(b64))));
+  const byId = Object.fromEntries((templates.templates || []).map(t => [t.id, t]));
+  const pens = (small.p || []).map(p => {
+    const base = byId[p.t];
+    if (!base) return null;
+    return Object.assign(JSON.parse(JSON.stringify(base)), {
+      phases: p.f.map(([name, units, days]) => ({ name, units, days: days || null }))
+    });
+  }).filter(Boolean);
+  return buildConfig(small.n, pens, templates, small.s);
+}
+
+function buildConfig(name, pens, templates, startDate) {
+  const t = new Date();
+  const fallback = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  return {
+    patient: { name, id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+    protocol: {
+      name: `${name}'s Protocol`,
+      // With no date on the card the patient sets her own on first open.
+      startDate: startDate || fallback,
+      // Whether that date was actually given to us or quietly defaulted.
+      // "We do not know when she started" and "she started today" are
+      // different facts, and only one of them is worth asking about.
+      startGiven: !!startDate,
+      delivery: 'pen',
+      /* Logging a dose by hand, from the card itself.
+
+         This was off because the only thing it did was write to the
+         phone: no green circle, nothing on the atelier's dashboard, and
+         a second list that disagreed with the one the vial tags were
+         filling. It writes the same record a tapped vial writes now, so
+         the reason for switching it off has gone. */
+      tracking: true,
+      injectionSteps: templates.injectionSteps,
+      injectionStepsSyringe: templates.injectionStepsSyringe,
+      injectionStepsVial: templates.injectionStepsVial,
+      sites: templates.sites,
+      concierge: templates.concierge,
+      handling: templates.handling,
+      pens
+    }
+  };
+}
+
+/* The fragment is the payload itself — "#Dustin~wol" — unless a start date
+   had to be pinned, in which case it falls back to "#c=…&s=…". Every byte
+   counts: a 64-byte MIFARE Ultralight leaves ~40 characters after the
+   https:// prefix, and the domain eats most of that. */
+function readCard() {
+  const raw = location.hash.replace(/^#/, '');
+  if (!raw) return { card: null, start: null };
+  if (raw.includes('=')) {
+    const q = new URLSearchParams(raw);
+    return { card: q.get('c'), start: q.get('s') };
+  }
+  return { card: raw, start: null };
+}
+
+/* Tell the atelier the card was opened — the slug and nothing else. The
+   protocol lives in the fragment, which browsers never send, so none of it
+   travels with this. Once per browsing session, so reading the page twice
+   is one open rather than two, and a failure is silent: a card that cannot
+   reach the service must still show her dose. */
+function noteTap(slug) {
+  const key = `tca.tapped.${slug}`;
+  try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch {}
+  try {
+    fetch(`/api/tap/${encodeURIComponent(slug)}`, { method: 'POST', keepalive: true })
+      .catch(() => {});
+  } catch {}
+}
+
+/* ==================================================================
+   THE ATELIER'S SIDE OF THE DEVICE SETTINGS
+   ------------------------------------------------------------------
+   Her start day and the hour she takes each pen live on this phone,
+   which is right: she is the one who knows when she started and when
+   she actually injects. But it left the atelier unable to help — a
+   patient who rings to say the reminder comes at the wrong time could
+   only be talked through fixing it herself.
+
+   So the card now does two things.
+
+   APPLIES what the atelier has set for her. `rev` is what keeps this
+   honest: the phone remembers the last rev it took, so a change made in
+   Card Studio lands exactly once. Anything she changes herself
+   afterwards stands, and is not stamped over at the next open.
+
+   REPORTS what it is showing. The dosing arithmetic lives here, so the
+   dashboard asks rather than recomputing — one copy of the maths, and
+   what the atelier reads is what is on her screen.
+   ================================================================== */
+var _tookSettings = false;      // did this load adopt a change from the atelier?
+
+function revKey() { return `tca.rev.${CFG.patient.id}`; }
+
+function appliedRev() {
+  try { return Number(localStorage.getItem(revKey())) || 0; } catch { return 0; }
+}
+
+function applySettings(settings) {
+  if (!settings || !Number(settings.rev)) return false;
+  if (Number(settings.rev) <= appliedRev()) return false;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(settings.startDate || '')) saveStart(settings.startDate);
+  if (settings.times && typeof settings.times === 'object') {
+    const mine = loadTimes();
+    Object.keys(settings.times).forEach(band => {
+      if (/^\d{2}:\d{2}$/.test(settings.times[band])) mine[band] = settings.times[band];
+    });
+    saveTimes(mine);
+  }
+  try { localStorage.setItem(revKey(), String(Number(settings.rev))); } catch {}
+  return true;
+}
+
+/* The clock time in force for each band this protocol uses. */
+function effectiveTimes() {
+  const mine = loadTimes(), out = {};
+  timeBands().forEach(b => { out[b] = mine[b] || TIME_AT[b] || '09:00'; });
+  return out;
+}
+
+/* What is on her screen today, in the shape the dashboard renders. */
+function stateReport() {
+  const t = today();
+  return {
+    startDate: iso(START),
+    times: effectiveTimes(),
+    tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || ''),
+    rev: appliedRev(),
+    homeScreen: isHomeScreenApp(),
+    today: PENS.filter(p => isActive(p, t)).map(pen => {
+      const dose = isDue(pen, t) ? doseOn(pen, t) : null;
+      return {
+        pen: pen.name,
+        template: pen.template || pen.id,
+        phase: dose ? dose.phase.name : '',
+        units: dose ? dose.units : 0,
+        mg: dose ? round(dose.totalMg, 3) : 0,
+        at: effectiveTimes()[pen.time] || '',
+        rest: !dose
+      };
+    }),
+    supply: PENS.map(pen => {
+      const s = supply(pen);
+      return {
+        template: pen.template || pen.id,
+        dosesLeft: dosesLeft(pen),
+        lastDose: s.lastDose ? iso(s.lastDose) : '',
+        // The day this pen began, which is now its own and not the
+        // protocol's, so the atelier reads what she is actually on.
+        startDate: penStartIso(pen)
+      };
+    })
+  };
+}
+
+/* Reported at most every ten minutes as she reads, and immediately when
+   something changes. The interval rather than once-a-session is
+   deliberate: a patient on the phone to the atelier will tap her card
+   again while they talk, and "last reported just now" is what tells the
+   atelier she is actually looking at it. Silent on failure — a card that
+   cannot reach the service must still show her dose. */
+const STATE_EVERY_MS = 10 * 60 * 1000;
+let _stateTimer = null;
+function reportState(force) {
+  const slug = CARD_SLUG || readSlug();
+  if (!slug || !PENS.length) return;
+  const key = `tca.state.${slug}`;
+  if (!force) {
+    try {
+      const last = Number(sessionStorage.getItem(key)) || 0;
+      if (Date.now() - last < STATE_EVERY_MS) return;
+      sessionStorage.setItem(key, String(Date.now()));
+    } catch {}
+  }
+  clearTimeout(_stateTimer);
+  _stateTimer = setTimeout(async () => {
+    let reminders = false;
+    try { reminders = !!(await currentPushSub()); } catch {}
+    const body = Object.assign(stateReport(), { reminders });
+    try {
+      fetch(`/api/state/${encodeURIComponent(slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        keepalive: true
+      }).catch(() => {});
+    } catch {}
+  }, force ? 400 : 0);
+}
+
+/* Her schedule just moved. Two things have to follow it, and neither
+   used to: the instants the reminder service holds — refreshed only on
+   the card's home page, so changing a time on Today's Ritual left the
+   old reminder standing — and the atelier's copy of what she is seeing.
+   Both are safe to call when there is nothing to do. */
+function scheduleChanged() {
+  try { reportState(true); } catch {}
+  try { refreshReminders(); } catch {}
+  try { publishFeed(); } catch {}
+}
+
+/* ---------- pens the patient adds herself ----------
+   The card carries what was dispensed. If she is later given something else
+   and the card hasn't been rewritten, the plus sign lets her add it from the
+   same template list the atelier writes cards from. It counts from the day
+   she adds it, and it lives on her device only. */
+function addedKey() { return `tca.added.${CFG.patient.id}`; }
+
+function loadAdded() {
+  try { return JSON.parse(localStorage.getItem(addedKey())) || []; } catch { return []; }
+}
+
+/* Written to the phone first, so the card redraws immediately and keeps
+   working with no signal, then to the record, so the atelier sees it and
+   a phone that has been wiped gets it back.
+
+   Only `added` travels. The prescribed pens are not the card's to touch. */
+function saveAdded(list) {
+  try { localStorage.setItem(addedKey(), JSON.stringify(list)); } catch {}
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return;                        // a fragment card has no record
+  try {
+    fetch(`/api/added/${encodeURIComponent(slug)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ added: list }),
+      keepalive: true
+    }).catch(() => {});
+  } catch {}
+}
+
+/* ---------- pens she has taken off ----------
+   A prescribed pen she stops is recorded by id, not deleted: `pens` goes
+   on saying what was prescribed, the atelier can see what she stopped,
+   and putting it back is one click rather than a re-prescription. */
+function droppedKey() { return `tca.dropped.${CFG.patient.id}`; }
+
+function loadDropped() {
+  try { return JSON.parse(localStorage.getItem(droppedKey())) || []; } catch { return []; }
+}
+
+/* Returns the write, so a caller that is about to re-read the record can
+   wait for it. adoptDropped() takes the record as the truth, so re-reading
+   before this lands would quietly undo what she just did. */
+function saveDropped(list) {
+  try { localStorage.setItem(droppedKey(), JSON.stringify(list)); } catch {}
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return Promise.resolve();
+  try {
+    return fetch(`/api/added/${encodeURIComponent(slug)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dropped: list }),
+      keepalive: true
+    }).catch(() => {});
+  } catch { return Promise.resolve(); }
+}
+
+/* The record is the one that survives a cleared phone, and it is also the
+   one the atelier edits: a pen put back in Card Studio must come back
+   here, so this follows the record exactly rather than merging. */
+function adoptDropped(rec) {
+  if (!rec || !Array.isArray(rec.dropped)) return;
+  try { localStorage.setItem(droppedKey(), JSON.stringify(rec.dropped)); } catch {}
+}
+
+/* Applied after the added pens, so one list of ids covers both. What it
+   takes out is kept, so the card can name what she stopped and offer it
+   back — a list of ids she cannot read is not an offer. */
+var DROPPED_PENS = [];
+
+function applyDropped() {
+  const off = loadDropped();
+  DROPPED_PENS = off.length ? PENS.filter(p => off.indexOf(p.id) !== -1) : [];
+  // In place, not a new array. PENS is the same array as CFG.protocol.pens
+  // and pages re-read that after loading, so a replacement here is quietly
+  // thrown away — which is exactly what happened: the pen went, the page
+  // redrew, and the next load brought it back.
+  for (let i = PENS.length - 1; i >= 0; i--) {
+    if (off.indexOf(PENS[i].id) !== -1) PENS.splice(i, 1);
+  }
+}
+
+function penFromTemplate(tpl, id, startDate) {
+  const pen = JSON.parse(JSON.stringify(tpl));
+  pen.id = id;
+  pen.template = tpl.id;
+  pen.startDate = startDate;
+  pen.addedByPatient = true;
+  return pen;
+}
+
+/* The record's copy of what she added is the one that survives a cleared
+   phone or a second device, so it is folded into this phone's list rather
+   than the other way round. Nothing is removed here — a pen taken off on
+   this phone is removed through removePen(), which tells the record. */
+function adoptAdded(rec) {
+  const theirs = (rec && rec.added) || [];
+  if (!theirs.length) return;
+  const mine = loadAdded();
+  const have = new Set(mine.map(r => r.id));
+  let grew = false;
+  theirs.forEach(r => { if (!have.has(r.id)) { mine.push(r); grew = true; } });
+  if (grew) { try { localStorage.setItem(addedKey(), JSON.stringify(mine)); } catch {} }
+}
+
+function applyAdded(templates) {
+  const list = (templates.templates || []);
+  loadAdded().forEach(rec => {
+    if (PENS.some(p => p.id === rec.id)) return;
+    const tpl = list.find(t => t.id === rec.template);
+    if (tpl) PENS.push(penFromTemplate(tpl, rec.id, rec.startDate));
+  });
+}
+
+function addPen(tpl) {
+  const start = iso(today());
+  const rec = { id: `${tpl.id}+${Date.now().toString(36)}`, template: tpl.id, startDate: start };
+  saveAdded(loadAdded().concat([rec]));
+  const pen = penFromTemplate(tpl, rec.id, start);
+  PENS.push(pen);
+  _supplyCache.clear();
+  return pen;
+}
+
+/* A patient can take any pen off her own schedule — one she added and one
+   that was prescribed alike. The two are recorded differently: hers comes
+   out of `added` because it was never prescribed, and a prescribed one
+   goes into `dropped` because `pens` has to go on saying what was
+   prescribed. Either way the record follows the phone, so the atelier
+   sees it and can put a prescribed pen back.
+
+   This used to refuse, and before that it used to appear to work and then
+   put the pen back on the next load — she believed it was gone, the
+   record said otherwise, and nothing told either of them. */
+function removePen(pen) {
+  if (!pen) return false;
+  if (pen.addedByPatient) {
+    saveAdded(loadAdded().filter(r => r.id !== pen.id));
+  } else {
+    const off = loadDropped();
+    if (off.indexOf(pen.id) === -1) saveDropped(off.concat([pen.id]));
+    // Kept here as well as on the record, so the way back appears on the
+    // same redraw that takes the pen away. DROPPED_PENS is otherwise only
+    // filled when the card loads, which would have left her with a pen
+    // gone and nothing offering it back until she next opened the app.
+    if (!DROPPED_PENS.some(p => p.id === pen.id)) DROPPED_PENS.push(pen);
+  }
+  try { localStorage.removeItem(setupKey(pen)); } catch {}
+  const i = PENS.indexOf(pen);
+  if (i >= 0) PENS.splice(i, 1);
+  _supplyCache.clear();
+  return true;
+}
+
+/* Putting a prescribed pen back, from her own card. The pen itself was
+   never deleted, so this only forgets that she stopped it. Awaited,
+   because the caller re-reads the record straight afterwards. */
+async function restorePen(id) {
+  const off = loadDropped();
+  if (off.indexOf(id) === -1) return false;
+  await saveDropped(off.filter(x => x !== id));
+  DROPPED_PENS = DROPPED_PENS.filter(p => p.id !== id);
+  _supplyCache.clear();
+  return true;
+}
+
+/* ---------- stored cards ----------
+   A card written as an address rather than a payload — /phil.h — carries
+   no protocol of its own. The tag is written once and the record behind it
+   is edited from the dashboard, so what the patient sees on the next tap
+   is whatever the atelier last saved. The slug arrives either from the
+   server, which stamps it into the page it serves, or on the query string
+   as the patient moves between pages. */
+/* Jessica's tag was written before cards had addresses, and it cannot be
+   rewritten. Her forwarding site marks the hop so her protocol still loads —
+   and so that nobody else's card can land on it by accident. */
+function isLegacyCard() {
+  return new URLSearchParams(location.search).get('card') === 'legacy';
+}
+
+function readSlug() {
+  const q = new URLSearchParams(location.search).get('c');
+  if (q && /^[a-z0-9][a-z0-9.\-]{0,38}[a-z0-9]$/i.test(q)) return q.toLowerCase();
+  if (typeof window !== 'undefined' && window.__CARD_SLUG__) return window.__CARD_SLUG__;
+  return null;
+}
+
+/* Expand a stored record's template ids into the pens the engine runs on.
+   Dosing maths stays in templates.json, so a corrected concentration fixes
+   every patient at once instead of every record needing an edit. */
+function hydrateRecord(rec, templates) {
+  const byKey = {};
+  (templates.templates || []).forEach(t => { byKey[t.id] = t; byKey[t.short] = t; });
+
+  const pens = (rec.pens || []).map((entry, i) => {
+    const base = byKey[entry.template];
+    if (!base) return null;
+    const pen = JSON.parse(JSON.stringify(base));
+    pen.template = base.id;
+    // Two pens of the same template need distinct ids for supply and setup.
+    pen.id = (rec.pens || []).filter(p => p.template === entry.template).length > 1
+      ? `${base.id}#${i}` : base.id;
+    if (entry.phases && entry.phases.length) pen.phases = entry.phases;
+    if (entry.schedule) pen.schedule = entry.schedule;
+    // Kept under its own name as well, because applyPenStarts() may put a
+    // patient's answer over the top and still has to know this existed.
+    if (entry.startDate) { pen.startDate = entry.startDate; pen.atelierStart = entry.startDate; }
+    return pen;
+  }).filter(Boolean);
+
+  const cfg = buildConfig(rec.name || 'Patient', pens, templates, rec.startDate);
+  // A record with no name is an unassigned tag, whatever we choose to draw.
+  cfg.patient.named = !!(rec.name && rec.name.trim());
+  cfg.patient.id = rec.slug || cfg.patient.id;
+  cfg.slug = rec.slug || null;
+  cfg.status = rec.status || 'active';
+  return cfg;
+}
+
+/* ---------- remembering the card ----------
+   A tapped card carries its identity in the address. Added to the home
+   screen, that address is not always what comes back — iOS has been seen
+   saving the page without its fragment, and the portal then has no idea
+   whose card it is.
+
+   So the device remembers. Once a card resolves, what identified it is
+   written here; if the portal is ever opened with nothing in the address,
+   it is read back and the address restored. A phone holds one patient's
+   card, so this cannot cross patients — and if nothing was ever
+   remembered, the portal still refuses rather than guessing. */
+var REMEMBER_KEY = 'tca.card.v2';
+
+function rememberCard(state) {
+  try { localStorage.setItem(REMEMBER_KEY, JSON.stringify(state)); } catch {}
+}
+
+function recallCard() {
+  try {
+    const m = JSON.parse(localStorage.getItem(REMEMBER_KEY));
+    return (m && (m.card || m.slug || m.legacy)) ? m : null;
+  } catch { return null; }
+}
+
+function forgetCard() {
+  try { localStorage.removeItem(REMEMBER_KEY); } catch {}
+}
+
+/* Only a portal launched from the home screen may fall back to memory.
+   That is the one place the address is lost through no fault of the
+   patient. In an ordinary browser tab a bare address still refuses —
+   otherwise a phone that had opened two cards would show the wrong one. */
+function isHomeScreenApp() {
+  try {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
+  } catch { return false; }
+}
+
+/* Put the identity back in the address bar, so links between pages carry
+   it and a reload behaves like a fresh tap. */
+function restoreAddress(state) {
+  try {
+    let url = location.pathname;
+    if (state.legacy) url += '?card=legacy';
+    else if (state.slug) url += `?c=${encodeURIComponent(state.slug)}`;
+    else if (state.card) url += (state.start ? `#c=${state.card}&s=${state.start}` : `#${state.card}`);
+    history.replaceState(null, '', url);
+  } catch {}
+}
+
+/* ---------- boot ---------- */
+var TEMPLATES = null;
+var CARD_SLUG = null;
+var CARD_RESTORED = false;
+
+/* ------------------------------------------------------------------
+   A dose is prescribed in milligrams. The dial number is arithmetic:
+
+     units = mg / (mg per mL) / 0.01
+
+   So the template carries the vial and the diluent, and the units the
+   patient reads are derived every time. Change a reconstitution volume
+   and every dial number that depends on it moves with it, which is the
+   one thing that cannot be allowed to drift — a template that stored
+   units instead had GHK-Cu reading 1.67 mg where the dose card said 1.
+   ------------------------------------------------------------------ */
+function concentrationOf(t) {
+  if (t.vialMg && t.diluentMl) return t.vialMg / t.diluentMl;
+  const total = (t.components || []).reduce((s, c) => s + c.mg, 0);
+  return total / (t.volumeMl || 1);
+}
+
+/* A pen dials in whole clicks. A prescription of 2.4 mg on a 0.2333 mg
+   pen is 10.29 clicks, which nobody can set — so round DOWN to the click
+   she can actually dial. Never up: erring under the intended dose is the
+   safe direction, and "turn your pen to 10.3" is an instruction that
+   invites a guess.
+
+   The milligrams shown to her are then computed back from the whole
+   click, so the number on her screen is what she actually receives
+   rather than what was prescribed. */
+function unitsForMg(t, mg) {
+  const c = concentrationOf(t);
+  if (!c || !isFinite(mg)) return 0;
+  return Math.floor(mg / c / ML_PER_UNIT);
+}
+
+/* Fill in units on any phase that was prescribed in milligrams. Phases
+   that still carry only units are left alone, so a card written before
+   this went in keeps reading exactly as it did. */
+function resolveDoses(templates) {
+  (templates.templates || []).forEach(t => {
+    (t.phases || []).forEach(ph => {
+      if (ph.mg != null) ph.units = unitsForMg(t, ph.mg);
+      else if (ph.units != null && t.vialMg) ph.mg = mgForUnits(t, ph.units);
+    });
+  });
+  return templates;
+}
+
+function mgForUnits(t, units) {
+  return Math.round(concentrationOf(t) * units * ML_PER_UNIT * 1000) / 1000;
+}
+
+async function loadTemplates() {
+  if (!TEMPLATES) {
+    TEMPLATES = resolveDoses(
+      await (await fetch('templates.json', { cache: 'no-store' })).json());
+  }
+  return TEMPLATES;
+}
+
+/* The auth gate lives in its own module because only an ES module can
+   import the Firebase CDN. Loaded lazily, so fragment and legacy cards
+   never pay for it — and if the CDN is unreachable (offline dose), the
+   card opens anyway rather than lock her out. */
+var _authGatePromise = null;
+function loadAuthGate() {
+  if (!_authGatePromise) {
+    _authGatePromise = import('./auth-gate.js')
+      .then(m => (m && m.ensureActivated ? m : window.__authGate))
+      .catch(() => null);
+  }
+  return _authGatePromise;
+}
+
+async function loadProtocol() {
+  // Every page gets the guard, whatever else happens below.
+  installCardLinkGuard();
+
+  let { card, start: pinned } = readCard();
+
+  // A link that dropped the card, followed from inside the portal: put it
+  // back rather than telling her the card is not set up.
+  if (!card && !readSlug()) {
+    const mem = recoverTabCard();
+    if (mem && mem.frag) {
+      try { history.replaceState(null, '', location.pathname + location.search + mem.frag); } catch {}
+      location.hash = mem.frag;
+      card = readCard().card;
+    } else if (mem && mem.slug) {
+      const q = new URLSearchParams(location.search);
+      q.set('c', mem.slug);
+      try { history.replaceState(null, '', `${location.pathname}?${q}`); } catch {}
+    }
+  }
+
+  const templates = await loadTemplates();
+  CARD_SLUG = readSlug();
+  let legacy = isLegacyCard();
+  CARD_RESTORED = false;
+
+  // Nothing in the address, and launched from the home screen: fall back to
+  // what this device was opened with, rather than showing a dead portal.
+  if (!card && !CARD_SLUG && !legacy && isHomeScreenApp()) {
+    const mem = recallCard();
+    if (mem) {
+      card = mem.card || null;
+      CARD_SLUG = mem.slug || null;
+      legacy = !!mem.legacy;
+      pinned = mem.start || null;
+      CARD_RESTORED = true;
+      restoreAddress(mem);
+    }
+  }
+
+  if (card) {
+    // Cards written before the service existed carry their own protocol.
+    CFG = decodeCard(card, templates, pinned);
+  } else if (CARD_SLUG) {
+    const res = await fetch(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
+    const rec = await res.json();
+    CFG = hydrateRecord(rec, templates);
+    _cardSig = cardSignature(rec);
+    adoptAdded(rec);
+    adoptDropped(rec);
+    // Anything the atelier set for her, before the start day is read.
+    _tookSettings = applySettings(rec.settings);
+    noteTap(CARD_SLUG);
+
+    // An assigned stored card: the first tap must be linked to a Google
+    // account before the experience opens. Blank tags have no owner to
+    // link yet, and fragment / legacy cards carry their own protocol and
+    // never had a record, so neither sees the gate.
+    if (rec.name && rec.status !== 'retired') {
+      const gate = await loadAuthGate();
+      if (gate) {
+        const outcome = await gate.ensureActivated({ slug: CARD_SLUG });
+        if (outcome === 'blocked') {
+          throw Object.assign(new Error('card_blocked'), { blocked: true });
+        }
+      }
+    }
+  } else if (legacy) {
+    // The one card written before any of this existed. It is reached only
+    // through its own marked address, never by landing on the bare root.
+    CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+  } else {
+    // No card in the address at all. Refusing here is the whole point: a
+    // portal that guesses shows one patient another patient's doses.
+    throw Object.assign(new Error('no_card'), { noCard: true });
+  }
+
+  PENS = CFG.protocol.pens || [];
+  START = parse(loadStart() || CFG.protocol.startDate);
+  applyAdded(templates);
+  applyDropped();
+  applyPenStarts();
+  applySetups();
+  _supplyCache.clear();
+
+  // Only a card that actually resolved is worth remembering.
+  if (PENS.length) rememberCard({ card, slug: CARD_SLUG, legacy, start: pinned });
+
+  // Tell the atelier what this screen is showing. A change it just sent
+  // is reported straight back, so the dashboard can see it landed.
+  reportState(_tookSettings);
+  _tookSettings = false;
+
+  // Keep the subscribed calendar current with what the card now draws.
+  publishFeed();
+
+  return CFG;
+}
+
+/* ---------- the card, re-read ----------
+   A card added to the home screen is not reloaded when it is reopened.
+   iOS brings the page back exactly as it was left, sometimes days later,
+   and nothing re-runs. So a peptide added in Card Studio reached the
+   server, reached the record, and then sat there: the one screen it was
+   added for went on showing the old protocol until something happened to
+   reload the page, which for most patients is never.
+
+   Every time the card comes back to the front it asks the server what it
+   should be showing. Nothing on screen moves unless the answer differs
+   from what is already there, so a patient who simply switches apps all
+   day sees nothing at all. */
+var _cardSig = null;
+var _recheckBusy = false;
+
+function cardSignature(rec) {
+  return JSON.stringify([
+    rec.name || '', rec.startDate || '', rec.status || '',
+    rec.pens || [], rec.added || [], (rec.settings && rec.settings.rev) || 0
+  ]);
+}
+
+async function recheckCard() {
+  const slug = CARD_SLUG || readSlug();
+  // A fragment card carries its own protocol and has no record to re-read.
+  if (!slug || _recheckBusy) return false;
+  _recheckBusy = true;
+  try {
+    const res = await fetch(`/api/card/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (!res.ok) return false;
+    const rec = await res.json();
+
+    const sig = cardSignature(rec);
+    if (sig === _cardSig) return false;
+    _cardSig = sig;
+
+    const templates = await loadTemplates();
+    CFG = hydrateRecord(rec, templates);
+    adoptAdded(rec);
+    adoptDropped(rec);
+    const took = applySettings(rec.settings);
+    PENS = CFG.protocol.pens || [];
+    START = parse(loadStart() || CFG.protocol.startDate);
+    applyAdded(templates);
+    applyDropped();
+    applyPenStarts();
+    applySetups();
+    _supplyCache.clear();
+
+    // The atelier should see that the change landed, and her reminders
+    // and calendar should follow it without another tap.
+    reportState(true);
+    refreshReminders();
+    publishFeed();
+    return true;
+  } catch {
+    return false;                 // offline: what is on screen still stands
+  } finally {
+    _recheckBusy = false;
+  }
+}
+
+/* Pages call this once, with whatever redraws them. */
+function watchCard(redraw) {
+  const check = async () => {
+    if (document.visibilityState !== 'visible') return;
+    if (await recheckCard()) { try { redraw(); } catch {} }
+  };
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('focus', check);
+  // Safari's back-forward cache hands the page back without running it.
+  window.addEventListener('pageshow', e => { if (e.persisted) check(); });
+}
+
+/* Carry the card across in-portal links, so every page of a tapped card
+   sees the same protocol. A payload card carries its fragment; a stored
+   card carries its slug on the query string, since the path only names
+   the card on the page the server handed over. */
+function cardSuffix() {
+  return location.hash && readCard().card ? location.hash : '';
+}
+
+function cardQuery() {
+  const slug = CARD_SLUG || readSlug();
+  return slug ? `?c=${encodeURIComponent(slug)}` : '';
+}
+
+function linkWithCard(href) {
+  if (!href || /^(https?:|sms:|tel:|mailto:|webcal:)/i.test(href)) return href;
+  const suffix = cardSuffix();
+  if (suffix) return href.split('#')[0] + suffix;
+  const query = cardQuery();
+  if (!query) return href;
+  const [base, hash] = href.split('#');
+  return base.split('?')[0] + query + (hash ? '#' + hash : '');
+}
+
+/* ------------------------------------------------------------------
+   KEEPING THE CARD WHILE SHE CLICKS AROUND
+
+   Rewriting links at render time only covers the links that exist at
+   render time. Anything added afterwards — a dose card, a sheet, a
+   button drawn once the protocol loads — is written without the card,
+   and following it lands on the bare root, where the portal correctly
+   refuses and says the card is not set up.
+
+   So catch it at the click instead. One listener, in the capture phase,
+   on every page: any same-origin link that has no card gets one. Nothing
+   can be added later that escapes it.
+   ------------------------------------------------------------------ */
+function installCardLinkGuard() {
+  if (window.__cardGuard) return;
+  window.__cardGuard = true;
+
+  document.addEventListener('click', ev => {
+    const a = ev.target && ev.target.closest && ev.target.closest('a[href]');
+    if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+
+    const href = a.getAttribute('href');
+    if (!href || /^(https?:|sms:|tel:|mailto:|webcal:|#)/i.test(href)) return;
+
+    const withCard = linkWithCard(href);
+    if (withCard && withCard !== href) a.setAttribute('href', withCard);
+  }, true);
+
+  // Keep the card in the address bar too, so a refresh or a bookmark
+  // taken mid-visit still resolves. Never touches a slug address like
+  // /phil.h, which already identifies the card on its own.
+  try {
+    if (!CARD_RESTORED && history.replaceState) {
+      const slug = readSlug();
+      const q = new URLSearchParams(location.search);
+      if (slug && !q.get('c') && !window.__CARD_SLUG__) {
+        q.set('c', slug);
+        history.replaceState(null, '', `${location.pathname}?${q}${location.hash}`);
+      }
+    }
+  } catch {}
+
+  // Within one tab, remember which card she is on. A page reached by
+  // clicking from inside the portal can recover it; a page opened cold
+  // cannot, which is what keeps one patient's card off another's screen.
+  try {
+    const slug = readSlug(), frag = cardSuffix();
+    if (slug || frag) sessionStorage.setItem('tca.tab.card', JSON.stringify({ slug, frag }));
+  } catch {}
+}
+
+/* Did she arrive here by clicking a link inside the portal? Only then is
+   it safe to put back a card the link dropped. */
+function cameFromPortal() {
+  try {
+    return !!document.referrer && new URL(document.referrer).origin === location.origin;
+  } catch { return false; }
+}
+
+function recoverTabCard() {
+  if (readSlug() || cardSuffix()) return null;
+  if (!cameFromPortal()) return null;
+  try {
+    const mem = JSON.parse(sessionStorage.getItem('tca.tab.card') || 'null');
+    return mem && (mem.slug || mem.frag) ? mem : null;
+  } catch { return null; }
+}
+
+/* Rewrite every in-portal link so a tapped card keeps its protocol as the
+   patient moves between Ritual, Protocol and Calendar. */
+function applyCardLinks(root) {
+  if (!cardSuffix() && !cardQuery()) return;
+  (root || document).querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && !/^(https?:|sms:|tel:|mailto:|webcal:|#)/i.test(href)) a.setAttribute('href', linkWithCard(href));
+  });
+}
+
+/* ==================================================================
+   CALENDAR EXPORT
+   ------------------------------------------------------------------
+   Three rules, each learned from a way this went wrong.
+
+   1. NEVER WRITE A FLOATING TIME.
+      "DTSTART:20260917T200000" — no Z, no TZID — is a floating time,
+      and the spec lets the reader interpret it however it likes. Some
+      calendars read it as the viewer's own local time, which is what
+      this used to assume. Others read it as UTC, and an 8pm dose then
+      alarms at 4pm in Charleston, four hours early, every day.
+      So every timed event now carries a real instant, written in UTC.
+      It is built from her clock time in her own timezone — the same
+      arithmetic upcomingDoses() uses for push — so the calendar alarm
+      and the phone reminder fire at the same moment.
+
+   2. A UID IS A PROMISE.
+      Calendars replace an event whose UID they already hold. The old
+      UID carried the position of a dose in the list, so inserting one
+      day at the front renamed every event after it and a re-export
+      dropped a second copy of the protocol beside the first. A UID is
+      now the patient, the pen and the calendar day — nothing that
+      moves when the schedule does. Re-exporting is how you edit.
+
+   3. A FILE CANNOT TAKE AN EVENT BACK.
+      This once wrote a second file full of METHOD:CANCEL entries, on
+      the theory that a calendar would withdraw what it recognised.
+      iPhone does not: it read them as 112 more events and offered to
+      "Add All", which is what a patient then got. Removal is not
+      something a downloaded file can do — only deleting a calendar can,
+      which is why the subscription below exists.
+   ================================================================== */
+
+const ICS_PRODID = '-//The Charleston Atelier//Ritual//EN';
+const ICS_CALNAME = 'Atelier Doses';
+
+function icsKey() { return `tca.ics.${CFG.patient.id}`; }
+
+function icsIssued() {
+  try {
+    const m = JSON.parse(localStorage.getItem(icsKey()));
+    return {
+      uids: Array.isArray(m && m.uids) ? m.uids : [],
+      seq: Number(m && m.seq) || 0,
+      sig: (m && m.sig) || '',
+      subscribed: !!(m && m.subscribed)
+    };
+  } catch { return { uids: [], seq: 0, sig: '', subscribed: false }; }
+}
+
+function icsRemember(uids, seq, extra) {
+  const prev = icsIssued();
+  const all = Array.from(new Set(prev.uids.concat(uids))).slice(-800);
+  const rec = Object.assign({ sig: prev.sig, subscribed: prev.subscribed },
+                            extra || {}, { uids: all, seq });
+  try { localStorage.setItem(icsKey(), JSON.stringify(rec)); } catch {}
+}
+
+/* ---------- is the calendar she downloaded still true? ----------
+   A downloaded calendar is a photograph: it says what the schedule said
+   on the day she took it. Change a start day, an hour, or a dose and
+   every event in it is quietly wrong, with nothing on her phone to say
+   so. This is the fingerprint of what was photographed — every dose,
+   its day, its hour and its dial number — so the card can tell her.
+
+   A subscribed calendar does not need it: it refetches. The flag says
+   which she has. */
+function icsSignature() {
+  const parts = [];
+  PENS.forEach(pen => {
+    const when = timeFor(pen);
+    occurrences(pen).forEach(d => {
+      const dose = doseOn(pen, d);
+      if (dose) parts.push(`${penKeyOf(pen)}|${icsDay(d)}|${when}|${dose.units}`);
+    });
+  });
+  // A short, stable fingerprint; this is change detection, not security.
+  let h = 5381;
+  const str = parts.join(';');
+  for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  return `${str.length}.${h.toString(36)}`;
+}
+
+/* True when she has a downloaded calendar that no longer matches her
+   schedule. False for a subscriber, and false for anyone who has never
+   put these in a calendar at all. */
+function icsStale() {
+  const m = icsIssued();
+  if (m.subscribed || !m.uids.length || !m.sig) return false;
+  return m.sig !== icsSignature();
+}
+
+function icsMarkSubscribed() {
+  const m = icsIssued();
+  try {
+    localStorage.setItem(icsKey(), JSON.stringify(
+      Object.assign({}, m, { subscribed: true })));
+  } catch {}
+}
+
+/* Where an event in her calendar sends her to change any of this. */
+function icsChangeUrl() {
+  try {
+    const url = new URL(linkWithCard('ritual.html'), location.href);
+    url.searchParams.set('change', '1');
+    return url.href;
+  } catch { return ''; }
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+
+/* Local calendar day — for a UID, and for all-day events. */
+function icsDay(d) { return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}`; }
+
+/* A real instant, written as UTC. This is the line that had the bug. */
+function icsUtc(d) {
+  return `${d.getUTCFullYear()}${pad2(d.getUTCMonth()+1)}${pad2(d.getUTCDate())}T` +
+         `${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}${pad2(d.getUTCSeconds())}Z`;
+}
+
+/* Her clock time on that day, in her own timezone, as an instant. */
+function icsInstant(day, hhmm) {
+  const [hh, mm] = String(hhmm || '').split(':').map(Number);
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                  isNaN(hh) ? 9 : hh, isNaN(mm) ? 0 : mm, 0, 0);
+}
+
+/* Commas, semicolons and backslashes separate fields in iCalendar; a
+   name containing one would otherwise split the line. */
+function icsText(s) {
+  return String(s)
+    .replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,')
+    .replace(/\r?\n/g, '\\n');
+}
+
+/* Content lines are limited to 75 octets, continued with a leading
+   space. Strict parsers reject a file that ignores it. */
+function icsFold(line) {
+  if (line.length <= 73) return line;
+  const out = [line.slice(0, 73)];
+  let rest = line.slice(73);
+  while (rest.length > 72) { out.push(' ' + rest.slice(0, 72)); rest = rest.slice(72); }
+  if (rest) out.push(' ' + rest);
+  return out.join('\r\n');
+}
+
+const penKeyOf = pen => pen.template || pen.templateId || pen.id;
+
+function icsUid(pen, day) {
+  return `${CFG.patient.id}.${penKeyOf(pen)}.${icsDay(day)}@thecharlestonatelier`;
+}
+function icsRefillUid(pen) {
+  return `${CFG.patient.id}.${penKeyOf(pen)}.refill@thecharlestonatelier`;
+}
+
+/* The whole calendar, as appointments. */
+function buildICS() {
+  const seq = icsIssued().seq + 1;
+  const stamp = icsUtc(new Date());
+  const changeUrl = icsChangeUrl();
+  const uids = [];
+
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', `PRODID:${ICS_PRODID}`, 'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    // Names the calendar, so the doses can be cleared in one go by
+    // deleting it rather than one event at a time.
+    `X-WR-CALNAME:${ICS_CALNAME}`
+  ];
+
+  const event = body => lines.push('BEGIN:VEVENT', ...body, 'END:VEVENT');
+
+  PENS.forEach(pen => {
+    const when = timeFor(pen);          // her hour, not the band's default
+    occurrences(pen).forEach(d => {
+      const dose = doseOn(pen, d);
+      if (!dose) return;
+      const start = icsInstant(d, when);
+      const end = new Date(start.getTime() + 15 * 60000);
+      const title = `${pen.name} — ${dialLead(pen).toLowerCase()} ${dose.units}`;
+      const uid = icsUid(pen, d);
+      uids.push(uid);
+      // The event carries the way back. A patient looking at a dose in
+      // her calendar and thinking "that is not my time any more" should
+      // not have to go and find the card — the line she is reading is
+      // the link. Calendars show URL: as a tappable row and linkify the
+      // address in the notes, so it is written in both places.
+      const body = `${dose.phase.name} · ${round(dose.ml,2)} mL · ${pen.route}` +
+        (changeUrl ? `\n\nTo change your days or times, open your card:\n${changeUrl}` : '');
+      event([
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART:${icsUtc(start)}`,
+        `DTEND:${icsUtc(end)}`,
+        `SEQUENCE:${seq}`,
+        icsFold('SUMMARY:' + icsText(title)),
+        icsFold('DESCRIPTION:' + icsText(body)),
+        ...(changeUrl ? [icsFold(`URL:${changeUrl}`)] : []),
+        'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY',
+        icsFold('DESCRIPTION:' + icsText(title)), 'END:VALARM'
+      ]);
+    });
+
+    const s = supply(pen);
+    if (s && s.lastDose) {
+      const uid = icsRefillUid(pen);
+      uids.push(uid);
+      event([
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${icsDay(addDays(s.lastDose, -3))}`,
+        `SEQUENCE:${seq}`,
+        icsFold('SUMMARY:' + icsText(`Refill due — ${pen.name}`)),
+        icsFold('DESCRIPTION:' + icsText('This pen is nearly empty.'))
+      ]);
+    }
+  });
+
+  lines.push('END:VCALENDAR');
+  return { text: lines.join('\r\n'), uids, seq, count: uids.length, sig: icsSignature() };
+}
+
+/* ==================================================================
+   WHAT HAS BEEN TAKEN
+   ------------------------------------------------------------------
+   Doses logged by tapping a vial label. The record is on the server,
+   which is what lets a dose tapped in Safari — the only place an NFC
+   tag can open on iOS — show up in the card added to the home screen,
+   which is a different browser with its own storage.
+
+   Every view that draws a day reads this: the calendar, the schedule
+   grid, the weekly rhythm. One copy, so they cannot disagree about
+   whether today is done.
+   ================================================================== */
+var LOGGED = {};
+
+async function loadLogged(only) {
+  // The vial page knows its card from what the phone remembered rather
+  // than from the address, so it hands the slug in.
+  const slug = only || (typeof CARD_SLUG !== 'undefined' && CARD_SLUG) || readSlug();
+  if (!slug) return LOGGED;                       // a card with no slug logs nothing
+  try {
+    const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    if (res.ok) LOGGED = (await res.json()).days || {};
+  } catch { /* a page that cannot reach the service is still a page */ }
+  // A pen's start day can be the day of its first dose, and that is only
+  // knowable once the log is in hand. Every page loads the protocol before
+  // the log, so this is where the two meet.
+  if (typeof PENS !== 'undefined' && PENS.length) applyPenStarts();
+  return LOGGED;
+}
+
+function takenOn(pen, d) {
+  return (LOGGED[iso(d)] || []).includes(penKeyOf(pen));
+}
+
+/* Re-read whenever the page comes back to the front. A dose is logged in
+   one browser and read in another, so "did that go through" is answered
+   by asking again rather than by hoping the page was reloaded. */
+function watchLogged(redraw) {
+  let busy = false;
+  const again = async () => {
+    if (busy || document.hidden) return;
+    busy = true;
+    try { await loadLogged(); redraw(); } finally { busy = false; }
+  };
+  document.addEventListener('visibilitychange', again);
+  addEventListener('pageshow', again);
+  addEventListener('focus', again);
+}
+
+var TICK_SVG = `<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-label="taken"
+  role="img"><path d="M4 12.5l5 5L20 6.5"/></svg>`;
+
+/* ---------- the subscribed calendar ----------
+   A downloaded file can add and update; only a calendar of its own can
+   be removed. So the card publishes itself to the service, and the
+   patient subscribes to that address once. Her Calendar then mirrors
+   whatever the card last published — a changed start day, a new hour, a
+   pen that ran out — and deleting the subscription deletes every dose
+   with it.
+
+   The feed is republished whenever the card is opened or her schedule
+   moves, which is the same moment everything else is refreshed. Her
+   calendar picks the change up on its own next fetch. */
+function icsFeedUrl(scheme) {
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return '';
+  const host = location.host;
+  return `${scheme || 'https:'}//${host}/ics/${encodeURIComponent(slug)}.ics`;
+}
+
+let _feedTimer = null;
+function publishFeed() {
+  const slug = CARD_SLUG || readSlug();
+  if (!slug || !PENS.length) return;
+  clearTimeout(_feedTimer);
+  // Off the critical path: the page she is reading never waits for this.
+  _feedTimer = setTimeout(() => {
+    let text;
+    try { text = buildICS().text; } catch { return; }
+    try {
+      fetch(`/api/ics/${encodeURIComponent(slug)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/calendar' },
+        body: text,
+        keepalive: true
+      }).catch(() => {});
+    } catch {}
+  }, 250);
+}
+
+/* ==================================================================
+   THE REWARD
+   ------------------------------------------------------------------
+   A protocol is a long series of small unremarkable acts, and the only
+   thing that carries a patient through it is seeing that she has done
+   them. So a logged dose is not a database write with a confirmation —
+   it is gold confetti, a mark that lands, and a count of how far she
+   has come.
+
+   The gold is the monogram's own: #d4b982 lit, #cbae73 body, #897039 in
+   shadow, sampled off the mark itself so a checkmark beside the CA
+   reads as the same metal and not as a green tick someone tinted.
+   ================================================================== */
+
+var GOLD = ['#E9D7AC', '#D4B982', '#CBAE73', '#A98844', '#897039'];
+
+/* The mark, in the metal. Each one needs its own gradient id or the
+   second on a page inherits the first. */
+var _goldSeq = 0;
+function goldCheck(px) {
+  const id = `au${++_goldSeq}`;
+  return `<svg class="au-check" viewBox="0 0 48 48" width="${px || 48}" height="${px || 48}"
+    role="img" aria-label="taken">
+    <defs>
+      <linearGradient id="${id}" x1="6%" y1="0%" x2="94%" y2="100%">
+        <stop offset="0%"   stop-color="#E9D7AC"/>
+        <stop offset="22%"  stop-color="#D4B982"/>
+        <stop offset="44%"  stop-color="#A98844"/>
+        <stop offset="58%"  stop-color="#897039"/>
+        <stop offset="78%"  stop-color="#CBAE73"/>
+        <stop offset="100%" stop-color="#E3CE9E"/>
+      </linearGradient>
+    </defs>
+    <path d="M10 25.5 L20 35 L38 14" fill="none" stroke="url(#${id})"
+          stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* ---------- how far she has come ----------
+   Counted in DOSING days, not calendar days: a five-on-two-off protocol
+   does not break its run over the weekend. A day counts only when every
+   pen due that day was logged. */
+function doseStreak() {
+  let d = today(), n = 0;
+  const due0 = dueOn(d);
+  // Today not done yet is not a broken run — it has not happened yet.
+  if (due0.length && !due0.every(p => takenOn(p, d))) d = addDays(d, -1);
+  for (let i = 0; i < 400; i++) {
+    if (!START || d < START) break;
+    const due = dueOn(d);
+    if (due.length) {
+      if (!due.every(p => takenOn(p, d))) break;
+      n++;
+    }
+    d = addDays(d, -1);
+  }
+  return n;
+}
+
+/* Every scheduled day since she began, taken. */
+function perfectRun() {
+  let d = START ? new Date(START) : null, days = 0;
+  if (!d) return false;
+  const t = today();
+  while (d <= t) {
+    const due = dueOn(d);
+    if (due.length) {
+      if (!due.every(p => takenOn(p, d))) return false;
+      days++;
+    }
+    d = addDays(d, 1);
+  }
+  return days > 0;
+}
+
+function protocolFinished() {
+  return PENS.length > 0 && PENS.every(p => isSpent(p));
+}
+
+/* What to say at this number. Milestones get their own line; the days in
+   between get the count, which is its own quiet encouragement. */
+var STREAK_NOTES = {
+  1:  ['The first one', 'That is the one that is hardest to start.'],
+  2:  ['Two days running', 'This is how it becomes ordinary.'],
+  5:  ['Five in a row', 'A week’s rhythm, already holding.'],
+  10: ['Ten straight', 'Beautifully kept.'],
+  14: ['Two full weeks', 'Not a day missed.'],
+  20: ['Twenty days', 'Remarkable consistency.'],
+  25: ['Twenty-five', 'You have barely put a foot wrong.']
+};
+
+function streakNote(n) {
+  if (protocolFinished() && perfectRun()) {
+    return ['Your protocol, start to finish',
+            'Every scheduled day, without missing one. That is rare.'];
+  }
+  if (STREAK_NOTES[n]) return STREAK_NOTES[n];
+  if (n > 1) return [`${n} days in a row`, 'Keep it going.'];
+  return null;
+}
+
+/* ---------- the celebration ----------
+   Confetti in the atelier's gold, a mark that arrives large and settles
+   small, and whatever haptic the phone will give us. Honoured by
+   prefers-reduced-motion: the mark still lands, it simply does not fly. */
+function haptic() {
+  // Android and desktop Chrome. iOS Safari has no vibration API at all.
+  try { if (navigator.vibrate) navigator.vibrate([14, 55, 22]); } catch {}
+  // iOS 17.4+ gives a real haptic for a switch toggled inside a gesture.
+  try {
+    const sw = document.createElement('input');
+    sw.type = 'checkbox'; sw.setAttribute('switch', '');
+    sw.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:1px;height:1px';
+    document.body.appendChild(sw);
+    sw.checked = true;
+    sw.dispatchEvent(new Event('change', { bubbles: true }));
+    setTimeout(() => sw.remove(), 400);
+  } catch {}
+}
+
+function confettiBurst(canvas, x, y) {
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+  ctx.scale(dpr, dpr);
+
+  const bits = [];
+  for (let i = 0; i < 90; i++) {
+    const a = (Math.PI * 2 * i) / 90 + Math.random() * 0.3;
+    const speed = 5 + Math.random() * 9;
+    bits.push({
+      x, y,
+      vx: Math.cos(a) * speed, vy: Math.sin(a) * speed - 4,
+      w: 5 + Math.random() * 5, h: 8 + Math.random() * 8,
+      rot: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 0.35,
+      col: GOLD[(Math.random() * GOLD.length) | 0], life: 1
+    });
+  }
+
+  let raf;
+  (function frame() {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    let alive = false;
+    bits.forEach(b => {
+      if (b.life <= 0) return;
+      alive = true;
+      b.vy += 0.34; b.vx *= 0.995;
+      b.x += b.vx; b.y += b.vy; b.rot += b.spin; b.life -= 0.012;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, b.life * 1.4));
+      ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+      ctx.fillStyle = b.col;
+      // A flake of leaf, not a dot.
+      ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h * Math.abs(Math.cos(b.rot)));
+      ctx.restore();
+    });
+    if (alive) raf = requestAnimationFrame(frame);
+    else { ctx.clearRect(0, 0, innerWidth, innerHeight); cancelAnimationFrame(raf); }
+  })();
+}
+
+/* Shows the mark large, then sends it to `onto` — the circle it belongs
+   in — and resolves once it has landed. */
+function celebrate(onto) {
+  haptic();
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const layer = document.createElement('div');
+  layer.className = 'au-layer';
+  layer.innerHTML = `<canvas class="au-confetti"></canvas>
+    <div class="au-mark">${goldCheck(132)}</div>`;
+  document.body.appendChild(layer);
+
+  const mark = layer.querySelector('.au-mark');
+  const from = { x: innerWidth / 2, y: innerHeight * 0.42 };
+  if (!calm) confettiBurst(layer.querySelector('.au-confetti'), from.x, from.y);
+
+  return new Promise(resolve => {
+    const done = () => { layer.remove(); resolve(); };
+    if (calm) { mark.style.opacity = '1'; setTimeout(done, 900); return; }
+
+    mark.animate(
+      [{ transform: 'scale(.5)', opacity: 0 },
+       { transform: 'scale(1.12)', opacity: 1, offset: .28 },
+       { transform: 'scale(1)', opacity: 1, offset: .42 },
+       { transform: 'scale(1)', opacity: 1, offset: .74 }],
+      { duration: 1250, easing: 'cubic-bezier(.2,.9,.2,1)', fill: 'forwards' });
+
+    setTimeout(() => {
+      const box = onto && onto.getBoundingClientRect();
+      const to = box
+        ? { x: box.left + box.width / 2, y: box.top + box.height / 2, s: box.width / 132 }
+        : { x: from.x, y: from.y, s: .22 };
+      mark.animate(
+        [{ transform: 'translate(0,0) scale(1)', opacity: 1 },
+         { transform: `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.s})`,
+           opacity: box ? .9 : 0 }],
+        { duration: 620, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' })
+        .onfinish = done;
+    }, 1150);
+  });
+}
+
+/* ==================================================================
+   REMINDERS
+   ------------------------------------------------------------------
+   The device works out when this patient's doses fall and hands the
+   server a plain list of instants. The server stores those and a push
+   endpoint, and nothing else — no drug, no dial number, no name — so
+   what travels through Apple's and Google's push services, and what
+   lands on a lock screen, says only that a dose is due.
+
+   Computing it here rather than on the server means the schedule that
+   fires a reminder is the same schedule the patient is reading. There is
+   one copy of this arithmetic and there should stay one.
+   ================================================================== */
+
+/* Every dose still ahead of us, as UTC instants, soonest first.
+   `days` bounds how far out to look; the list is refreshed every time she
+   opens the card, so it does not need to reach the end of the protocol. */
+function upcomingDoses(days = 120) {
+  const now = new Date();
+  const horizon = addDays(now, days);
+  const out = [];
+
+  PENS.forEach(pen => {
+    const [hh, mm] = String(timeFor(pen)).split(':').map(Number);
+    occurrences(pen).forEach(day => {
+      // occurrences() gives a local calendar day; put her chosen clock time
+      // on it, in her own timezone, and let Date work out the instant.
+      const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(),
+                          isNaN(hh) ? 9 : hh, isNaN(mm) ? 0 : mm, 0, 0);
+      if (at > now && at <= horizon) out.push(at.toISOString());
+    });
+  });
+
+  return Array.from(new Set(out)).sort();
+}
+
+/* Is this browser able to do reminders at all?
+
+   On iOS the answer is no until the card has been added to the Home
+   Screen — Apple only grants push to an installed web app. Saying so
+   plainly is better than showing a switch that cannot work. */
+function pushCapability() {
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
+  if (!supported) {
+    return { ok: false, reason: ios && !isHomeScreenApp() ? 'ios_needs_home_screen' : 'unsupported' };
+  }
+  if (ios && !isHomeScreenApp()) return { ok: false, reason: 'ios_needs_home_screen' };
+  return { ok: true, reason: '' };
+}
+
+function pushEndpointOf(sub) {
+  try { return sub && sub.endpoint ? sub.endpoint : ''; } catch { return ''; }
+}
+
+async function pushRegistration() {
+  // Scope is this card's folder, which is also where sw.js is served from.
+  return navigator.serviceWorker.register('sw.js');
+}
+
+async function currentPushSub() {
+  if (!('serviceWorker' in navigator)) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return null;
+  return reg.pushManager.getSubscription();
+}
+
+/* Turn reminders on. Returns { ok, reason } — the caller says it nicely. */
+async function enableReminders() {
+  const can = pushCapability();
+  if (!can.ok) return { ok: false, reason: can.reason };
+
+  const slug = CARD_SLUG || readSlug();
+  if (!slug) return { ok: false, reason: 'no_card' };
+
+  const meta = await fetch('/api/push/key').then(r => r.json()).catch(() => null);
+  if (!meta || !meta.available || !meta.key) return { ok: false, reason: 'not_configured' };
+
+  // Must be called from a user gesture, which is why this hangs off the tap.
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return { ok: false, reason: 'denied' };
+
+  const reg = await pushRegistration();
+  await navigator.serviceWorker.ready;
+
+  const sub = await reg.pushManager.getSubscription()
+    || await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(meta.key)
+    });
+
+  const res = await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      slug,
+      sub: sub.toJSON(),
+      due: upcomingDoses(),
+      tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '')
+    })
+  });
+  if (!res.ok) return { ok: false, reason: 'server' };
+  return { ok: true, reason: '' };
+}
+
+async function disableReminders() {
+  const sub = await currentPushSub();
+  if (!sub) return { ok: true };
+  const endpoint = pushEndpointOf(sub);
+  await sub.unsubscribe().catch(() => {});
+  await fetch('/api/push/unsubscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint })
+  }).catch(() => {});
+  return { ok: true };
+}
+
+/* Every time she opens the card, hand the server a fresh schedule. A dose
+   moved in Card Studio, a pen that ran out, a time she changed — all of it
+   reaches her reminders on the next open, with nothing for her to do. */
+async function refreshReminders() {
+  try {
+    const sub = await currentPushSub();
+    if (!sub) return;
+    const slug = CARD_SLUG || readSlug();
+    if (!slug) return;
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug, sub: sub.toJSON(), due: upcomingDoses(),
+        tz: (Intl.DateTimeFormat().resolvedOptions().timeZone || '')
+      })
+    });
+  } catch {}
+}
+
+/* The VAPID key arrives base64url; subscribe() wants bytes. */
+function urlBase64ToUint8Array(base64) {
+  const padded = (base64 + '='.repeat((4 - base64.length % 4) % 4))
+    .replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}

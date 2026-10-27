@@ -1,0 +1,12 @@
+# Keep the build context to what the service actually needs.
+.git
+.gitignore
+node_modules
+portal/node_modules
+portal/.data
+print
+redirect
+*.md
+!portal/*.md
+netlify.toml
+functions
