@@ -1,3 +1,5 @@
 node_modules/
 portal/.data/
 portal/.data-*/
+
+.superpowers/
