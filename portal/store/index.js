@@ -139,7 +139,14 @@ function sanitizeState(input) {
 function sanitize(input, existing = null) {
   const rec = {
     slug: normalizeSlug(input.slug || (existing && existing.slug)),
-    name: String(input.name ?? (existing ? existing.name : '')).trim().slice(0, 60),
+    // The dashboard mints cards from a first and last name; a client that
+    // sends those without a display name still gets one, so a protocol-
+    // carrying card can never sit nameless — and a nameless card would
+    // fall outside the first-tap gate entirely.
+    name: String(input.name ??
+      (input.firstName
+        ? [input.firstName, input.lastName].filter(Boolean).join(' ')
+        : (existing ? existing.name : ''))).trim().slice(0, 60),
     startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')
       ? input.startDate
       : (existing ? existing.startDate : null),
@@ -216,8 +223,8 @@ function sanitizePen(pen) {
 }
 
 /* What a tapped card is allowed to see. The clinician's note, the
-   record's history, and who activated the card stay on the clinician's
-   side of the wire — the card itself has no use for its own uid. */
+   treatment record (`visits`), and who activated the card stay on the
+   clinician's side of the wire — the card itself has no use for them. */
 function publicView(rec) {
   if (!rec) return null;
   return {
@@ -228,7 +235,6 @@ function publicView(rec) {
     pens: rec.pens || [],
     added: rec.added || [],
     dropped: rec.dropped || [],
-    visits: rec.visits || [],
     // Her own settings, so the card can adopt anything the atelier
     // changed for her. Not the state report — that came from her phone
     // and it has no use for it back.

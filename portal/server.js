@@ -316,8 +316,15 @@ function serveStatic(res, urlPath, { inject, vial, remember, setCard } = {}) {
   const rel = decodeURIComponent(urlPath).replace(/^\/+/, '');
   const full = path.join(WEB_ROOT, rel);
 
-  // Never let a crafted path climb out of the web root.
-  if (!full.startsWith(WEB_ROOT)) return send(res, 403, 'Forbidden');
+  // Never let a crafted path climb out of the web root. Sending the 403
+  // and returning true makes the router stop here — returning send()'s
+  // falsy result once let the router fall through to a second writeHead
+  // on an already-ended response, and the unhandled throw killed the
+  // whole service. One GET could take the site down.
+  if (full !== WEB_ROOT && !full.startsWith(WEB_ROOT + path.sep)) {
+    send(res, 403, 'Forbidden');
+    return true;
+  }
   if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) return false;
 
   const ext = path.extname(full);
@@ -978,9 +985,10 @@ async function route(req, res) {
   }
   if (p.startsWith('/studio/')) {
     const rel = p.slice('/studio/'.length);
+    const studioRoot = path.join(__dirname, 'studio');
     const file = path.join(__dirname, 'studio', rel);
-    if (file.startsWith(path.join(__dirname, 'studio')) && fs.existsSync(file) &&
-        !fs.statSync(file).isDirectory()) {
+    if ((file === studioRoot || file.startsWith(studioRoot + path.sep)) &&
+        fs.existsSync(file) && !fs.statSync(file).isDirectory()) {
       return send(res, 200, fs.readFileSync(file), {
         'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
         'Cache-Control': 'no-store'
