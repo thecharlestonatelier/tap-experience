@@ -7,6 +7,9 @@
        CARD_STORE=file CARD_FILE=.data-test/unlink-cards.json \
        STUDIO_PASSPHRASE=testpassphrase PORT=8090 node server.js */
 import admin from 'firebase-admin';
+import { assertAuthEmulatorUp } from './emulator-guard.mjs';
+
+await assertAuthEmulatorUp();
 
 const BASE = 'http://localhost:8090';
 const PASS = 'testpassphrase';
@@ -20,6 +23,7 @@ const check = (name, ok, extra = '') => {
 
 admin.initializeApp({ projectId: process.env.GOOGLE_CLOUD_PROJECT || 'atelier-tap' });
 
+/* Arrange — a user with a name, and an ID token for it */
 async function mint(name) {
   const uid = `u${Math.random().toString(36).slice(2, 10)}`;
   await admin.auth().createUser({ uid, email: `${uid}@example.com`, displayName: name });
@@ -35,6 +39,8 @@ async function mint(name) {
   return { uid, idToken: json.idToken };
 }
 
+/* Arrange — a clinician session, a card to belong to someone, and the
+   account that will hold the link */
 const signin = await fetch(`${BASE}/api/session`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ passphrase: PASS })
@@ -55,34 +61,40 @@ const post = (path, headers = {}) => fetch(`${BASE}${path}`, {
   body: '{}'
 });
 
-/* link the card, then try the reset without a session */
+/* Act — link the card */
 let r = await fetch(`${BASE}/api/activate/unlink.t`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ idToken: alice.idToken })
 });
+/* Assert — the link is on the record */
 check('card links first', r.status === 200, JSON.stringify(await r.json()));
 check('link is on the record', !!(await full()).activatedBy);
 
+/* Act — try the reset with no session */
 r = await post('/api/cards/unlink.t/unlink');
+/* Assert — refused */
 check('unlink without a session is refused', r.status === 401, `status ${r.status}`);
 
-/* the clinician clears it */
+/* Act — the clinician clears it */
 r = await post('/api/cards/unlink.t/unlink', { Cookie: cookie });
+/* Assert — gone, and nothing else moved */
 check('unlink accepted', r.status === 200, JSON.stringify(await r.json()));
 check('link is gone', !(await full()).activatedBy);
 check('nothing else on the card moved', ((await full()).pens || []).length === 1);
 
-/* the next sign-in links again */
+/* Act — the next sign-in */
 r = await fetch(`${BASE}/api/activate/unlink.t`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ idToken: alice.idToken })
 });
 const relinked = await r.json();
+/* Assert — linked again */
 check('the next sign-in links again', r.status === 200 &&
   relinked.result === 'linked', JSON.stringify(relinked));
 
-/* an unknown card is a 404, not a write */
+/* Act — point the reset at an unknown card */
 r = await post('/api/cards/nope.x/unlink', { Cookie: cookie });
+/* Assert — a 404, not a write */
 check('unknown card unlink is refused', r.status === 404, `status ${r.status}`);
 
 console.log(bad ? `\n${bad} FAILED` : '\nPASS — the clinician can clear a wrong link, nobody else can, and the next sign-in re-links.');

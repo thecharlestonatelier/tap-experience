@@ -7,6 +7,7 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 
+/* Arrange — the harness, and the card maker */
 const BASE = process.env.BASE || 'http://localhost:8095';
 const TOK = readFileSync('/tmp/tok.txt', 'utf8').trim();
 const H = { 'Content-Type': 'application/json', Cookie: `ca_studio=${TOK}` };
@@ -35,8 +36,8 @@ const mk = (slug, name, startedDaysAgo, settingsOnly) => fetch(`${BASE}/api/card
 const stamp = Date.now().toString(36);
 const fresh = `fresh${stamp}.t`, low = `low${stamp}.t`, out = `out${stamp}.t`;
 
-/* How long a tirzepatide vial actually lasts, read from the engine rather
-   than guessed, so the three cards land where this test intends. */
+/* Arrange — how long a GHK pen actually lasts, read from the engine
+   rather than guessed, so the three cards land where this test intends */
 const life = await (async () => {
   const br = await chromium.launch();
   const p = await br.newPage();
@@ -71,6 +72,9 @@ await p.waitForTimeout(3000);
 const row = s => p.locator(`tr[data-slug="${s}"]`);
 const pills = async s => (await row(s).locator('.pill').allInnerTexts()).join(' | ');
 
+/* Act — read the four pills */
+/* Assert — fresh raises nothing; nearly-gone says how many days; past the
+   end says what, in the loud pill */
 check('a fresh vial raises nothing',
       !(await pills(fresh)).toLowerCase().includes('left') &&
       !(await pills(fresh)).toLowerCase().includes('out of'),
@@ -86,6 +90,7 @@ check('a vial past its end says what she is out of',
 check('and says it in the loud pill, not the quiet one',
       (await row(out).locator('.pill.stop').count()) === 1);
 
+/* Assert — a start day that only reached her phone still counts */
 check('a start day that only reached her phone still counts',
       /out of/i.test(await pills(viaSettings)), await pills(viaSettings));
 check('and that card no longer reads "waiting for her start day"',
@@ -94,10 +99,10 @@ check('and that card no longer reads "waiting for her start day"',
 
 await br.close();
 
-/* --- a vial she sized herself ---
-   Tirzepatide is set up on the patient's phone, so this end cannot
-   project it. The number has to come from her card's own report, and an
-   old report is still right because the date it carries is absolute. */
+/* Arrange — a vial she sized herself. Tirzepatide is set up on the
+   patient's phone, so this end cannot project it; the number has to come
+   from her card's own report, and an old report is still right because
+   the date it carries is absolute. */
 {
   const slug = `tirz${stamp}.t`;
   await fetch(`${BASE}/api/cards`, { method: 'POST', headers: H,
@@ -117,10 +122,11 @@ await br.close();
   q.on('pageerror', e => { console.log(' FAIL  page error — ' + e.message); bad++; });
   await q.goto(`${BASE}/studio/`); await q.waitForTimeout(3000);
   const pl = (await q.locator(`tr[data-slug="${slug}"] .pill`).allInnerTexts()).join(' | ');
+  /* Assert — flagged from her own report */
   check('a vial she sized herself is flagged from her own report',
         /out of/i.test(pl) && /tirzepatide/i.test(pl), pl);
 
-  // and one with days still on the clock reads as low, not out
+  /* Arrange — one with days still on the clock */
   const slug2 = `tirz2${stamp}.t`;
   await fetch(`${BASE}/api/cards`, { method: 'POST', headers: H,
     body: JSON.stringify({ slug: slug2, name: 'Still Going', pens: [{ template: 'tirz' }],
@@ -131,9 +137,10 @@ await br.close();
       supply: [{ template: 'tirz', dosesLeft: 1, lastDose: daysAgo(-6) }] }) });
   await q.reload(); await q.waitForTimeout(3000);
   const pl2 = (await q.locator(`tr[data-slug="${slug2}"] .pill`).allInnerTexts()).join(' | ');
+  /* Assert — six days out reads as running low, not out */
   check('and six days out reads as running low, not out',
         /6d left/i.test(pl2) && !/out of/i.test(pl2), pl2);
-  await q.locator(`tr[data-slug="${slug}"]`).screenshot({ path: 'tests/_out.png' });
+  await q.locator(`tr[data-slug="${slug}"]:not(.link-detail)`).screenshot({ path: 'tests/_out.png' });
   await br2.close();
 }
 

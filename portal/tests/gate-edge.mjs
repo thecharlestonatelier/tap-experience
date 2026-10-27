@@ -11,6 +11,8 @@
 import { chromium } from 'playwright';
 import { signInGoogle, clearSession } from './auth-session.mjs';
 
+/* Arrange — the harness, a clinician view of the full record, and the
+   card the gate will guard */
 const BASE = 'http://localhost:8098';
 const PASS = 'testpassphrase';
 
@@ -20,7 +22,6 @@ const check = (name, ok, extra = '') => {
   if (!ok) bad++;
 };
 
-/* a clinician view of the full record */
 const signin = await fetch(`${BASE}/api/session`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ passphrase: PASS })
@@ -36,13 +37,14 @@ await fetch(`${BASE}/api/cards`, {
 
 const b = await chromium.launch();
 
-/* 1 — the owner signs in and links */
+/* Act — the owner signs in and opens the card */
 const ownerCtx = await b.newContext();
 const op = await ownerCtx.newPage();
 await op.goto(`${BASE}/`);
 await signInGoogle(op, { identity: 'edge-owner' });
 await op.goto(`${BASE}/edge.t`);
 await op.waitForSelector('body.resolved', { timeout: 25000 });
+/* Assert — no gate, and the link is on the record */
 check('owner opens the card with no gate', await op.locator('#auth-gate').count() === 0);
 
 let rec = await record();
@@ -50,19 +52,21 @@ check('the card is linked', !!rec.activatedBy, JSON.stringify(rec.activatedBy));
 const ownerUid = rec.activatedBy.uid;
 const at1 = rec.activatedBy.at;
 
-/* 2 — a later tap on the same device skips the gate */
+/* Act — a later tap on the same device */
 await op.goto(`${BASE}/edge.t`);
 await op.waitForSelector('body.resolved', { timeout: 25000 });
+/* Assert — the remembered session skips the gate */
 check('remembered session skips the gate on the next tap',
   await op.locator('#auth-gate').count() === 0);
 
-/* 3 — a different account is blocked */
+/* Act — a different account signs in and opens the card */
 const strangerCtx = await b.newContext();
 const sp = await strangerCtx.newPage();
 await sp.goto(`${BASE}/`);
 await signInGoogle(sp, { identity: 'edge-stranger' });
 await sp.goto(`${BASE}/edge.t`);
 await sp.waitForSelector('#auth-gate', { timeout: 25000 });
+/* Assert — blocked, one quiet action, and the link untouched */
 check('different account is blocked',
   (await sp.getAttribute('#auth-gate', 'data-state')) === 'blocked');
 const stuckText = await sp.textContent('#auth-gate');
@@ -76,8 +80,7 @@ check('the block did not overwrite the link',
   rec.activatedBy.uid === ownerUid && rec.activatedBy.at === at1,
   JSON.stringify(rec.activatedBy));
 
-/* 4 — the owner's session is wiped (ITP): the gate returns, the same
-   account re-verifies, and nothing is rewritten */
+/* Act — the owner's session is wiped (ITP), and she signs in again */
 await clearSession(op);
 await op.goto(`${BASE}/edge.t`);
 await op.waitForSelector('#auth-gate', { timeout: 25000 });
@@ -86,6 +89,7 @@ check('a wiped session shows the gate again',
 await signInGoogle(op, { identity: 'edge-owner' });
 await op.reload();
 await op.waitForSelector('body.resolved', { timeout: 25000 });
+/* Assert — the card opens, and nothing is rewritten */
 check('re-signing in with the same account opens the card',
   await op.locator('#auth-gate').count() === 0);
 rec = await record();

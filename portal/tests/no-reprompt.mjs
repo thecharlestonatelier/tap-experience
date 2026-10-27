@@ -7,6 +7,10 @@
    her supply, her refill date and her calendar forward two months. */
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
+import { signInGoogle } from './auth-session.mjs';
+
+/* Arrange — the harness, and three cards: two months in, brand new, and
+   logged-but-never-dated */
 const BASE = process.env.BASE || 'http://localhost:8094';
 const TOK = readFileSync('/tmp/tok.txt','utf8').trim();
 const H = { 'Content-Type':'application/json', Cookie:`ca_studio=${TOK}` };
@@ -38,6 +42,10 @@ const br = await chromium.launch();
 const visit = async slug => {
   const p = await (await br.newContext({ viewport:{width:420,height:900} })).newPage();
   p.on('pageerror', e => { console.log(' FAIL  page error — '+e.message); bad++; });
+  /* Sign in first — these are named cards, and the gate is part of the
+     flow. Each visit is a brand-new context, so each signs in again. */
+  await p.goto(`${BASE}/`);
+  await signInGoogle(p);
   await p.goto(`${BASE}/ritual.html?c=${slug}`);
   await p.waitForFunction(() => typeof PENS!=='undefined' && PENS.length, null, {timeout:15000});
   await p.waitForTimeout(900);
@@ -46,21 +54,28 @@ const visit = async slug => {
   return { p, asked, start };
 };
 
+/* Act — visit the card that is two months in */
 const a = await visit(onIt);
+/* Assert — not asked, and the start day stands */
 check('a card two months in is not asked again', !a.asked, `start ${a.start}`);
 check('and keeps its start day', a.start === ago(60), a.start);
 
+/* Act — visit the card that has a logged dose */
 const l = await visit(logged);
+/* Assert — not asked, and it takes its start from the dose */
 check('a card with a logged dose is not asked', !l.asked, `start ${l.start}`);
 check('and takes its start from that dose', l.start === ago(20), l.start);
 
+/* Act — visit the card nobody has dated */
 const f = await visit(fresh);
+/* Assert — asked */
 check('a card nobody has dated is still asked', f.asked);
 
-/* The change link must still reach the sheet. */
+/* Act — follow the calendar's change link */
 await f.p.goto(`${BASE}/ritual.html?c=${onIt}&change=1`);
 await f.p.waitForFunction(() => typeof PENS!=='undefined' && PENS.length, null, {timeout:15000});
 await f.p.waitForTimeout(900);
+/* Assert — the sheet still opens */
 check('the calendar\'s change link still opens it',
       await f.p.evaluate(() => !!document.querySelector('#startScrim.open')));
 

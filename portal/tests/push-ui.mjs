@@ -6,8 +6,8 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { signInGoogle } from './auth-session.mjs';
 
-/* Read the store directly rather than adding a debug route to a service
-   that holds patient records. */
+/* Arrange — read the store directly rather than adding a debug route to
+   a service that holds patient records */
 const SUBS = new URL('../.data/reminders.json', import.meta.url).pathname;
 const readSubs = () => {
   try { return Object.values(JSON.parse(fs.readFileSync(SUBS, 'utf8'))); } catch { return []; }
@@ -26,11 +26,11 @@ const ctx = await browser.newContext({ permissions: ['notifications'] });
 const page = await ctx.newPage();
 page.on('pageerror', e => console.log('    page error:', e.message));
 
-/* Headless Chromium has no connection to Apple's or Google's push service,
-   so pushManager.subscribe() always refuses. Stand in for that one piece —
-   the browser's own plumbing, not ours — so the rest of the path is
-   exercised for real: permission, registration, what gets posted, how the
-   switch paints, and whether it survives a reload.
+/* Arrange — headless Chromium has no connection to Apple's or Google's
+   push service, so pushManager.subscribe() always refuses. Stand in for
+   that one piece — the browser's own plumbing, not ours — so the rest of
+   the path is exercised for real: permission, registration, what gets
+   posted, how the switch paints, and whether it survives a reload.
 
    The crypto and the delivery loop are proven separately, against a real
    receiver key and a real HTTPS endpoint. */
@@ -68,6 +68,7 @@ await signInGoogle(page);
 await page.goto(`${BASE}/rem.t`);
 await page.waitForSelector('body.resolved', { timeout: 8000 });
 
+/* Assert — the card greets its patient, and the switch is offered, off */
 check('the card greets its patient', (await page.textContent('#patientName')).trim() === 'Rem');
 
 await page.waitForSelector('#remind.on', { timeout: 8000 }).catch(() => {});
@@ -77,20 +78,23 @@ check('the reminder switch is offered', visible);
 const label0 = (await page.textContent('#remindBtn')).trim();
 check('starts off', /remind me/i.test(label0), label0);
 
-// what the card thinks the schedule is, computed the same way the calendar is
+/* Act — read the schedule the card computed (the way the calendar does) */
 const doses = await page.evaluate(() => upcomingDoses(120));
+/* Assert — future, ordered, non-empty */
 check('the card has doses ahead of it', doses.length > 0, `${doses.length}`);
 check('every instant is in the future', doses.every(d => Date.parse(d) > Date.now()));
 check('they are in order', doses.join() === [...doses].sort().join());
 
+/* Act — turn it on */
 await page.click('#remindBtn');
 await page.waitForFunction(
   () => document.getElementById('remindBtn').dataset.state === 'on', null, { timeout: 8000 }
 ).catch(() => {});
 const label1 = (await page.textContent('#remindBtn')).trim();
+/* Assert — the switch is on, and the server holds this phone with that
+   schedule */
 check('the switch turns on', /reminders on/i.test(label1), label1);
 
-// the server should now be holding this phone, with that schedule
 const stored = forSlug('rem.t');
 check('the server took the subscription', stored.length === 1, `${stored.length}`);
 if (stored[0]) {
@@ -105,27 +109,30 @@ if (stored[0]) {
   check('no drug, dose or phase in the record', leaks.length === 0, leaks.join(', '));
 }
 
-// a reload must not lose it
+/* Act — reload */
 await page.reload();
 await page.waitForSelector('body.resolved');
 await page.waitForFunction(
   () => document.getElementById('remindBtn')?.dataset.state === 'on', null, { timeout: 8000 }
 ).catch(() => {});
+/* Assert — still on */
 check('still on after a reload',
   (await page.getAttribute('#remindBtn', 'data-state')) === 'on');
 
-// and off again
+/* Act — and off again */
 await page.click('#remindBtn');
 await page.waitForFunction(
   () => document.getElementById('remindBtn').dataset.state === 'off', null, { timeout: 8000 }
 ).catch(() => {});
+/* Assert — the switch is off, and the server forgot the phone */
 check('the switch turns off', (await page.getAttribute('#remindBtn', 'data-state')) === 'off');
 
 check('the server forgot the phone', forSlug('rem.t').length === 0);
 
-// a card with nothing on it must not offer reminders
+/* Act — open a card with nothing on it */
 await page.goto(`${BASE}/blank.q`);
 await page.waitForSelector('body.resolved');
+/* Assert — it must not offer reminders */
 check('an unassigned card offers nothing', !(await page.isVisible('#remindBtn')));
 
 await browser.close();

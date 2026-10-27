@@ -3,6 +3,8 @@
    taken weekly, and it must be right because it is what tells the
    atelier when to dispense the next one. */
 import { chromium } from 'playwright';
+
+/* Arrange — the harness, and the fragment card open */
 let bad = 0;
 const BASE = process.env.BASE || 'http://localhost:8094';
 const check = (n, ok, x = '') => {
@@ -16,12 +18,15 @@ p.on('pageerror', e => { console.log(' FAIL  page error — ' + e.message); bad+
 await p.goto(`${BASE}/ritual.html#Vial~tir`);
 await p.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length, null, { timeout: 15000 });
 
+/* Act — read the template */
 const t = await p.evaluate(async () =>
   (await loadTemplates()).templates.find(x => x.id === 'tirz'));
+/* Assert — a fixed 1 mL vial */
 check('the vial is 1 mL', t.volumeMl === 1, `${t.volumeMl} mL`);
 check('and is fixed, so no stored answer can resize it', t.vialFixed === true);
 
-/* Her own dose, no weekly climb: the whole vial at N units a week. */
+/* Act — her own dose at several sizes, no weekly climb: the whole vial at
+   N units a week */
 for (const units of [10, 17, 25, 30, 40]) {
   const got = await p.evaluate(u => {
     const pen = PENS[0];
@@ -30,31 +35,34 @@ for (const units of [10, 17, 25, 30, 40]) {
     return { ml: pen.volumeMl, doses: dosesLeft(pen) };
   }, units);
   const expect = Math.floor(100 / units);
+  /* Assert — floor(100/N) doses, still a 1 mL vial */
   check(`${String(units).padStart(2)} units a week gives ${expect} doses from the vial`,
         got.ml === 1 && got.doses === expect, `${got.doses} doses, vial ${got.ml} mL`);
 }
 
-/* A stored answer claiming a bigger vial must not take. */
+/* Act — a stored answer claiming a bigger vial */
 const forced = await p.evaluate(() => {
   const pen = PENS[0];
   applySetup(pen, { vials: 1, vialMl: 3, mode: 'own', units: 25, stepUp: 0, day: 1 });
   _supplyCache.clear();
   return { ml: pen.volumeMl, doses: dosesLeft(pen) };
 });
+/* Assert — it must not take */
 check('a 3 mL answer cannot resize a tirzepatide vial',
       forced.ml === 1 && forced.doses === 4, `${forced.ml} mL, ${forced.doses} doses`);
 
-/* A second vial adds supply without restarting the schedule. */
+/* Act — a second vial */
 const two = await p.evaluate(() => {
   const pen = PENS[0];
   applySetup(pen, { vials: 2, mode: 'own', units: 25, stepUp: 0, day: 1 });
   _supplyCache.clear();
   return { ml: pen.volumeMl, doses: dosesLeft(pen) };
 });
+/* Assert — supply doubles, the schedule does not restart */
 check('two vials are 2 mL and twice the doses',
       two.ml === 2 && two.doses === 8, `${two.ml} mL, ${two.doses} doses`);
 
-/* The run-out date is the last dose, and it is weekly. */
+/* Act — compute the run-out date */
 const when = await p.evaluate(() => {
   const pen = PENS[0];
   applySetup(pen, { vials: 1, mode: 'own', units: 25, stepUp: 0, day: 1 });
@@ -70,6 +78,7 @@ const when = await p.evaluate(() => {
   return { doses: dosesLeft(pen), last: s.lastDose ? iso(s.lastDose) : null, firstDue };
 });
 const weeks = (new Date(when.last) - new Date(when.firstDue)) / (7 * 86400000);
+/* Assert — the last dose falls a week apart, three weeks from the first */
 check('four doses, a week apart, is three weeks from the first',
       when.doses === 4 && weeks === 3,
       `${when.doses} doses, ${when.firstDue} to ${when.last} = ${weeks} weeks`);

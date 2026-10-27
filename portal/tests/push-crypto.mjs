@@ -4,8 +4,9 @@
      receiver's private key, exactly as a browser would */
 import crypto from 'node:crypto';
 
-// The module reads its keys at load time, so the environment must already
-// carry a pair. The runner script generates one and exports it.
+/* Arrange — the module reads its keys at load time, so the environment
+   must already carry a pair. The runner script generates one and exports
+   it. */
 const push = (await import(new URL('../lib/push.js', import.meta.url).href)).default;
 const keys = { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
 
@@ -18,8 +19,8 @@ const check = (name, ok, extra = '') => {
 const b64u = b => Buffer.from(b).toString('base64url');
 const unb64u = s => Buffer.from(String(s), 'base64url');
 
-/* ---------- 1. VAPID JWT ---------- */
-// Reach the header builder through a send attempt against a local sink.
+/* Arrange — reach the header builder through a send attempt against a
+   stubbed fetch, and a receiver key pair standing in for the browser */
 const captured = {};
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url, opts) => {
@@ -27,7 +28,6 @@ globalThis.fetch = async (url, opts) => {
   return { ok: true, status: 201 };
 };
 
-// A receiver key pair, standing in for the browser.
 const ua = crypto.createECDH('prime256v1');
 ua.generateKeys();
 const uaPublic = ua.getPublicKey();
@@ -42,11 +42,13 @@ const PLAINTEXT = JSON.stringify({
   title: 'The Charleston Atelier', body: 'Time for your injection.', url: '/phil.h', tag: 'dose'
 });
 
+/* Act — send one push */
 const out = await push.sendPush(sub, {
   title: 'The Charleston Atelier', body: 'Time for your injection.', url: '/phil.h', tag: 'dose'
 });
 globalThis.fetch = realFetch;
 
+/* Assert — it went out, to the endpoint, marked aes128gcm */
 check('sendPush reports ok', out.ok === true);
 check('posts to the endpoint', captured.url === sub.endpoint);
 check('declares aes128gcm', captured.headers['Content-Encoding'] === 'aes128gcm');
@@ -66,7 +68,7 @@ if (m) {
   const hours = (claims.exp - Math.floor(Date.now() / 1000)) / 3600;
   check('expiry inside Apple\'s 24h limit', hours > 0 && hours <= 24, `${hours.toFixed(1)}h`);
 
-  // Verify the signature the way a push service would.
+  /* Act — verify the signature the way a push service would */
   const pub = unb64u(keys.publicKey);
   const verifier = crypto.createPublicKey({
     key: { kty: 'EC', crv: 'P-256', x: b64u(pub.subarray(1, 33)), y: b64u(pub.subarray(33, 65)) },
@@ -75,10 +77,11 @@ if (m) {
   const ok = crypto.verify('sha256', Buffer.from(`${h}.${c}`), {
     key: verifier, dsaEncoding: 'ieee-p1363'
   }, unb64u(s));
+  /* Assert — the JWT is really signed by the published key */
   check('JWT signature verifies', ok);
 }
 
-/* ---------- 2. RFC 8291 payload ---------- */
+/* Arrange — pull the RFC 8291 body apart */
 const body = Buffer.from(captured.body);
 const salt = body.subarray(0, 16);
 const recordSize = body.readUInt32BE(16);
@@ -89,6 +92,7 @@ const ciphertext = body.subarray(21 + idlen);
 check('record size is 4096', recordSize === 4096);
 check('key id is a P-256 point', idlen === 65 && serverPublic[0] === 0x04);
 
+/* Act — decrypt the payload the way a browser would */
 const shared = ua.computeSecret(serverPublic);
 const hkdf = (salt, ikm, info, len) => {
   const prk = crypto.createHmac('sha256', salt).update(ikm).digest();
@@ -111,6 +115,7 @@ try {
   decrypted = plain.subarray(0, plain.length - 1).toString('utf8');
 } catch (e) { threw = e.message; }
 
+/* Assert — it decrypts, and it round-trips exactly */
 check('payload decrypts', decrypted !== null, threw || '');
 check('plaintext round-trips', decrypted === PLAINTEXT, decrypted ? '' : 'no output');
 
@@ -123,22 +128,26 @@ if (decrypted) {
   check('no drug, dose or name in the payload', found.length === 0, found.join(', '));
 }
 
-/* ---------- 3. two messages share nothing ---------- */
+/* Act — send a second message */
 globalThis.fetch = async (url, opts) => { captured.body2 = opts.body; return { ok: true, status: 201 }; };
 await push.sendPush(sub, { title: 'x', body: 'y', url: '/z', tag: 'dose' });
 globalThis.fetch = realFetch;
+/* Assert — a fresh ephemeral key, nothing shared with the first */
 check('each message uses a fresh ephemeral key',
   !Buffer.from(captured.body).subarray(21, 86).equals(Buffer.from(captured.body2).subarray(21, 86)));
 
-/* ---------- 4. dead endpoints are reported ---------- */
+/* Act — a dead endpoint (410) */
 globalThis.fetch = async () => ({ ok: false, status: 410 });
 const goneOut = await push.sendPush(sub, { title: 'x', body: 'y' });
 globalThis.fetch = realFetch;
+/* Assert — reported as gone */
 check('410 reports gone', goneOut.gone === true && goneOut.ok === false);
 
+/* Act — a busy endpoint (429) */
 globalThis.fetch = async () => ({ ok: false, status: 429 });
 const busy = await push.sendPush(sub, { title: 'x', body: 'y' });
 globalThis.fetch = realFetch;
+/* Assert — not treated as gone */
 check('429 is not treated as gone', busy.gone === false);
 
 console.log(bad ? `\n${bad} FAILED` : '\nPASS — VAPID verifies, payload round-trips, nothing clinical inside.');
