@@ -1304,12 +1304,15 @@ async function loadProtocol() {
     // link yet, and fragment / legacy cards carry their own protocol and
     // never had a record, so neither sees the gate.
     //
-    // The marker of "assigned" is the protocol itself — pens, not the
-    // name. A card that carries a dosing protocol must never open
-    // unsigned-in, even if its name was cleared or never typed: gating on
-    // the name alone once let a nameless prescribed card skip the gate
-    // entirely.
-    if ((rec.name || (rec.pens && rec.pens.length > 0)) && rec.status !== 'retired') {
+    // The marker of "assigned" is the protocol itself — a prescribed pen,
+    // a pen the patient added on her own tag, or simply her name. A card
+    // that carries any of it must never open unsigned-in: gating on the
+    // name alone once let a nameless prescribed card skip the gate
+    // entirely, and a patient-added pen on an unassigned tag is a dosing
+    // protocol too. Retired cards keep the gate as well — the spec
+    // exempts only fragment, legacy and blank, and a retired card still
+    // carries its patient's protocol.
+    if (rec.name || (rec.pens && rec.pens.length > 0) || (rec.added && rec.added.length > 0)) {
       const gate = await loadAuthGate();
       if (gate) {
         const outcome = await gate.ensureActivated({ slug: CARD_SLUG });

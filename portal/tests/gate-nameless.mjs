@@ -1,13 +1,15 @@
-/* The gate's key: a card carrying a dosing protocol must never open
-   unsigned-in, whatever its name says. Three cards that once slipped
-   through — an explicit empty name over a typed first name, a prescribed
-   pen with no name at all, and a whitespace-only name — must all show
-   the welcome gate on a cold visit, and the first one must still carry
-   the derived name on the record. */
+/* The gate's key: a card that carries anything of a patient's — a
+   prescribed pen, a pen she added on her own tag, or simply her name —
+   must never open unsigned-in. Five cards that once slipped through must
+   all show the welcome gate on a cold visit: an explicit empty name over
+   a typed first name, a prescribed pen with no name at all, a
+   whitespace-only name, a patient-added pen on an unassigned tag, and a
+   retired card. The first must still carry the derived name on the
+   record. */
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 
-/* Arrange — a studio session, and the three hostile mints */
+/* Arrange — a studio session, and the five mints */
 const BASE = process.env.BASE || 'http://localhost:8096';
 const TOK = readFileSync('/tmp/tok.txt', 'utf8').trim();
 const H = { 'Content-Type': 'application/json', Cookie: `ca_studio=${TOK}` };
@@ -29,6 +31,9 @@ const mk = async (label, body) => {
 const overridden = await mk('nn', { name: '', firstName: 'Jane', lastName: 'Doe', pens: [{ template: 'ghk' }] });
 const nameless   = await mk('np', { pens: [{ template: 'ghk' }] });
 const blanked    = await mk('ws', { name: '   ', pens: [{ template: 'ghk' }] });
+const herOwn     = await mk('ao', { name: '', pens: [],
+  added: [{ id: 'bpc+zz', template: 'bpc', startDate: '2026-10-20' }] });
+const retired    = await mk('rt', { name: 'Retired Patient', pens: [{ template: 'ghk' }], status: 'retired' });
 
 /* Assert — the record tells the truth about each name */
 const rec = slug => fetch(`${BASE}/api/cards/${slug}`, { headers: { Cookie: `ca_studio=${TOK}` } })
@@ -43,13 +48,13 @@ check('a whitespace-only name is treated as no name',
 
 /* Act — a cold visit to each, with no sign-in */
 const b = await chromium.launch();
-for (const slug of [overridden, nameless, blanked]) {
+for (const slug of [overridden, nameless, blanked, herOwn, retired]) {
   const p = await (await b.newContext({ viewport: { width: 420, height: 900 } })).newPage();
   await p.goto(`${BASE}/ritual.html?c=${slug}`);
   await p.waitForSelector('#auth-gate', { timeout: 25000 });
   /* Assert — the welcome gate, never the open card */
   const state = await p.getAttribute('#auth-gate', 'data-state');
-  check(`a protocol-carrying card (${slug.split(stamp)[0]}) gates its first tap`,
+  check(`a card carrying ${slug.split(stamp)[0]} gates its first tap`,
     state === 'welcome', state);
   await p.context().close();
 }
