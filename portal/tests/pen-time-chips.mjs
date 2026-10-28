@@ -76,8 +76,11 @@ check('pre-filled with the pen\'s start day',
 /* Act — change the date; the change event commits the edit (AC-4) */
 await dateInput.fill(yesterdayIso);
 await p.waitForTimeout(500);
+const expectedShort = new Date(Date.now() - 86400000)
+  .toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 check('leaving the field saves the new start day (AC-4)',
-  (await chipText('[data-datechip="ghk"]')).includes('Oct 26') || (await chipText('[data-datechip="ghk"]')).includes(yesterdayIso.slice(5)),
+  (await chipText('[data-datechip="ghk"]')).includes(expectedShort) ||
+  (await chipText('[data-datechip="ghk"]')).includes(yesterdayIso.slice(5)),
   await chipText('[data-datechip="ghk"]'));
 check('the other pen\'s date chip is untouched (AC-5)',
   (await p.evaluate(() => penStartIso(PENS.find(x => x.id === 'nadvial')))) === todayIso,
