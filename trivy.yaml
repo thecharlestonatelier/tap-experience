@@ -1,0 +1,9 @@
+# trivy — vulnerability and misconfiguration scanning
+# (run: trivy config .  — scans the Dockerfile and IaC files)
+scan:
+  severity:
+    - UNKNOWN
+    - LOW
+    - MEDIUM
+    - HIGH
+    - CRITICAL
