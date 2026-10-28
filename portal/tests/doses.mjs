@@ -11,6 +11,7 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 
+/* Arrange — the clinical source of truth, the same file the app fetches */
 const BASE = 'http://localhost:8092';
 
 let bad = 0;
@@ -19,7 +20,6 @@ const check = (name, ok, extra = '') => {
   if (!ok) bad++;
 };
 
-/* the clinical source of truth — the same file the app fetches */
 const templates = JSON.parse(readFileSync(
   new URL('../../patients/jessica/templates.json', import.meta.url), 'utf8'));
 
@@ -28,7 +28,7 @@ const page = await browser.newPage();
 await page.goto(`${BASE}/#Test~ghk`);
 await page.waitForFunction(() => typeof loadTemplates === 'function', null, { timeout: 8000 });
 
-/* what the app resolved from the same file */
+/* Act — read what the app resolved from the same file */
 const app = await page.evaluate(async () => {
   const t = await loadTemplates();
   const out = {};
@@ -38,6 +38,7 @@ const app = await page.evaluate(async () => {
   return out;
 });
 
+/* Assert — every phase's dial matches the mirrored formula */
 let checked = 0;
 for (const t of templates.templates || []) {
   if (!t.vialMg || !t.diluentMl || !t.phases) continue;
@@ -56,7 +57,7 @@ for (const t of templates.templates || []) {
 }
 check('every vial template got its dials verified', checked >= 10, `${checked} checked`);
 
-/* changing the diluent must move every dial number with it */
+/* Act — change the diluent on one template, both directions */
 const moved = await page.evaluate(() => {
   const t = TEMPLATES.templates.find(x => x.id === 'ghk');
   t.diluentMl = 5;                       // a known strength
@@ -69,6 +70,7 @@ const moved = await page.evaluate(() => {
 });
 console.log('   GHK-Cu at 5 mL :', moved.before.join('u, ') + 'u');
 console.log('   GHK-Cu at 10 mL:', moved.after.join('u, ') + 'u');
+/* Assert — halving the strength doubles the dial */
 check('halving the strength doubles the dial',
   moved.after.every((u, i) => Math.abs(u - moved.before[i] * 2) < 0.6));
 

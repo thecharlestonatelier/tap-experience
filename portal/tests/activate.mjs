@@ -15,14 +15,13 @@
    stamped on an emulator token is `custom`; a real Google sign-in stamps
    `google.com` — the service copies whatever the token carries. */
 import admin from 'firebase-admin';
+import { assertAuthEmulatorUp } from './emulator-guard.mjs';
+
+await assertAuthEmulatorUp();
 
 const BASE = 'http://localhost:8095';
 const PASS = 'testpassphrase';
 const AUTH_EMU = 'http://127.0.0.1:9099';
-
-/* a fresh card every run, so the test can be run twice */
-const SUFFIX = Math.random().toString(36).slice(2, 8);
-const SLUG = `auth${SUFFIX}.t`;
 
 let bad = 0;
 const check = (name, ok, extra = '') => {
@@ -34,7 +33,7 @@ admin.initializeApp({
   projectId: process.env.GOOGLE_CLOUD_PROJECT || 'atelier-tap'
 });
 
-/* a user with a name, and an ID token for it */
+/* Arrange — a user with a name, and an ID token for it */
 async function mint(name) {
   const uid = `t${Math.random().toString(36).slice(2, 10)}`;
   const user = await admin.auth().createUser({ uid, email: `${uid}@example.com`, displayName: name });
@@ -56,7 +55,11 @@ const post = (path, body, headers = {}) => fetch(`${BASE}${path}`, {
   body: JSON.stringify(body)
 });
 
-/* sign in as the clinician, and mint a card to belong to */
+/* Arrange — a fresh card every run (so the test can be run twice), a
+   clinician session to write it, and two contending accounts */
+const SUFFIX = Math.random().toString(36).slice(2, 8);
+const SLUG = `auth${SUFFIX}.t`;
+
 const signin = await fetch(`${BASE}/api/session`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ passphrase: PASS })
@@ -73,19 +76,25 @@ const bob = await mint('Bob Example');
 
 const full = () => fetch(`${BASE}/api/cards/${SLUG}`, { headers: { Cookie: cookie } }).then(r => r.json());
 
-/* nothing or nonsense must not link */
+/* Act — post no token */
 let r = await post(`/api/activate/${SLUG}`, {});
+/* Assert — refused */
 check('missing token refused', r.status === 400);
+
+/* Act — post a nonsense token */
 r = await post(`/api/activate/${SLUG}`, { idToken: 'not-a-token' });
+/* Assert — refused */
 check('bad token refused', r.status === 400);
 
-/* an unknown card must not be linkable */
+/* Act — point a real token at an unknown card */
 r = await post('/api/activate/nope.x', { idToken: alice.idToken });
+/* Assert — refused */
 check('unknown card refused', r.status === 404);
 
-/* first link */
+/* Act — the first link */
 r = await post(`/api/activate/${SLUG}`, { idToken: alice.idToken });
 const first = await r.json();
+/* Assert — accepted, and the record holds exactly the four link fields */
 check('first link accepted', r.status === 200 && first.ok && first.result === 'linked', JSON.stringify(first));
 
 let rec = await full();
@@ -101,30 +110,34 @@ check('link holds exactly the four fields',
   Object.keys(rec.activatedBy).join(','));
 const at1 = rec.activatedBy.at;
 
-/* the same account again: verified, nothing written */
+/* Act — the same account again */
 r = await post(`/api/activate/${SLUG}`, { idToken: alice.idToken });
 const again = await r.json();
+/* Assert — verified, and nothing written */
 check('same uid verifies', r.status === 200 && again.result === 'verified', JSON.stringify(again));
 rec = await full();
 check('no second write', rec.activatedBy.at === at1, `${rec.activatedBy.at} vs ${at1}`);
 
-/* a different account is refused and the link stands */
+/* Act — a different account */
 r = await post(`/api/activate/${SLUG}`, { idToken: bob.idToken });
+/* Assert — refused, and the link stands */
 check('different uid refused', r.status === 409, JSON.stringify(await r.json().catch(() => ({}))));
 rec = await full();
 check('link unchanged after refusal',
   rec.activatedBy.uid === alice.uid && rec.activatedBy.at === at1);
 
-/* what a tapped card reads must not include who it belongs to */
+/* Act — read the card the way a tap does, with no cookie */
 const pub = await fetch(`${BASE}/api/card/${SLUG}`).then(x => x.json());
+/* Assert — who it belongs to never leaves */
 check('public card read hides activation', pub.activatedBy === undefined && pub.name === 'Auth');
 
-/* a Studio save must keep the link */
+/* Act — a Studio save */
 r = await fetch(`${BASE}/api/cards/${SLUG}`, {
   method: 'PUT', headers: { 'Content-Type': 'application/json', Cookie: cookie },
   body: JSON.stringify({ name: 'Auth Renamed' })
 });
 const saved = await r.json();
+/* Assert — accepted, and the link survives */
 check('studio save accepted', r.status === 200, JSON.stringify(saved));
 check('studio save keeps link',
   saved.activatedBy && saved.activatedBy.uid === alice.uid && saved.activatedBy.at === at1,

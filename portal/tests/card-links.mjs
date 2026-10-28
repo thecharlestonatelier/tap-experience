@@ -1,5 +1,7 @@
 /* Christie's whole journey: every page, every link, and back again. */
 import { chromium } from 'playwright';
+
+/* Arrange — a fragment card, and the harness */
 const BASE = 'http://localhost:8093';
 const CARD = '#Christie~tir:5-28.7-28.10-28';
 let bad = 0;
@@ -8,6 +10,7 @@ const check = (n, ok, extra='') => { console.log(`${ok?'  ok  ':' FAIL '} ${n}${
 const browser = await chromium.launch();
 const page = await browser.newPage();
 
+/* Act — open the card on every entry page */
 for (const start of ['/', '/ritual.html', '/cards.html', '/calendar.html', '/library.html']) {
   await page.goto(`${BASE}${start}${CARD}`);
   await page.waitForTimeout(900);
@@ -15,12 +18,16 @@ for (const start of ['/', '/ritual.html', '/cards.html', '/calendar.html', '/lib
     .map(a => a.getAttribute('href'))
     .filter(h => h && !/^(https?:|sms:|tel:|mailto:|#)/i.test(h))
     .filter(h => !h.includes('#')));
+  /* Assert — no internal link loses the card */
   check(`${start.padEnd(16)} every internal link carries the card`, bare.length === 0, bare.join(' '));
 }
 
 console.log('\nthe journey she actually takes:');
+
+/* Act — open the card, and walk the ritual link and the back arrow */
 await page.goto(`${BASE}/${CARD}`);
 await page.waitForSelector('body.resolved');
+/* Assert — it opens */
 check('card opens', (await page.textContent('#patientName')).trim() === 'Christie');
 
 for (const [label, sel] of [["Today's Ritual", '#menu a:nth-of-type(1)'], ['back', 'a.back']]) {
@@ -38,14 +45,16 @@ for (const [label, sel] of [["Today's Ritual", '#menu a:nth-of-type(1)'], ['back
   console.log(`   after ${label}: ${page.url().replace(BASE,'')}`);
 }
 await page.waitForSelector('body.resolved', { timeout: 5000 }).catch(()=>{});
+/* Assert — the back arrow returns to her card */
 const name = (await page.textContent('#patientName')).trim();
 check('back arrow returns to her card', name === 'Christie', name);
 
-// bottom nav from the ritual page
+/* Act — the bottom nav from the ritual page */
 await page.goto(`${BASE}/ritual.html${CARD}`);
 await page.waitForTimeout(900);
 const navs = await page.$$eval('.nav a, #bottomNav a', as => as.map(a => a.getAttribute('href')));
 console.log('   ritual bottom nav:', JSON.stringify(navs));
+/* Assert — it carries the card too */
 check('bottom nav carries the card',
   navs.filter(h => h && !/^(https?:|sms:|tel:|mailto:)/i.test(h)).every(h => h.includes('#')));
 

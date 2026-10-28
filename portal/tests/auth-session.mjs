@@ -16,7 +16,10 @@
 const CDN_APP = 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 const CDN_AUTH = 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 
+import { requireLocalHost } from './emulator-guard.mjs';
+
 export async function signInGoogle(page, { identity = 'alice' } = {}) {
+  requireLocalHost(page);
   await page.evaluate(async ({ identity, CDN_APP, CDN_AUTH }) => {
     // A JWT-shaped fake id_token, one stable account per identity.
     const b64u = s => btoa(unescape(encodeURIComponent(s)))
@@ -67,6 +70,7 @@ export async function clearSession(page) {
    real Firebase session exactly like a patient. */
 
 export function signUpEmail(page, { email = 'alice@example.com', password = 'password123', name = 'Alice Example' } = {}) {
+  requireLocalHost(page);
   return page.evaluate(async ({ email, password, name, CDN_APP, CDN_AUTH }) => {
     const [{ firebaseConfig }] = await Promise.all([
       import('/assets/firebase.js'),
@@ -90,6 +94,7 @@ export function signUpEmail(page, { email = 'alice@example.com', password = 'pas
 }
 
 export function signInEmail(page, { email = 'alice@example.com', password = 'password123' } = {}) {
+  requireLocalHost(page);
   return page.evaluate(async ({ email, password, CDN_APP, CDN_AUTH }) => {
     const [{ firebaseConfig }] = await Promise.all([
       import('/assets/firebase.js'),

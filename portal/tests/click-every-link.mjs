@@ -3,6 +3,9 @@
    card is opened with a real Google session. */
 import { chromium } from 'playwright';
 import { signInGoogle } from './auth-session.mjs';
+
+/* Arrange — both card shapes, every page, and a signed-in browser (the
+   gate is part of the flow) */
 const BASE='http://localhost:8087';
 const CARDS = [
   ['slug card',     '/layn.p-v2p',                       'Layna'],
@@ -14,7 +17,6 @@ let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${
 const b=await chromium.launch(); const page=await b.newPage();
 page.on('pageerror', e=>console.log('  PAGE ERROR:', e.message));
 
-/* Sign in before the stored card is opened — the gate is part of the flow. */
 await page.goto(`${BASE}/`);
 await signInGoogle(page);
 
@@ -25,6 +27,7 @@ const broken = async () => {
   return /not set up|does not carry a protocol|no protocol on it yet/i.test(t);
 };
 
+/* Act — walk every page, click every internal link, and come back */
 for (const [label, entry, who] of CARDS) {
   console.log(`\n${label}  ${entry}`);
   let clicks = 0, fails = 0;
@@ -54,14 +57,16 @@ for (const [label, entry, who] of CARDS) {
       await page.waitForTimeout(400);
     }
   }
+  /* Assert — no link lost the card */
   check(`${label}: ${clicks} links clicked, none lost the card`, fails===0, fails?`${fails} broke`:'');
 }
 
-// and the guard must not resurrect a card on a cold visit to the root
+/* Act — a cold visit to the root on a brand-new context */
 await page.goto(`${BASE}/layn.p-v2p`); await page.waitForTimeout(700);
 const ctx2 = await b.newContext(); const p2 = await ctx2.newPage();
 await p2.goto(`${BASE}/`); await p2.waitForTimeout(800);
 const rootTxt = await p2.evaluate(()=>document.body.innerText.replace(/\s+/g,' '));
+/* Assert — the guard does not resurrect a card */
 check('a cold visit to the root still names nobody',
   /not set up/i.test(rootTxt) && !/layna|christie/i.test(rootTxt));
 

@@ -14,6 +14,24 @@ cd portal/..
 firebase emulators:start --only auth          # 127.0.0.1:9099 (firebase.json)
 ```
 
+### Fail closed, not fail open
+
+The suites refuse to touch live Firebase, loudly:
+
+- Every suite that mints users through `firebase-admin` (`activate`,
+  `unlink`, `gate-email`, `unlink-reattribute`) runs
+  `assertAuthEmulatorUp()` from `tests/emulator-guard.mjs` before the
+  SDK's first call. Missing `FIREBASE_AUTH_EMULATOR_HOST`, or an
+  emulator that does not answer, stops the suite before any network call.
+- The browser helpers in `tests/auth-session.mjs` sign in only on
+  localhost. Pointed at any other host they throw
+  ("Refusing to sign into live Firebase") instead of signing into a real
+  deployment — the gate itself wires the emulator only on localhost, so a
+  non-localhost page would mean live Firebase.
+
+A suite never fails open: it either runs against the emulator or it does
+not run.
+
 The dev matrix:
 
 - **Endpoint tests** (activate, unlink, gate-edge server side): file store

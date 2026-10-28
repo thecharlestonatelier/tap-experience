@@ -9,6 +9,7 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 
+/* Arrange — a studio session and the dashboard open */
 const BASE = 'http://localhost:8093';
 const TOK = readFileSync('/tmp/tok.txt', 'utf8').trim();
 
@@ -31,31 +32,35 @@ await p.waitForSelector('#rows tr', { timeout: 15000 });
 const row = slug => p.locator(`#rows tr[data-slug="${slug}"]`);
 const pill = slug => row(slug).locator('[data-link]');
 
-/* the pills */
+/* Act — read the pills */
 const linkedText = await pill('linked.t').textContent();
-check('linked card pill says LINKED', /LINKED/i.test(linkedText), linkedText.trim());
 const freshText = await pill('fresh.t').textContent();
+/* Assert — each card wears its state */
+check('linked card pill says LINKED', /LINKED/i.test(linkedText), linkedText.trim());
 check('fresh card pill says NOT LINKED', /NOT LINKED/i.test(freshText), freshText.trim());
 
-/* the detail line on the linked card */
+/* Act — open the detail line on the linked card */
 await pill('linked.t').click();
 const detailLine = p.locator('#rows tr.link-detail[data-slug="linked.t"] td');
 await detailLine.filter({ hasText: 'Activated by' }).waitFor({ timeout: 8000 });
 const detail = await detailLine.textContent();
+/* Assert — name, provider, uid and timestamp; never an email */
 check('detail line shows the name', /Linked Example/.test(detail), detail.trim());
 check('detail line shows the provider', /google\.com/.test(detail), detail.trim());
 check('detail line shows the uid', /u123/.test(detail), detail.trim());
 check('detail line shows a timestamp', /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(detail), detail.trim());
 check('no email renders in the detail line', !/@/.test(detail), detail.trim());
 
-/* clicking the pill again closes it */
+/* Act — click the pill again */
 await pill('linked.t').click();
+/* Assert — the detail line closes */
 check('the detail line closes again', await p.locator('#rows tr.link-detail[data-slug="linked.t"]').isHidden());
 
-/* the confirmed unlink clears the record and the pill follows */
+/* Act — the confirmed unlink */
 await pill('linked.t').click();
 await p.locator('#rows tr.link-detail[data-slug="linked.t"] [data-unlink]').click();
 await p.waitForTimeout(1200);
+/* Assert — the record is cleared and the pill follows */
 const rec = await (await fetch(`${BASE}/api/cards/linked.t`, {
   headers: { Cookie: `ca_studio=${TOK}` }
 })).json();
@@ -63,7 +68,7 @@ check('unlink cleared the record', !rec.activatedBy, JSON.stringify(rec.activate
 const afterText = await pill('linked.t').textContent();
 check('the pill follows to NOT LINKED', /NOT LINKED/i.test(afterText), afterText.trim());
 
-/* the pill click must not open the editor */
+/* Assert — the pill click did not open the editor */
 check('the editor stayed closed', await p.locator('#editor').evaluate(el => !el.open));
 
 await b.close();

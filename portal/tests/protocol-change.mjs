@@ -4,6 +4,9 @@
 import { chromium } from 'playwright';
 import { readFileSync } from 'node:fs';
 import { signInGoogle } from './auth-session.mjs';
+
+/* Arrange — est.t back to a known prescription, and the card open in the
+   browser */
 const B='http://localhost:8096', TOK=readFileSync('/tmp/tok.txt','utf8').trim();
 const H={'Content-Type':'application/json',Cookie:`ca_studio=${TOK}`};
 let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${x?' — '+x:''}`);if(!ok)bad++;};
@@ -25,28 +28,32 @@ const resume=async()=>{ await p.evaluate(()=>{
   window.dispatchEvent(new Event('focus'));
 }); await p.waitForTimeout(1200); };
 const names=async()=>p.evaluate(()=>[...document.querySelectorAll('#todayStack .dose-name')].map(e=>e.textContent));
+/* Assert — the starting point */
 check('card opens with one peptide',(await names()).length===1,(await names()).join(', '));
 
-// --- the atelier adds a peptide while her card sits open ---
+/* Act — the atelier adds a peptide while her card sits open */
 await fetch(`${B}/api/cards/est.t`,{method:'PUT',headers:H,
   body:JSON.stringify({pens:[{template:'ghk'},{template:'nadvial'}]})});
 
 // she switches away and comes back. NO reload.
-await resume(); 
+await resume();
 
+/* Assert — it is on her screen, and the engine has it */
 const after=await names();
 check('the new peptide is on her screen, with no reload', after.length===2, after.join(', '));
 check('and the engine has it', (await p.evaluate(()=>PENS.map(x=>x.id))).includes('nadvial'));
 
-// --- and a peptide removed goes away the same way ---
+/* Act — and a peptide removed */
 await fetch(`${B}/api/cards/est.t`,{method:'PUT',headers:H,body:JSON.stringify({pens:[{template:'nadvial'}]})});
-await resume(); 
+await resume();
+/* Assert — it goes away the same way */
 const gone=await names();
 check('a peptide removed disappears the same way', gone.length===1 && !gone.join().includes('GHK'), gone.join(', '));
 
-// --- nothing changed: the screen must not churn ---
+/* Act — come back again, with nothing changed */
 const stamp=await p.evaluate(()=>document.getElementById('todayStack').innerHTML.length);
-await resume(); 
+await resume();
+/* Assert — the screen does not churn */
 check('coming back with nothing changed redraws nothing',
       await p.evaluate(()=>document.getElementById('todayStack').innerHTML.length)===stamp);
 

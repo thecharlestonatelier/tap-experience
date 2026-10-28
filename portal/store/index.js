@@ -99,7 +99,7 @@ function sanitizeSettings(input, existing) {
    arithmetic. The dashboard shows this rather than recomputing it, so
    what the atelier reads is what she is actually looking at. */
 function sanitizeState(input) {
-  if (!input || typeof input !== 'object') return null;
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const str = (v, n) => String(v == null ? '' : v).slice(0, n);
   const times = {};
   const src = (input.times && typeof input.times === 'object') ? input.times : {};
@@ -137,9 +137,22 @@ function sanitizeState(input) {
 }
 
 function sanitize(input, existing = null) {
+  // The display name in order of authority: what was typed, then the
+  // first and last names the dashboard mints cards from, then the name
+  // the record already had. An explicitly empty or whitespace-only name
+  // counts as "not typed" — otherwise clearing the name would silently
+  // leave a prescribed card nameless.
+  const typedName = String(input.name ?? '').trim();
+  const derivedName = (input.firstName || input.lastName)
+    ? [input.firstName, input.lastName]
+        .map(x => String(x ?? '').trim())
+        .filter(Boolean)
+        .join(' ')
+    : '';
   const rec = {
     slug: normalizeSlug(input.slug || (existing && existing.slug)),
-    name: String(input.name ?? (existing ? existing.name : '')).trim().slice(0, 60),
+    name: String(typedName || derivedName || (existing ? existing.name : ''))
+      .trim().slice(0, 60),
     startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')
       ? input.startDate
       : (existing ? existing.startDate : null),
@@ -174,10 +187,14 @@ function sanitize(input, existing = null) {
   };
   const settings = sanitizeSettings(input.settings, existing);
   if (settings) rec.settings = settings;
-  // A card is blank until it has someone's name or something on it. Saying
-  // so here means the dashboard never has to remember to set it.
-  if (!rec.status) rec.status = (rec.name || rec.pens.length) ? 'active' : 'blank';
-  if (!rec.name && rec.pens.length === 0 && rec.status === 'active') rec.status = 'blank';
+  // A card is blank until it has someone's name, a prescribed pen, or a
+  // pen she added herself — and only then. Saying so here means the
+  // dashboard never has to remember to set it, and a patient who starts
+  // using an unassigned tag becomes visible exactly the way a prescribed
+  // card is. Retired is the atelier's word and is never second-guessed.
+  if (rec.status !== 'retired') {
+    rec.status = (rec.name || rec.pens.length || rec.added.length) ? 'active' : 'blank';
+  }
   return carryCounters(rec, existing);
 }
 
@@ -216,8 +233,8 @@ function sanitizePen(pen) {
 }
 
 /* What a tapped card is allowed to see. The clinician's note, the
-   record's history, and who activated the card stay on the clinician's
-   side of the wire — the card itself has no use for its own uid. */
+   treatment record (`visits`), and who activated the card stay on the
+   clinician's side of the wire — the card itself has no use for them. */
 function publicView(rec) {
   if (!rec) return null;
   return {
@@ -228,7 +245,6 @@ function publicView(rec) {
     pens: rec.pens || [],
     added: rec.added || [],
     dropped: rec.dropped || [],
-    visits: rec.visits || [],
     // Her own settings, so the card can adopt anything the atelier
     // changed for her. Not the state report — that came from her phone
     // and it has no use for it back.

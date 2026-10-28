@@ -1,6 +1,8 @@
 /* Tirzepatide: 1 mL vials, own units, a weekly climb, and carrying on
    into a second vial when the first is spent. */
 import { chromium } from 'playwright';
+
+/* Arrange — the fragment card open, the template loaded */
 const BASE='http://localhost:8089';
 let bad=0; const check=(n,ok,x='')=>{console.log(`${ok?'  ok  ':' FAIL '} ${n}${x?' — '+x:''}`); if(!ok)bad++;};
 
@@ -9,19 +11,20 @@ page.on('pageerror', e=>console.log('  PAGE ERROR:', e.message));
 await page.goto(`${BASE}/ritual.html#Tess~tir`);
 await page.waitForFunction(()=>typeof ownPhases==='function',null,{timeout:8000});
 
-// the vial
+/* Act — read the vial's numbers */
 const vial = await page.evaluate(async () => {
   const t=(await loadTemplates()).templates.find(x=>x.id==='tirz');
   return { conc:t.concentrationMgPerMl, vol:t.volumeMl, max:t.maxUnits,
            steps:t.stepUpOptions, opts:t.vialOptions||null };
 });
 console.log('  vial:', JSON.stringify(vial));
+/* Assert — 1 mL, no size question, a 0-4 climb, 0.17 mg per unit */
 check('1 mL vial', vial.vol===1);
 check('no vial-size question any more', vial.opts===null);
 check('climb options are 0-4', JSON.stringify(vial.steps)==='[0,1,2,3,4]');
 check('one unit is 0.17 mg', Math.abs(vial.conc*0.01-0.17)<0.001);
 
-// the climb
+/* Act — run the climb at three settings */
 const climb = await page.evaluate(() => {
   const pen={ maxUnits:50 };
   return {
@@ -34,13 +37,14 @@ const climb = await page.evaluate(() => {
 console.log('  no increase   :', climb.none.join(', '));
 console.log('  +2 a week     :', climb.two.join(', '), '…');
 console.log('  +4 from 44    :', climb.four.map(u=>u).join(', '));
+/* Assert — held, climbed, and stopped at the ceiling */
 check('no increase holds one dose', climb.none.length===1 && climb.none[0]===20);
 check('+2 climbs by two', climb.two[0]===20 && climb.two[1]===22 && climb.two[2]===24);
 check('the climb stops at the 50-unit ceiling',
   climb.twoEnd.units<=50 && climb.twoEnd.days===364, JSON.stringify(climb.twoEnd));
 check('it never steps past the ceiling', climb.four.every(u=>u<=50), climb.four.join(','));
 
-// supply from a 1 mL vial, and a second one
+/* Act — supply from a 1 mL vial, then a second */
 const supplyOut = await page.evaluate(() => {
   const pen = JSON.parse(JSON.stringify(PENS[0]));
   pen.id='tirz'; pen.startDate=null;
@@ -53,6 +57,7 @@ const supplyOut = await page.evaluate(() => {
 });
 console.log('  one vial :', JSON.stringify(supplyOut.oneVial));
 console.log('  two vials:', JSON.stringify(supplyOut.twoVials));
+/* Assert — the second vial only adds supply */
 check('one vial is 1 mL', supplyOut.oneVial.ml===1);
 check('a second vial doubles the supply', supplyOut.twoVials.ml===2 && supplyOut.twoVials.vials===2);
 
