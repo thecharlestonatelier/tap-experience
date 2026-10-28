@@ -216,11 +216,16 @@ async function readBody(req, limit = 64 * 1024) {
   const cap = asText ? 400 * 1024 : limit;
   const chunks = [];
   let size = 0;
+  let tooLarge = false;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > cap) throw Object.assign(new Error('too_large'), { status: 413 });
+    if (size > cap) { tooLarge = true; continue; }  // drain the rest
     chunks.push(chunk);
   }
+  // Refusing mid-stream poisons the keep-alive connection: answering 413
+  // while the client is still uploading resets its next request. Draining
+  // to the end first lets the socket be reused.
+  if (tooLarge) throw Object.assign(new Error('too_large'), { status: 413 });
   if (!chunks.length) return asText ? '' : {};
   const body = Buffer.concat(chunks).toString('utf8');
   if (asText) return body;
@@ -247,10 +252,20 @@ function validSession(token) {
          crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected));
 }
 
+/* decodeURIComponent on attacker-controlled input throws URIError on a
+   malformed escape, and a thrown decode once surfaced as a 500 with a
+   stack trace on every dashboard and static route. Decode defensively: a
+   value that cannot be decoded is not the value we are looking for. */
+function safeDecode(s) {
+  try { return decodeURIComponent(s); } catch { return null; }
+}
+
 function isClinician(req) {
   if (!STUDIO_PASSPHRASE) return true;   // unset locally: the dashboard is open
   const cookie = /(?:^|;\s*)ca_studio=([^;]+)/.exec(req.headers.cookie || '');
-  return cookie ? validSession(decodeURIComponent(cookie[1])) : false;
+  if (!cookie) return false;
+  const value = safeDecode(cookie[1]);
+  return value === null ? false : validSession(value);
 }
 
 function requireClinician(req, res) {
@@ -290,7 +305,9 @@ function readCardCookie(req) {
   const hit = raw.split(';').map(c => c.trim())
     .find(c => c.startsWith(CARD_COOKIE + '='));
   if (!hit) return null;
-  const slug = normalizeSlug(decodeURIComponent(hit.slice(CARD_COOKIE.length + 1)));
+  const dec = safeDecode(hit.slice(CARD_COOKIE.length + 1));
+  if (dec === null) return null;
+  const slug = normalizeSlug(dec);
   return isValidSlug(slug) ? slug : null;
 }
 
@@ -313,7 +330,12 @@ async function queryCard(url, pathname) {
 }
 
 function serveStatic(res, urlPath, { inject, vial, remember, setCard } = {}) {
-  const rel = decodeURIComponent(urlPath).replace(/^\/+/, '');
+  const decoded = safeDecode(urlPath);
+  if (decoded === null) {
+    send(res, 400, 'Bad request', { 'Content-Type': 'text/plain; charset=utf-8' });
+    return true;
+  }
+  const rel = decoded.replace(/^\/+/, '');
   const full = path.join(WEB_ROOT, rel);
 
   // Never let a crafted path climb out of the web root. Sending the 403
@@ -487,8 +509,8 @@ async function route(req, res) {
      the phone, which is why the page asks her to confirm her own name
      before anything is written. */
   if (p.startsWith('/v/')) {
-    const payload = decodeURIComponent(p.slice('/v/'.length));
-    if (/^[A-Za-z0-9._-]{1,48}$/.test(payload)) {
+    const payload = safeDecode(p.slice('/v/'.length));
+    if (payload && /^[A-Za-z0-9._-]{1,48}$/.test(payload)) {
       // A sticker written for one patient carries ?c=<slug>. The page reads
       // it from the address; the cookie stays as the fallback for a generic
       // sticker, and the page prefers whichever of the two is present.

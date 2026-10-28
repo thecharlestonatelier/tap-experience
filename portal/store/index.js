@@ -99,7 +99,7 @@ function sanitizeSettings(input, existing) {
    arithmetic. The dashboard shows this rather than recomputing it, so
    what the atelier reads is what she is actually looking at. */
 function sanitizeState(input) {
-  if (!input || typeof input !== 'object') return null;
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const str = (v, n) => String(v == null ? '' : v).slice(0, n);
   const times = {};
   const src = (input.times && typeof input.times === 'object') ? input.times : {};
