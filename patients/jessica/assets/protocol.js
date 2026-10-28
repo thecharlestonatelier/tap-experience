@@ -678,8 +678,18 @@ function savePenTimes(map) {
 }
 
 function setPenTime(pen, hhmm) {
-  if (!pen || !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(hhmm || ''))) return;
+  if (!pen) return;
   const mine = loadPenTimes();
+  // An emptied field clears her own answer, so the chain falls back to
+  // the first logged dose or the band default — there is no other way to
+  // un-pin a time she set.
+  if (hhmm === '') {
+    delete mine[pen.id];
+    savePenTimes(mine);
+    scheduleChanged();
+    return;
+  }
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(hhmm || ''))) return;
   mine[pen.id] = hhmm;
   savePenTimes(mine);
   scheduleChanged();
