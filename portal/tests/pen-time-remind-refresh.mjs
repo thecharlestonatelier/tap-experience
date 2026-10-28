@@ -112,8 +112,8 @@ const sub1 = await (async () => {
 check('after a time change the stored due list moves to 21:15',
   sub1 && sub1.due.length > 0 && sub1.due.every(iso => hhmm(iso) === '21:15'),
   sub1 ? sub1.due.slice(0, 2).map(hhmm).join(', ') : 'none');
-check('the re-sync keeps the same schedule (same count, new hour)',
-  sub0 && sub1 && sub1.due.length === sub0.due.length,
+check('the re-sync keeps the same schedule (count within one boundary day)',
+  sub0 && sub1 && Math.abs(sub1.due.length - sub0.due.length) <= 1,
   `${sub0 && sub0.due.length} -> ${sub1 && sub1.due.length}`);
 
 /* Assert — the stored due matches what the card itself now computes */
