@@ -876,7 +876,9 @@ function applySettings(settings) {
   if (settings.times && typeof settings.times === 'object') {
     const mine = loadTimes();
     Object.keys(settings.times).forEach(band => {
-      if (/^\d{2}:\d{2}$/.test(settings.times[band])) mine[band] = settings.times[band];
+      // The same clock rule the store applies — the client must not adopt
+      // a value the server would drop.
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.times[band])) mine[band] = settings.times[band];
     });
     saveTimes(mine);
   }

@@ -99,8 +99,10 @@ Safari shows on the home-screen app.
 A pen's start date and time-of-day lock for the patient at the pen's first
 logged dose (`firstDoseDay`). The atelier override stays above the lock
 through `settings.rev` and `settings.force`. `/api/logged` returns the logged
-days and `firstAt`, the earliest logged instant per pen. The card reads the
-first dose's clock time from `firstAt`.
+days and `firstAt`, the earliest logged instant per template. The card reads
+the first dose's clock time from `firstAt`. The dose log and `firstAt` are
+keyed by template (`penKeyOf`), so two pens of the same template share one log
+and one first-dose time.
 
 ### 3.4 Reminders
 
@@ -120,9 +122,9 @@ trusted first:
 
 The per-pen time changes only which instants `upcomingDoses()` emits. The
 15-minute sweep, the two-hour grace, and the `sentUpTo` dedupe stay the same.
-A settings change on a cold open re-syncs the stored due list through
-`refreshReminders()`. That function refuses while the pen list is empty, so an
-early call cannot post an empty schedule.
+A settings change on a cold open re-syncs the stored due list, re-reports her
+state, and republishes the calendar feed. `refreshReminders()` refuses while
+the pen list is empty, so an early call cannot post an empty schedule.
 
 ### 3.5 Calendar export and feed
 
@@ -150,8 +152,9 @@ shows an Unlink action, which clears the link so the next sign-in links again.
 Card Studio posts to `/api/cards` to create a card. The store sanitizes the
 input. It keeps the counters (`taps`, `firstSeen`, `lastSeen`, `days`) and the
 patient's `state` on every save. The editor shows one time row per band and
-one row per pen. A per-pen row sets `settings.penTimes`; an empty per-pen row
-clears the key, so the pen falls back to the chain from §3.4.
+one row per pen. A per-pen row sets `settings.penTimes`; an empty per-pen row,
+or removing the pen, clears the key, so the pen falls back to the chain from
+§3.4.
 
 ## 4. Interfaces and Data
 
