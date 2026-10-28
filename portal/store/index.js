@@ -67,15 +67,27 @@ function sanitizeSettings(input, existing) {
   if (!input || typeof input !== 'object') return prev.rev ? prev : undefined;
 
   const times = {};
-  const src = (input.times && typeof input.times === 'object') ? input.times : {};
+  const src = (input.times && typeof input.times === 'object' && !Array.isArray(input.times)) ? input.times : {};
   Object.keys(src).slice(0, 6).forEach(band => {
     const v = String(src[band] || '');
-    if (/^\d{2}:\d{2}$/.test(v)) times[String(band).slice(0, 16)] = v;
+    // A real clock time everywhere: hours 00-23, minutes 00-59 — the same
+    // rule the state report applies, so no value survives one surface and
+    // blanks on the other.
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) times[String(band).slice(0, 16)] = v;
+  });
+
+  const penTimes = {};
+  const penSrc = (input.penTimes && typeof input.penTimes === 'object' && !Array.isArray(input.penTimes)) ? input.penTimes : {};
+  Object.keys(penSrc).slice(0, 12).forEach(penId => {
+    const v = String(penSrc[penId] || '');
+    // A real clock time: hours 00-23, minutes 00-59.
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) penTimes[String(penId).slice(0, 16)] = v;
   });
 
   const out = {
     startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '') ? input.startDate : '',
     times,
+    penTimes,
     rev: Number(prev.rev) || 0
   };
 
@@ -88,9 +100,10 @@ function sanitizeSettings(input, existing) {
   // form — it already reads what it should — so without this there would
   // be no way to send it.
   const same = out.startDate === (prev.startDate || '') &&
-               JSON.stringify(out.times) === JSON.stringify(prev.times || {});
+               JSON.stringify(out.times) === JSON.stringify(prev.times || {}) &&
+               JSON.stringify(out.penTimes) === JSON.stringify(prev.penTimes || {});
   if (!same || input.force) out.rev = (Number(prev.rev) || 0) + 1;
-  if (!out.rev && !out.startDate && !Object.keys(times).length) return undefined;
+  if (!out.rev && !out.startDate && !Object.keys(times).length && !Object.keys(penTimes).length) return undefined;
   return out;
 }
 
@@ -102,10 +115,10 @@ function sanitizeState(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const str = (v, n) => String(v == null ? '' : v).slice(0, n);
   const times = {};
-  const src = (input.times && typeof input.times === 'object') ? input.times : {};
+  const src = (input.times && typeof input.times === 'object' && !Array.isArray(input.times)) ? input.times : {};
   Object.keys(src).slice(0, 6).forEach(b => {
     const v = String(src[b] || '');
-    if (/^\d{2}:\d{2}$/.test(v)) times[String(b).slice(0, 16)] = v;
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) times[String(b).slice(0, 16)] = v;
   });
 
   return {
@@ -121,7 +134,7 @@ function sanitizeState(input) {
       phase: str(d.phase, 40),
       units: Number(d.units) || 0,
       mg: Number(d.mg) || 0,
-      at: /^\d{2}:\d{2}$/.test(d.at || '') ? d.at : '',
+      at: /^([01]\d|2[0-3]):[0-5]\d$/.test(d.at || '') ? d.at : '',
       rest: !!d.rest
     })),
     supply: (Array.isArray(input.supply) ? input.supply : []).slice(0, 8).map(s => ({

@@ -1,0 +1,3 @@
+# checkov — static analysis for infrastructure-as-code (run: checkov -d .)
+# Quiet defaults; add per-check skips under `skip-check:` only with a reason.
+compact: true

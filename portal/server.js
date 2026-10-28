@@ -676,12 +676,23 @@ async function route(req, res) {
     const slug = assertSlug(p.slice('/api/logged/'.length));
     if (!await store.get(slug)) return json(res, 404, { error: 'not_found' });
     const days = {};
+    const firstAt = {};
     for (const d of await doses.forSlug(slug, 400)) {
       const day = d.day || String(d.at || '').slice(0, 10);
       if (!day) continue;
       (days[day] = days[day] || []).push(d.template || 'pen');
+      // The earliest recorded instant per pen: the card reads the clock
+      // time of the first logged dose from this. Day and instant only —
+      // no lot, no dose, nothing beyond what she can already see.
+      // Compared as epochs, not strings: the card posts Z-form instants,
+      // but a hostile caller must not be able to misorder mixed forms.
+      const key = d.template || 'pen';
+      const at = String(d.at || '');
+      const t = Date.parse(at);
+      const prev = Date.parse(firstAt[key] || '');
+      if (!isNaN(t) && (firstAt[key] === undefined || t < prev)) firstAt[key] = at;
     }
-    return json(res, 200, { days });
+    return json(res, 200, { days, firstAt });
   }
 
   /* --- what a card has logged, for the dashboard --- */

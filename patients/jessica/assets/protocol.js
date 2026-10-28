@@ -510,10 +510,36 @@ function saveTimes(map) {
   scheduleChanged();
 }
 
-/* The clock time for a pen: hers if she set one, otherwise the band default. */
+/* The clock time for a pen, resolved most-trustworthy first:
+
+     1. what the atelier set for this pen (settings.penTimes),
+     2. what the patient set for this pen (the chip),
+     3. the clock time of her first logged dose, an observation,
+     4. the band default (Morning/Evening as the template says).
+
+   The result feeds only the instant construction — due list, reminders,
+   calendar — never the day math. */
 function timeFor(pen) {
-  const mine = loadTimes();
-  return mine[pen.time] || TIME_AT[pen.time] || '09:00';
+  const atelier = loadAtelierPenTimes();
+  if (atelier[pen.id]) return atelier[pen.id];
+  const mine = loadPenTimes();
+  if (mine[pen.id]) return mine[pen.id];
+  const first = firstDoseTime(pen);
+  if (first) return first;
+  return loadTimes()[pen.time] || TIME_AT[pen.time] || '09:00';
+}
+
+/* The clock time of the first dose actually logged for this pen, from
+   the earliest recorded instant. A back-filled dose carries the day it
+   was given, and its `at` carries the time the card scheduled it for —
+   the best available observation of when she actually injects. */
+function firstDoseTime(pen) {
+  const at = LOGGED_FIRST_AT[penKeyOf(pen)];
+  if (!at) return null;
+  const d = new Date(at);
+  if (isNaN(d.getTime())) return null;
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 /* Which bands this protocol actually uses — a morning pair and an evening
@@ -633,6 +659,54 @@ function setPenStart(pen, isoDate) {
 
 /* The day a pen began, as a date string, for anything that has to show it. */
 function penStartIso(pen) { return iso(penStart(pen)); }
+
+/* ---------- when each pen's clock time ----------
+   A pen's time-of-day works exactly like its start day: the template
+   says Morning or Evening, but only the patient knows what that means
+   for her, and each pen can differ. Her answer lives on her phone in the
+   same style as her per-pen start days, and is reported to the atelier
+   with the rest of her state. A pen with no answer of its own falls back
+   the way every card always has. */
+function penTimesKey() { return `tca.pentime.${CFG.patient.id}`; }
+
+function loadPenTimes() {
+  try { return JSON.parse(localStorage.getItem(penTimesKey())) || {}; } catch { return {}; }
+}
+
+function savePenTimes(map) {
+  try { localStorage.setItem(penTimesKey(), JSON.stringify(map || {})); } catch {}
+}
+
+function setPenTime(pen, hhmm) {
+  if (!pen) return;
+  const mine = loadPenTimes();
+  // An emptied field clears her own answer, so the chain falls back to
+  // the first logged dose or the band default — there is no other way to
+  // un-pin a time she set.
+  if (hhmm === '') {
+    delete mine[pen.id];
+    savePenTimes(mine);
+    scheduleChanged();
+    return;
+  }
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(hhmm || ''))) return;
+  mine[pen.id] = hhmm;
+  savePenTimes(mine);
+  scheduleChanged();
+}
+
+/* The time-of-day the atelier set per pen (settings.penTimes). Held in
+   its own map so the atelier's value always wins and survives her own
+   edits — mirroring atelierStart on the start-day side. */
+function atelierPenTimesKey() { return `tca.pentime.atelier.${CFG.patient.id}`; }
+
+function loadAtelierPenTimes() {
+  try { return JSON.parse(localStorage.getItem(atelierPenTimesKey())) || {}; } catch { return {}; }
+}
+
+function saveAtelierPenTimes(map) {
+  try { localStorage.setItem(atelierPenTimesKey(), JSON.stringify(map || {})); } catch {}
+}
 
 /* ---------- card payloads ----------
    A tap card carries its own protocol in the URL fragment, so a card can
@@ -802,9 +876,21 @@ function applySettings(settings) {
   if (settings.times && typeof settings.times === 'object') {
     const mine = loadTimes();
     Object.keys(settings.times).forEach(band => {
-      if (/^\d{2}:\d{2}$/.test(settings.times[band])) mine[band] = settings.times[band];
+      // The same clock rule the store applies — the client must not adopt
+      // a value the server would drop.
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.times[band])) mine[band] = settings.times[band];
     });
     saveTimes(mine);
+  }
+  if (settings.penTimes && typeof settings.penTimes === 'object' && !Array.isArray(settings.penTimes)) {
+    // The atelier map mirrors settings.penTimes exactly: rebuild it from
+    // the validated entries each apply, so a value the atelier cleared
+    // falls back instead of staying stale and consuming the rev forever.
+    const next = {};
+    Object.keys(settings.penTimes).forEach(penId => {
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(settings.penTimes[penId])) next[penId] = settings.penTimes[penId];
+    });
+    saveAtelierPenTimes(next);
   }
   try { localStorage.setItem(revKey(), String(Number(settings.rev))); } catch {}
   return true;
@@ -834,7 +920,10 @@ function stateReport() {
         phase: dose ? dose.phase.name : '',
         units: dose ? dose.units : 0,
         mg: dose ? round(dose.totalMg, 3) : 0,
-        at: effectiveTimes()[pen.time] || '',
+        // The pen's resolved clock time — atelier → patient → first dose
+        // → band — the same value that drives the reminders and calendar,
+        // so the dashboard reads exactly what she is actually showing.
+        at: timeFor(pen),
         rest: !dose
       };
     }),
@@ -1345,6 +1434,10 @@ async function loadProtocol() {
   // Tell the atelier what this screen is showing. A change it just sent
   // is reported straight back, so the dashboard can see it landed.
   reportState(_tookSettings);
+  // A settings change (band or per-pen time) must move the reminders
+  // too — reportState and publishFeed are two of its consumers, this is
+  // the third. In-session changes go through scheduleChanged instead.
+  if (_tookSettings) refreshReminders();
   _tookSettings = false;
 
   // Keep the subscribed calendar current with what the card now draws.
@@ -1598,6 +1691,8 @@ function icsRemember(uids, seq, extra) {
 function icsSignature() {
   const parts = [];
   PENS.forEach(pen => {
+    // The resolved per-pen time (Phase-1 chain), so a time-only change
+    // also moves the signature and the stale-calendar notice fires.
     const when = timeFor(pen);
     occurrences(pen).forEach(d => {
       const dose = doseOn(pen, d);
@@ -1701,7 +1796,8 @@ function buildICS() {
   const event = body => lines.push('BEGIN:VEVENT', ...body, 'END:VEVENT');
 
   PENS.forEach(pen => {
-    const when = timeFor(pen);          // her hour, not the band's default
+    const when = timeFor(pen);          // the resolved per-pen time (atelier →
+                                        // patient → first dose → band default)
     occurrences(pen).forEach(d => {
       const dose = doseOn(pen, d);
       if (!dose) return;
@@ -1763,6 +1859,7 @@ function buildICS() {
    whether today is done.
    ================================================================== */
 var LOGGED = {};
+var LOGGED_FIRST_AT = {};
 
 async function loadLogged(only) {
   // The vial page knows its card from what the phone remembered rather
@@ -1771,7 +1868,11 @@ async function loadLogged(only) {
   if (!slug) return LOGGED;                       // a card with no slug logs nothing
   try {
     const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
-    if (res.ok) LOGGED = (await res.json()).days || {};
+    if (res.ok) {
+      const data = await res.json();
+      LOGGED = data.days || {};
+      LOGGED_FIRST_AT = data.firstAt || {};
+    }
   } catch { /* a page that cannot reach the service is still a page */ }
   // A pen's start day can be the day of its first dose, and that is only
   // knowable once the log is in hand. Every page loads the protocol before
@@ -2068,6 +2169,8 @@ function upcomingDoses(days = 120) {
   const out = [];
 
   PENS.forEach(pen => {
+    // The resolved per-pen time (Phase-1 chain), built on the patient's
+    // local clock so DST and travel keep the same wall-clock hour.
     const [hh, mm] = String(timeFor(pen)).split(':').map(Number);
     occurrences(pen).forEach(day => {
       // occurrences() gives a local calendar day; put her chosen clock time
@@ -2168,6 +2271,10 @@ async function disableReminders() {
    reaches her reminders on the next open, with nothing for her to do. */
 async function refreshReminders() {
   try {
+    // A refresh fired while the protocol is still loading sees an empty
+    // pen list and would post an empty schedule — silently deleting the
+    // stored reminders. Refuse until the card is actually drawn.
+    if (!PENS.length) return;
     const sub = await currentPushSub();
     if (!sub) return;
     const slug = CARD_SLUG || readSlug();
