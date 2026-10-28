@@ -1713,6 +1713,8 @@ async function confirmLog() {
    stays an eight-in-the-evening dose — the same reasoning that keeps the
    calendar off floating times. */
 function scheduledInstant(pen, d) {
+  // The resolved per-pen time (Phase-1 chain), on the dose day's local
+  // clock, so a back-filled dose carries the hour the card scheduled.
   const hm = String(timeFor(pen) || '09:00').split(':');
   const at = new Date(d.getFullYear(), d.getMonth(), d.getDate(),
                       Number(hm[0]) || 0, Number(hm[1]) || 0, 0, 0);

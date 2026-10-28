@@ -908,7 +908,10 @@ function stateReport() {
         phase: dose ? dose.phase.name : '',
         units: dose ? dose.units : 0,
         mg: dose ? round(dose.totalMg, 3) : 0,
-        at: effectiveTimes()[pen.time] || '',
+        // The pen's resolved clock time — atelier → patient → first dose
+        // → band — the same value that drives the reminders and calendar,
+        // so the dashboard reads exactly what she is actually showing.
+        at: timeFor(pen),
         rest: !dose
       };
     }),
@@ -1419,6 +1422,10 @@ async function loadProtocol() {
   // Tell the atelier what this screen is showing. A change it just sent
   // is reported straight back, so the dashboard can see it landed.
   reportState(_tookSettings);
+  // A settings change (band or per-pen time) must move the reminders
+  // too — reportState and publishFeed are two of its consumers, this is
+  // the third. In-session changes go through scheduleChanged instead.
+  if (_tookSettings) refreshReminders();
   _tookSettings = false;
 
   // Keep the subscribed calendar current with what the card now draws.
@@ -1672,6 +1679,8 @@ function icsRemember(uids, seq, extra) {
 function icsSignature() {
   const parts = [];
   PENS.forEach(pen => {
+    // The resolved per-pen time (Phase-1 chain), so a time-only change
+    // also moves the signature and the stale-calendar notice fires.
     const when = timeFor(pen);
     occurrences(pen).forEach(d => {
       const dose = doseOn(pen, d);
@@ -1775,7 +1784,8 @@ function buildICS() {
   const event = body => lines.push('BEGIN:VEVENT', ...body, 'END:VEVENT');
 
   PENS.forEach(pen => {
-    const when = timeFor(pen);          // her hour, not the band's default
+    const when = timeFor(pen);          // the resolved per-pen time (atelier →
+                                        // patient → first dose → band default)
     occurrences(pen).forEach(d => {
       const dose = doseOn(pen, d);
       if (!dose) return;
@@ -2147,6 +2157,8 @@ function upcomingDoses(days = 120) {
   const out = [];
 
   PENS.forEach(pen => {
+    // The resolved per-pen time (Phase-1 chain), built on the patient's
+    // local clock so DST and travel keep the same wall-clock hour.
     const [hh, mm] = String(timeFor(pen)).split(':').map(Number);
     occurrences(pen).forEach(day => {
       // occurrences() gives a local calendar day; put her chosen clock time
@@ -2247,6 +2259,10 @@ async function disableReminders() {
    reaches her reminders on the next open, with nothing for her to do. */
 async function refreshReminders() {
   try {
+    // A refresh fired while the protocol is still loading sees an empty
+    // pen list and would post an empty schedule — silently deleting the
+    // stored reminders. Refuse until the card is actually drawn.
+    if (!PENS.length) return;
     const sub = await currentPushSub();
     if (!sub) return;
     const slug = CARD_SLUG || readSlug();
