@@ -554,14 +554,24 @@
   .footnote { margin-top: 26px; font-size: 11.5px; line-height: 1.6; color: var(--muted); text-align: center; }
   .footnote a { color: var(--brass); text-decoration: none; border-bottom: 1px solid var(--hairline); }
 
-  /* Start-day control */
-  .linky {
+  /* Per-pen start day and time, on each card */
+  .start-row { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  .start-day {
     background: none; border: none; padding: 0;
-    font-family: 'Jost', sans-serif; font-size: 12.5px;
-    color: var(--brass); cursor: pointer;
+    font-family: 'Jost', sans-serif; font-size: 12px;
+    color: var(--brass); cursor: pointer; white-space: nowrap;
     border-bottom: 1px solid var(--hairline);
-    margin-bottom: 22px;
+    -webkit-tap-highlight-color: transparent;
   }
+  .start-day.atelier, .start-day.locked {
+    border-bottom: none; cursor: default; color: var(--muted);
+  }
+  .start-time { display: inline-flex; align-items: center; gap: 4px; }
+  .start-time.locked { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .start-time .time-field { margin-left: 0; padding: 4px 9px; font-size: 13px; }
+  .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
   .date-field {
     width: 100%; padding: 14px 15px; margin-bottom: 16px;
     border: 1px solid var(--hairline); border-radius: 13px;
@@ -596,7 +606,6 @@
   <p class="eyebrow" id="todayDate">—</p>
   <h1>Today's Ritual</h1>
   <p class="subhead" id="todaySummary">Loading your protocol…</p>
-  <button class="linky" id="btnStart" hidden></button>
 
   <div id="refills"></div>
 
@@ -680,20 +689,20 @@
   </div>
 </div>
 
-<div class="scrim" id="startScrim">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startTitle">
-    <p class="modal-eyebrow">Your schedule</p>
-    <h2 class="modal-title" id="startTitle">Which day did you start?</h2>
-    <p class="modal-body" id="startLede"></p>
-    <input class="date-field" type="date" id="startInput">
-    <div id="startPens" hidden></div>
-    <p class="modal-body" id="startQuickLabel" hidden
-       style="margin:14px 0 6px">Set them all to:</p>
-    <div class="quick" id="startQuick"></div>
-    <div id="startTimes"></div>
+<div class="scrim" id="startCalScrim">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="startCalTitle">
+    <p class="modal-eyebrow" id="startCalEyebrow">Start day</p>
+    <h2 class="modal-title" id="startCalTitle">When did you start?</h2>
+    <p class="modal-body" id="startCalLede"></p>
+    <div class="cal-head">
+      <button class="cal-nav" id="startCalPrev" aria-label="Previous month">‹</button>
+      <div class="cal-month" id="startCalMonth"></div>
+      <button class="cal-nav" id="startCalNext" aria-label="Next month">›</button>
+    </div>
+    <div class="cal-grid" id="startCalGrid"></div>
     <div class="btn-row">
-      <button class="btn btn-ghost" id="startCancel">Cancel</button>
-      <button class="btn btn-primary" id="startSave">Set my schedule</button>
+      <button class="btn btn-ghost" id="startCalCancel">Cancel</button>
+      <button class="btn btn-primary" id="startCalSave">Set start day</button>
     </div>
   </div>
 </div>
@@ -728,135 +737,143 @@
    ================================================================== */
 
 let LOGS, TRACKING, calCursor, selectedDay, pendingLog, pendingDay, chosenSite;
+let pendingPen = null, startCalCursor = null, startCalSelected = null, startCalReturn = null;
 
-/* ---------- start day ----------
-   The patient sets the day she actually began. Phases, the on/off rhythm,
-   pen supply and the calendar all count from it. */
-function openStartPicker() {
-  const t = today();
+/* ---------- start day and time ----------
+   Each pen carries its own start day and its own clock time. The day is
+   edited through a per-pen calendar modal; the time through a native time
+   field on the card. Phases, the on/off rhythm, pen supply and the calendar
+   all count from the pen's own day. */
 
-  /* One date per pen. Asking once for "the day you started" and applying
-     it to everything is what dragged a pen she had been on for months
-     back to today the first time she added a second one. */
-  const single = PENS.length <= 1;
-  document.getElementById('startTitle').textContent =
-    single ? 'Which day did you start?' : 'When did you start each one?';
-  document.getElementById('startLede').textContent = single
-    ? 'Your dosing days, phases, reminders and refill dates are all counted ' +
-      'from this day — and your reminders are set for the times you choose.'
-    : 'Each one is counted from its own day, so changing one does not move ' +
-      'the others. Your reminders are set for the times you choose.';
-  document.getElementById('startInput').hidden = !single;
-  if (single) document.getElementById('startInput').value = iso(START);
+/* Open the calendar for one pen (or, with no pen, for the protocol's start
+   day — the case of a brand-new card nobody has dated). */
+function openStartCalendar(pen) {
+  startCalReturn = document.activeElement;
+  pendingPen = pen || null;
+  const base = pen ? penStart(pen) : (START || today());
+  startCalCursor = new Date(base.getFullYear(), base.getMonth(), 1);
+  startCalSelected = iso(base);
 
-  const list = document.getElementById('startPens');
-  list.hidden = single;
-  list.innerHTML = single ? '' : PENS.map(pen => {
-    // A day taken from her own first logged dose is already right, and
-    // saying so stops her retyping it — and stops a stray tap pinning a
-    // date that would then stop following the record.
-    const obs = firstDoseDay(pen);
-    const fromLog = obs && obs === penStartIso(pen);
-    // A date the atelier set is shown but not editable here. Changing it
-    // on the phone would not change the record, so offering the field
-    // would only let her believe she had.
-    const theirs = !!pen.atelierStart;
-    const note = theirs ? 'set by the atelier'
-               : fromLog ? 'your first logged dose' : '';
-    return `
-    <label class="time-row">
-      <span>${pen.name}${note
-        ? `<br><small style="color:var(--muted)">${note}</small>` : ''}</span>
-      <input class="date-field" type="date" data-penstart="${pen.id}"
-             data-was="${penStartIso(pen)}" value="${penStartIso(pen)}"
-             ${theirs ? 'disabled' : ''}>
-    </label>`;
-  }).join('');
+  document.getElementById('startCalEyebrow').textContent = pen ? pen.name : 'Your schedule';
+  document.getElementById('startCalTitle').textContent =
+    pen ? `When did you start ${pen.name}?` : 'When did you start?';
+  document.getElementById('startCalLede').textContent = pen
+    ? `Counted from this day for ${pen.name} only. Your reminders and calendar follow.`
+    : 'Your dosing days, phases, reminders and refill dates are all counted from this day.';
 
-  const quick = [
-    ['Today', t],
-    ['Yesterday', addDays(t, -1)],
-    ['This Monday', addDays(t, -(isoDow(t) - 1))]
-  ];
-  document.getElementById('startQuickLabel').hidden = single;
-  document.getElementById('startQuick').innerHTML = quick.map(([label, d]) =>
-    `<button class="site" data-date="${iso(d)}">${label}</button>`).join('');
-  document.querySelectorAll('#startQuick .site').forEach(b =>
-    b.addEventListener('click', () => {
-      // On a protocol with one pen this fills the one field. On several it
-      // fills them all, which is only ever a starting point — each row is
-      // still edited on its own afterwards.
-      if (single) document.getElementById('startInput').value = b.dataset.date;
-      else list.querySelectorAll('[data-penstart]').forEach(i => { i.value = b.dataset.date; });
-      document.querySelectorAll('#startQuick .site').forEach(x => x.setAttribute('aria-pressed', x === b));
-    }));
-
-  // One field per band this protocol actually uses. A morning pair and an
-  // evening pair is two questions, not four.
-  const mine = loadTimes();
-  document.getElementById('startTimes').innerHTML = timeBands().map(band => `
-    <label class="time-row">
-      <span>${band}</span>
-      <input class="time-field" type="time" data-band="${band}"
-             value="${mine[band] || TIME_AT[band] || '09:00'}">
-    </label>`).join('');
-
-  document.getElementById('startScrim').classList.add('open');
+  renderStartCalendar();
+  document.getElementById('startCalScrim').classList.add('open');
+  document.getElementById('startCalSave').focus();
 }
 
-const closeStartPicker = () => document.getElementById('startScrim').classList.remove('open');
+function renderStartCalendar() {
+  document.getElementById('startCalMonth').textContent =
+    startCalCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
-function commitStart() {
-  const rows = [...document.querySelectorAll('#startPens [data-penstart]')];
-  if (rows.length) {
-    rows.forEach(inp => {
-      const pen = PENS.find(p => p.id === inp.dataset.penstart);
-      // Only a date she actually changed is pinned. Saving the sheet to
-      // set her reminder times would otherwise freeze every start day at
-      // whatever was shown, and they would stop following her log.
-      if (pen && inp.value && inp.value !== inp.dataset.was) setPenStart(pen, inp.value);
+  const first = new Date(startCalCursor.getFullYear(), startCalCursor.getMonth(), 1);
+  const start = weekStart(first);
+  const t = today();
+  const grid = document.getElementById('startCalGrid');
+  grid.innerHTML = '';
+
+  WEEK_DOW.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'cal-dow'; h.textContent = d[0];
+    grid.appendChild(h);
+  });
+
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i);
+    const sel = startCalSelected && iso(d) === startCalSelected;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'cal-day'
+      + (d.getMonth() !== startCalCursor.getMonth() ? ' out' : '')
+      + (iso(d) === iso(t) ? ' today' : '')
+      + (sel ? ' sel' : '');
+    b.setAttribute('aria-label', fmtLong(d));
+    if (sel) b.setAttribute('aria-current', 'date');
+    b.textContent = d.getDate();
+    b.addEventListener('click', () => {
+      startCalSelected = iso(d);
+      renderStartCalendar();
     });
-    /* The protocol start day is deliberately NOT touched here.
+    grid.appendChild(b);
+  }
+}
 
-       It was being set to the earliest pen, which read as tidy and was the
-       same bug in a new place: a pen with no date of its own falls back to
-       it, so typing a date for one pen moved every pen that had not been
-       answered for. It stays as the atelier set it, and is now only ever a
-       fallback. */
+/* The day she picked. For a pen, it sets only that pen's day; for a new
+   unanchored card it sets the protocol's start day, which every pen falls
+   back to. */
+function commitStartDay(day) {
+  if (!day) return;
+  const d = parse(day);
+  if (pendingPen) {
+    setPenStart(pendingPen, iso(d));
     scheduleChanged();
   } else {
-    const v = document.getElementById('startInput').value;
-    if (v) setStart(v);
+    setStart(iso(d));          // fires scheduleChanged() itself
   }
-
-  const picked = {};
-  document.querySelectorAll('#startTimes .time-field').forEach(inp => {
-    if (inp.value) picked[inp.dataset.band] = inp.value;
-  });
-  saveTimes(picked);
-
-  closeStartPicker();
-  calCursor = today();
-  selectedDay = today();
+  closeStartCalendar();
   renderAll();
-  applyCardLinks();
-  const bands = timeBands().map(b => `${b.toLowerCase()} at ${prettyTime(timeFor({ time: b }))}`);
-  const many = PENS.length > 1 && new Set(PENS.map(penStartIso)).size > 1;
-  showToast(icsStale()
-    ? 'Saved — now bring your calendar up to date below.'
-    : many
-      ? `Saved — each one from its own day${bands.length ? ' · ' + bands.join(', ') : ''}.`
-      : `Set from ${fmtShort(START)}${bands.length ? ' · ' + bands.join(', ') : ''}.`);
+}
+
+function closeStartCalendar() {
+  document.getElementById('startCalScrim').classList.remove('open');
+  pendingPen = null;
+  startCalSelected = null;
+  if (startCalReturn && document.contains(startCalReturn)) {
+    try { startCalReturn.focus(); } catch {}
+  }
+  startCalReturn = null;
+}
+
+/* The start-day button and time field for one pen's card. Three states:
+   - locked (first dose logged): both plain text, tap shows a toast;
+   - atelier-set (no dose yet): date plain text, time still editable;
+   - open (no dose, no atelier day): date button + editable time. */
+function startTimeControl(pen) {
+  const locked = penLocked(pen);
+  const theirs = !!pen.atelierStart;
+  const day = fmtShort(penStart(pen));
+  const timeVal = timeFor(pen);
+
+  const dayHtml = locked
+    ? `<span class="start-day locked" data-start-locked="${pen.id}">Started ${day}</span>`
+    : theirs
+      ? `<span class="start-day atelier" title="Set by the atelier">Started ${day}</span>`
+      : `<button type="button" class="start-day" data-startday="${pen.id}">Started ${day}</button>`;
+
+  const timeHtml = locked
+    ? `<span class="start-time locked" data-time-locked="${pen.id}">${prettyTime(timeVal)}</span>`
+    : `<label class="start-time"><span class="vh">${pen.name} time</span>
+         <input class="time-field" type="time" data-pentime="${pen.id}" value="${timeVal}"></label>`;
+
+  return `<div class="start-row">${dayHtml}${timeHtml}</div>`;
+}
+
+/* Wire the per-card start-day buttons, time fields and locked toasts. */
+function wireStartControls(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-startday]').forEach(b =>
+    b.addEventListener('click', () => {
+      const pen = PENS.find(p => p.id === b.dataset.startday);
+      if (pen) openStartCalendar(pen);
+    }));
+  root.querySelectorAll('[data-pentime]').forEach(inp =>
+    inp.addEventListener('change', () => {
+      const pen = PENS.find(p => p.id === inp.dataset.pentime);
+      if (!pen || !inp.value) return;
+      setPenTime(pen, inp.value);
+      renderAll();
+      showToast(`${pen.name} now at ${prettyTime(inp.value)}.`);
+    }));
+  root.querySelectorAll('[data-start-locked], [data-time-locked]').forEach(el =>
+    el.addEventListener('click', () =>
+      showToast('This pen is locked to your first logged dose.')));
 }
 
 function renderAll() {
-  const btn = document.getElementById('btnStart');
-  btn.hidden = false;
-  // With pens on different days there is no single "started" to print, and
-  // printing one of them would be a quiet lie about the others.
-  btn.textContent = (PENS.length > 1 && new Set(PENS.map(penStartIso)).size > 1)
-    ? 'Start days — change'
-    : `Started ${fmtShort(START)} — change`;
   renderCalNotice();
   renderToday(); renderStopped(); renderRefills(); renderAdherence();
   renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
@@ -1172,7 +1189,7 @@ function renderToday() {
     document.getElementById('todaySummary').textContent = 'Your protocol hasn\'t started yet.';
     stack.innerHTML = `<div class="rest">
       <div class="rest-title">Begins ${fmtLong(START)}</div>
-      <div class="rest-sub">If that isn't right, change your start day above.</div></div>`;
+      <div class="rest-sub">If that isn't right, change the start day on that pen's card.</div></div>`;
     return;
   }
 
@@ -1223,9 +1240,10 @@ function renderToday() {
         <div style="flex:1">
           <div class="dose-name">${pen.name}</div>
           <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
-          <div class="dose-meta">${pen.time} · ${prettyTime(timeFor(pen))} · ${pen.route}</div>
+          <div class="dose-meta">${pen.time} · ${pen.route}</div>
           <span class="phase-pill">${dose.phase.name}</span>
         </div>
+        ${startTimeControl(pen)}
         <button type="button" class="pen-x" data-drop="${pen.id}"
           title="Take ${pen.name} off my schedule"
           aria-label="Take ${pen.name} off my schedule">&times;</button>
@@ -1300,6 +1318,7 @@ function renderToday() {
   });
 
   wireDrops(stack);
+  wireStartControls(stack);
 
   stack.querySelectorAll('[data-log]').forEach(b =>
     b.addEventListener('click', () => openLog(b.dataset.log)));
@@ -1473,7 +1492,8 @@ function renderRhythm() {
         <div class="supply-head">
           <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
           <div style="flex:1"><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
-          <div class="dose-meta">${freqShort(pen)} · ${pen.time} · from ${fmtShort(penStart(pen))}</div></div>
+          <div class="dose-meta">${freqShort(pen)} · ${pen.time}</div></div>
+          ${startTimeControl(pen)}
           <!-- Every pen appears here, due today or not, which is why the
                way to take one off lives here as well as on the dose card.
                A rest day used to leave her with no control at all. -->
@@ -1495,6 +1515,7 @@ function renderRhythm() {
   }).join('');
   wireLogDays(document.getElementById('rhythmList'));
   wireDrops(document.getElementById('rhythmList'));
+  wireStartControls(document.getElementById('rhythmList'));
 }
 
 /* Any pen can come off her own schedule, from the dose card or from the
@@ -1866,12 +1887,19 @@ async function boot() {
      A card with a start day on the record, or with a dose already logged,
      is anchored. It does not need asking and must not be re-asked.
 
-     ?change=1 is the link inside every calendar event: she tapped a dose,
-     wanted it moved, and should land on the sheet that moves it. */
-  const wantsChange = new URLSearchParams(location.search).get('change') === '1';
+     ?change=<pen.id> is the link inside every calendar event: she tapped a
+     dose, wanted it moved, and should land on that pen's own calendar. A
+     brand-new unanchored card opens the first pen's calendar, and picking
+     a day sets the protocol's start day, which every pen falls back to. */
+  const changePen = new URLSearchParams(location.search).get('change');
   const anchored = !!CFG.protocol.startGiven
     || PENS.some(p => p.atelierStart || firstDoseDay(p));
-  if ((!saved && !anchored) || wantsChange) openStartPicker();
+  if (changePen) {
+    const pen = PENS.find(p => p.id === changePen);
+    if (pen) openStartCalendar(pen);
+  } else if (!saved && !anchored) {
+    openStartCalendar(null);
+  }
 
   // An NFC tag on the pen opens ?log=<pen id> and goes straight to confirm.
   const tagged = TRACKING ? new URLSearchParams(location.search).get('log') : null;
@@ -1908,10 +1936,24 @@ function wireSubscribe() {
 document.getElementById('modalCancel').addEventListener('click', closeLog);
 document.getElementById('modalConfirm').addEventListener('click', confirmLog);
 document.getElementById('scrim').addEventListener('click', e => { if (e.target.id === 'scrim') closeLog(); });
-document.getElementById('btnStart').addEventListener('click', openStartPicker);
-document.getElementById('startSave').addEventListener('click', commitStart);
-document.getElementById('startCancel').addEventListener('click', closeStartPicker);
-document.getElementById('startScrim').addEventListener('click', e => { if (e.target.id === 'startScrim') closeStartPicker(); });
+document.getElementById('startCalPrev').addEventListener('click', () => {
+  startCalCursor = new Date(startCalCursor.getFullYear(), startCalCursor.getMonth()-1, 1);
+  renderStartCalendar();
+});
+document.getElementById('startCalNext').addEventListener('click', () => {
+  startCalCursor = new Date(startCalCursor.getFullYear(), startCalCursor.getMonth()+1, 1);
+  renderStartCalendar();
+});
+document.getElementById('startCalSave').addEventListener('click', () => commitStartDay(startCalSelected));
+document.getElementById('startCalCancel').addEventListener('click', closeStartCalendar);
+document.getElementById('startCalScrim').addEventListener('click', e => {
+  if (e.target.id === 'startCalScrim') closeStartCalendar();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('startCalScrim').classList.contains('open')) {
+    closeStartCalendar();
+  }
+});
 document.getElementById('btnAdd').addEventListener('click', startAdd);
 document.getElementById('wizNext').addEventListener('click', wizAdvance);
 document.getElementById('wizBack').addEventListener('click', wizBack);

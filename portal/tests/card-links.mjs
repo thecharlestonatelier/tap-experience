@@ -32,11 +32,9 @@ check('card opens', (await page.textContent('#patientName')).trim() === 'Christi
 
 for (const [label, sel] of [["Today's Ritual", '#menu a:nth-of-type(1)'], ['back', 'a.back']]) {
   // First visit asks which day she started; it covers the page until answered.
-  const scrim = await page.$('#startScrim.open');
+  const scrim = await page.$('#startCalScrim.open');
   if (scrim) {
-    await page.click('#startConfirm, #startSave, .scrim .primary').catch(async () => {
-      await page.evaluate(() => document.getElementById('startScrim')?.classList.remove('open'));
-    });
+    await page.evaluate(() => document.getElementById('startCalScrim')?.classList.remove('open'));
     await page.waitForTimeout(500);
   }
   await page.click(sel);

@@ -22,7 +22,7 @@ await signInGoogle(page);
 
 const broken = async () => {
   await page.waitForTimeout(750);
-  await page.evaluate(()=>document.getElementById('startScrim')?.classList.remove('open'));
+  await page.evaluate(()=>document.getElementById('startCalScrim')?.classList.remove('open'));
   const t = await page.evaluate(()=>document.body.innerText.replace(/\s+/g,' '));
   return /not set up|does not carry a protocol|no protocol on it yet/i.test(t);
 };
@@ -46,7 +46,7 @@ for (const [label, entry, who] of CARDS) {
       .filter(h => h && !/^(https?:|sms:|tel:|mailto:|#)/i.test(h)));
     for (const h of [...new Set(hrefs)]) {
       const from = p || '(card)';
-      await page.evaluate(()=>document.getElementById('startScrim')?.classList.remove('open'));
+      await page.evaluate(()=>document.getElementById('startCalScrim')?.classList.remove('open'));
       const el = await page.$(`a[href="${h.replace(/"/g,'\\"')}"]`);
       if (!el) continue;
       await el.click().catch(()=>{});

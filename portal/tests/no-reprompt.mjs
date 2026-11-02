@@ -49,7 +49,7 @@ const visit = async slug => {
   await p.goto(`${BASE}/ritual.html?c=${slug}`);
   await p.waitForFunction(() => typeof PENS!=='undefined' && PENS.length, null, {timeout:15000});
   await p.waitForTimeout(900);
-  const asked = await p.evaluate(() => !!document.querySelector('#startScrim.open'));
+  const asked = await p.evaluate(() => !!document.querySelector('#startCalScrim.open'));
   const start = await p.evaluate(() => penStartIso(PENS[0]));
   return { p, asked, start };
 };
@@ -71,13 +71,13 @@ const f = await visit(fresh);
 /* Assert — asked */
 check('a card nobody has dated is still asked', f.asked);
 
-/* Act — follow the calendar's change link */
-await f.p.goto(`${BASE}/ritual.html?c=${onIt}&change=1`);
+/* Act — follow the calendar's change link (it names its pen now) */
+await f.p.goto(`${BASE}/ritual.html?c=${onIt}&change=ghk`);
 await f.p.waitForFunction(() => typeof PENS!=='undefined' && PENS.length, null, {timeout:15000});
 await f.p.waitForTimeout(900);
 /* Assert — the sheet still opens */
 check('the calendar\'s change link still opens it',
-      await f.p.evaluate(() => !!document.querySelector('#startScrim.open')));
+      await f.p.evaluate(() => !!document.querySelector('#startCalScrim.open')));
 
 await br.close();
 console.log(bad ? `\n${bad} failing` : '\nall good');

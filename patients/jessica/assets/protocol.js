@@ -510,10 +510,28 @@ function saveTimes(map) {
   scheduleChanged();
 }
 
-/* The clock time for a pen: hers if she set one, otherwise the band default. */
+/* The clock time for a pen: her own per-pen override first, then her band
+   answer, then the atelier's default for that band, then a last-resort nine
+   o'clock. A pen id never equals a band label, so the two keys do not
+   collide. */
 function timeFor(pen) {
   const mine = loadTimes();
-  return mine[pen.time] || TIME_AT[pen.time] || '09:00';
+  return mine[pen.id] || mine[pen.time] || TIME_AT[pen.time] || '09:00';
+}
+
+/* Set one pen's own clock time, apart from its band. saveTimes() already
+   fires scheduleChanged(), so her reminders and calendar follow. */
+function setPenTime(pen, hhmm) {
+  if (!pen || !hhmm) return;
+  const mine = loadTimes();
+  mine[pen.id] = hhmm;
+  saveTimes(mine);
+}
+
+/* A pen is locked once it has a logged dose: that dose pins its start day
+   and its clock time. */
+function penLocked(pen) {
+  return !!firstDoseDay(pen);
 }
 
 /* Which bands this protocol actually uses — a morning pair and an evening
@@ -596,16 +614,18 @@ function firstDoseDay(pen) {
 
    Precedence, most trustworthy first:
 
-     1. a date somebody typed, which pins it — if she says she started on
-        the 12th but only began logging on the 14th, she is telling us
-        about two doses she did not record, and she is right;
-     2. the first dose on record, which is an observation;
-     3. what the atelier put on the card, which is a plan;
-     4. the protocol's own start day.
+     1. what the atelier put on the card, which is a plan;
+     2. the first dose on record, which is an observation — once a pen has
+        a dose it is LOCKED to that day, and a later typed day no longer
+        applies (the reverse of the old rule, settled at the design gate);
+     3. a date somebody typed, which only fills the gap while there is no
+        dose yet;
+     4. the protocol's own start day, the implicit fallback.
 
-   Nothing here is typed by the patient unless she opens the sheet, so in
-   the ordinary case — pen handed over Monday, first injection Thursday —
-   the card corrects itself the moment she logs that first dose. */
+   Nothing here is typed by the patient unless she opens the per-pen
+   calendar, so in the ordinary case — pen handed over Monday, first
+   injection Thursday — the card corrects itself the moment she logs that
+   first dose, and from then on the day is pinned. */
 function applyPenStarts() {
   const mine = loadPenStarts();
   PENS.forEach(p => {
@@ -615,10 +635,27 @@ function applyPenStarts() {
        disagrees with a phone it is the phone that is wrong. Blank means
        "follow her", which is the usual case and the default. */
     if (p.atelierStart) { p.startDate = p.atelierStart; return; }
-    if (mine[p.id]) { p.startDate = mine[p.id]; return; }
     const first = firstDoseDay(p);
-    if (first) p.startDate = first;
+    if (first) { p.startDate = first; return; }
+    if (mine[p.id]) p.startDate = mine[p.id];
   });
+
+  /* A pen with a dose is locked: pin its clock time to what it was at the
+     moment of that dose, so a later band change cannot move it. Only a pen
+     with no per-pen override yet is snapshotted — a pen she has already set
+     her own time for keeps it. Written straight to storage rather than
+     through saveTimes(): this is the card correcting itself, not a change
+     she made, so nothing re-reports. */
+  const times = loadTimes();
+  let wrote = false;
+  PENS.forEach(p => {
+    if (penLocked(p) && !times[p.id]) {
+      times[p.id] = timeFor(p);
+      wrote = true;
+    }
+  });
+  if (wrote) { try { localStorage.setItem(timesKey(), JSON.stringify(times)); } catch {} }
+
   _supplyCache.clear();
 }
 
@@ -834,7 +871,7 @@ function stateReport() {
         phase: dose ? dose.phase.name : '',
         units: dose ? dose.units : 0,
         mg: dose ? round(dose.totalMg, 3) : 0,
-        at: effectiveTimes()[pen.time] || '',
+        at: timeFor(pen),
         rest: !dose
       };
     }),
@@ -1628,11 +1665,13 @@ function icsMarkSubscribed() {
   } catch {}
 }
 
-/* Where an event in her calendar sends her to change any of this. */
-function icsChangeUrl() {
+/* Where an event in her calendar sends her to change this pen's start day
+   and time. Every event names its pen, so the link lands on that pen's own
+   calendar. */
+function icsChangeUrl(pen) {
   try {
     const url = new URL(linkWithCard('ritual.html'), location.href);
-    url.searchParams.set('change', '1');
+    url.searchParams.set('change', pen.id);
     return url.href;
   } catch { return ''; }
 }
@@ -1687,7 +1726,6 @@ function icsRefillUid(pen) {
 function buildICS() {
   const seq = icsIssued().seq + 1;
   const stamp = icsUtc(new Date());
-  const changeUrl = icsChangeUrl();
   const uids = [];
 
   const lines = [
@@ -1702,6 +1740,7 @@ function buildICS() {
 
   PENS.forEach(pen => {
     const when = timeFor(pen);          // her hour, not the band's default
+    const changeUrl = icsChangeUrl(pen);  // one way back per pen
     occurrences(pen).forEach(d => {
       const dose = doseOn(pen, d);
       if (!dose) return;

@@ -39,29 +39,25 @@ await p.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length, null, 
 const starts = () => p.evaluate(() =>
   Object.fromEntries(PENS.map(x => [x.id, penStartIso(x)])));
 
-await p.evaluate(() => { try { closeStartPicker(); } catch {} });
+await p.evaluate(() => { try { closeStartCalendar(); } catch {} });
 await p.waitForTimeout(400);
 
 /* Assert — the starting point: both pens on the protocol day */
 const before = await starts();
 check('both pens begin on the protocol day', before.ghk === before.bpc, JSON.stringify(before));
 
-/* Act — open the picker */
-await p.evaluate(() => openStartPicker());
+/* Act — open one pen's calendar */
+await p.evaluate(() => openStartCalendar(PENS.find(x => x.id === 'bpc')));
 await p.waitForTimeout(400);
-/* Assert — it asks per pen, and the single-date field steps aside */
-check('the sheet asks about each one',
-      (await p.locator('#startPens [data-penstart]').count()) === 2,
-      await p.locator('#startTitle').innerText());
-check('and the single-date field steps aside',
-      await p.locator('#startInput').isHidden());
+/* Assert — it opens for that pen, per pen */
+check('the calendar opens for that one pen',
+      (await p.locator('#startCalScrim.open').count()) === 1 &&
+      /bpc/i.test(await p.locator('#startCalTitle').innerText()),
+      await p.locator('#startCalTitle').innerText());
 
-/* Act — move one pen, save */
+/* Act — pick a new day and set it */
 const newDay = daysAgo(3);
-await p.evaluate(d => {
-  document.querySelector('[data-penstart="bpc"]').value = d;
-}, newDay);
-await p.click('#startSave');
+await p.evaluate(d => commitStartDay(d), newDay);
 await p.waitForTimeout(800);
 
 /* Assert — the one she moved moved; the other is untouched */
@@ -73,7 +69,7 @@ check('and the one she did not is untouched', after.ghk === before.ghk,
 /* Act — reload */
 await p.reload();
 await p.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length, null, { timeout: 15000 });
-await p.evaluate(() => { try { closeStartPicker(); } catch {} });
+await p.evaluate(() => { try { closeStartCalendar(); } catch {} });
 /* Assert — both are remembered */
 const kept = await starts();
 check('both are remembered', kept.bpc === newDay && kept.ghk === before.ghk,
