@@ -267,20 +267,33 @@ node tests/overview.mjs
 
 ## pen-starts.mjs
 
-Each pen keeps its own start day. The sheet asks per pen, moving one
-leaves the others where they were, it survives a reload, a pen added
-today starts today without disturbing anything, each pen's day reaches
-the atelier, and every pen carries a remove control in the rhythm sheet
-— due today or not.
+Each pen keeps its own start day. The per-pen calendar modal moves one
+pen at a time, leaving the others where they were; it survives a reload;
+a pen added today starts today without disturbing anything; each pen's
+day reaches the atelier; and every pen carries a remove control in the
+rhythm sheet — due today or not.
 
 ## first-dose-start.mjs
 
 The start day is the day of the first dose, not the day it was planned.
 Before any dose a pen follows the atelier's date; the first logged dose
 replaces it; a later dose does not move it; a dose back-filled to an
-earlier day does; a date typed in the sheet pins it and the log stops
-moving it; and saving the sheet without touching a date pins nothing, so
-a pen not yet started still picks up its own first dose.
+earlier day does. After that first dose the pen is locked — a date typed
+no longer applies, the first dose wins — and a pen not yet started still
+picks up its own first dose.
+
+## pen-times.mjs
+
+Each pen carries its own clock time. Two Evening pens can sit at
+different hours, `timeFor(pen)` returns each pen's own value, the state
+report carries each pen's time, and the card's time fields show it.
+
+## start-lock.mjs
+
+The first dose locks a pen. Its start day becomes the dose day and its
+start-day and time controls stop rendering; an atelier-set day still wins
+even after a dose; and a later band change no longer moves the locked
+pen's time.
 
 Every suite takes BASE, so the whole set can be run against one service.
 
