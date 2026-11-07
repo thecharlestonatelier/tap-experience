@@ -564,3 +564,30 @@ test('POST /api/blanks with count 0 falls back to the default batch', async () =
   assert.equal(r.status, 201);
   assert.equal(r.body.cards.length, 10);
 });
+
+/* ---------- card-item method dispatch ---------- */
+
+test('GET /api/cards/<missing> returns 404', async () => {
+  const r = await req('GET', '/api/cards/missing.x', { headers: studio() });
+  assert.equal(r.status, 404);
+});
+
+test('PATCH /api/cards/<slug> updates a card', async () => {
+  const r = await req('PATCH', '/api/cards/active.a', { headers: studio(), body: { note: 'p' } });
+  assert.equal(r.status, 200);
+});
+
+test('PUT /api/cards/<missing> returns 404', async () => {
+  const r = await req('PUT', '/api/cards/missing.x', { headers: studio(), body: { note: 'x' } });
+  assert.equal(r.status, 404);
+});
+
+test('POST /api/cards/<slug> is refused with 405', async () => {
+  const r = await req('POST', '/api/cards/active.a', { headers: studio(), body: {} });
+  assert.equal(r.status, 405);
+});
+
+test('POST /api/cards/<missing>/unlink returns 404', async () => {
+  const r = await req('POST', '/api/cards/missing.x/unlink', { headers: studio() });
+  assert.equal(r.status, 404);
+});

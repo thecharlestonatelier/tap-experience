@@ -744,39 +744,47 @@ async function handleCardsPost(req, res) {
   return json(res, 201, rec);
 }
 
+/* --- clear a wrong first link ---
+   The remedy behind the patient's "message the atelier": the link comes off
+   the card and nothing else, so whoever signs in next becomes its owner.
+   Passphrase-protected like every dashboard write. Checked before assertSlug
+   — the suffix is not part of a valid slug. */
+async function unlinkCard(res, rest) {
+  const slug = assertSlug(rest.slice(0, -'/unlink'.length));
+  if (!(await store.get(slug))) return json(res, 404, { error: 'not_found' });
+  if (!store.unlink) return json(res, 501, { error: 'not_supported' });
+  await store.unlink(slug);
+  return json(res, 200, await store.get(slug));
+}
+
+function readCard(res, existing) {
+  return existing ? json(res, 200, existing) : json(res, 404, { error: 'not_found' });
+}
+
+async function writeCard(res, req, slug, existing) {
+  if (!existing) return json(res, 404, { error: 'not_found' });
+  const rec = sanitize(Object.assign({}, await readBody(req), { slug }), existing);
+  await store.put(rec);
+  return json(res, 200, rec);
+}
+
+async function removeCard(res, slug) {
+  await store.remove(slug);
+  return json(res, 204, '');
+}
+
 async function handleCardItem(req, res, url, p) {
   if (!requireClinician(req, res)) return;
   const rest = p.slice('/api/cards/'.length);
 
-  /* --- clear a wrong first link ---
-     The remedy behind the patient's "message the atelier": the link comes
-     off the card and nothing else, so whoever signs in next becomes its
-     owner. Passphrase-protected like every dashboard write. Checked before
-     assertSlug — the suffix is not part of a valid slug. */
-  if (req.method === 'POST' && rest.endsWith('/unlink')) {
-    const slug = assertSlug(rest.slice(0, -'/unlink'.length));
-    if (!(await store.get(slug))) return json(res, 404, { error: 'not_found' });
-    if (!store.unlink) return json(res, 501, { error: 'not_supported' });
-    await store.unlink(slug);
-    return json(res, 200, await store.get(slug));
-  }
+  if (req.method === 'POST' && rest.endsWith('/unlink')) return unlinkCard(res, rest);
 
   const slug = assertSlug(rest);
   const existing = await store.get(slug);
 
-  if (req.method === 'GET') {
-    return existing ? json(res, 200, existing) : json(res, 404, { error: 'not_found' });
-  }
-  if (req.method === 'PUT' || req.method === 'PATCH') {
-    if (!existing) return json(res, 404, { error: 'not_found' });
-    const rec = sanitize(Object.assign({}, await readBody(req), { slug }), existing);
-    await store.put(rec);
-    return json(res, 200, rec);
-  }
-  if (req.method === 'DELETE') {
-    await store.remove(slug);
-    return json(res, 204, '');
-  }
+  if (req.method === 'GET') return readCard(res, existing);
+  if (req.method === 'PUT' || req.method === 'PATCH') return writeCard(res, req, slug, existing);
+  if (req.method === 'DELETE') return removeCard(res, slug);
   return json(res, 405, { error: 'method_not_allowed' });
 }
 
