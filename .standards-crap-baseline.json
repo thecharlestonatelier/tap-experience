@@ -41,6 +41,14 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
+    "portal/server.js::activateResult": {
+      "accepted": "2026-11-07",
+      "cc": 3,
+      "coverage": 0.0,
+      "crap": 12.0,
+      "measure": "line",
+      "reason": "legacy debt accepted at cleanup"
+    },
     "portal/server.js::adminAuth": {
       "accepted": "2026-11-07",
       "cc": 4,
@@ -65,19 +73,11 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/server.js::anonymous@690": {
+    "portal/server.js::anonymous@706": {
       "accepted": "2026-11-07",
       "cc": 6,
       "coverage": 50.0,
       "crap": 10.5,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/server.js::handleActivate": {
-      "accepted": "2026-11-07",
-      "cc": 15,
-      "coverage": 41.7,
-      "crap": 59.7,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
@@ -121,6 +121,14 @@
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
+    "portal/server.js::linkFromToken": {
+      "accepted": "2026-11-07",
+      "cc": 5,
+      "coverage": 0.0,
+      "crap": 30.0,
+      "measure": "line",
+      "reason": "legacy debt accepted at cleanup"
+    },
     "portal/server.js::notifyAtelier": {
       "accepted": "2026-11-07",
       "cc": 5,
@@ -159,6 +167,14 @@
       "coverage": 33.3,
       "crap": 16.7,
       "measure": "branch",
+      "reason": "legacy debt accepted at cleanup"
+    },
+    "portal/server.js::verifyActivator": {
+      "accepted": "2026-11-07",
+      "cc": 5,
+      "coverage": 0.0,
+      "crap": 30.0,
+      "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
     "portal/store/doses.js::openDoses": {

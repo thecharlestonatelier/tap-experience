@@ -601,6 +601,47 @@ async function handleState(req, res, url, p) {
 /* --- who this card belongs to ---
    The first tap of a newly assigned card asks for a Google sign-in and
    posts the ID token here. The token is verified with the Admin SDK. */
+/* Codes the card itself could produce: a malformed, expired, revoked or
+   disabled-account token. Anything else — missing credential, unreachable
+   Auth — is ours and must not look like hers, or a broken deploy reads as
+   "every card is wrong". */
+const CLIENT_AUTH_ERRORS = new Set([
+  'auth/argument-error', 'auth/id-token-expired',
+  'auth/id-token-revoked', 'auth/user-disabled'
+]);
+
+/* Verify the posted ID token. Resolves to the decoded token, or sends the
+   refusal and returns null. */
+async function verifyActivator(idToken, res) {
+  try {
+    return await adminAuth().verifyIdToken(idToken);
+  } catch (err) {
+    if (err && CLIENT_AUTH_ERRORS.has(err.code)) {
+      json(res, 400, { error: 'bad_request' });
+      return null;
+    }
+    console.error('activate: token verification failed', err && err.message);
+    json(res, 503, { error: 'auth_unavailable' });
+    return null;
+  }
+}
+
+/* The four link fields written once, and nothing more. */
+function linkFromToken(decoded) {
+  return {
+    uid: String(decoded.uid || '').slice(0, 64),
+    provider: String((decoded.firebase && decoded.firebase.sign_in_provider) || 'unknown').slice(0, 24),
+    name: String(decoded.name || '').trim().slice(0, 60),
+    at: new Date().toISOString()
+  };
+}
+
+function activateResult(res, outcome) {
+  if (outcome.result === 'missing') return json(res, 404, { error: 'not_found' });
+  if (outcome.result === 'blocked') return json(res, 409, { error: 'uid_mismatch' });
+  return json(res, 200, { ok: true, result: outcome.result });
+}
+
 async function handleActivate(req, res, url, p) {
   const slug = assertSlug(p.slice('/api/activate/'.length));
   const rec = await store.get(slug);
@@ -610,34 +651,9 @@ async function handleActivate(req, res, url, p) {
   if (typeof body.idToken !== 'string' || !body.idToken) {
     return json(res, 400, { error: 'bad_request' });
   }
-  let decoded;
-  try {
-    decoded = await adminAuth().verifyIdToken(body.idToken);
-  } catch (err) {
-    // Codes the card itself could produce: a malformed, expired, revoked
-    // or disabled-account token. Anything else — missing credential,
-    // unreachable Auth — is ours and must not look like hers, or a broken
-    // deploy reads as "every card is wrong".
-    const clientSide = new Set([
-      'auth/argument-error', 'auth/id-token-expired',
-      'auth/id-token-revoked', 'auth/user-disabled'
-    ]);
-    if (err && clientSide.has(err.code)) {
-      return json(res, 400, { error: 'bad_request' });
-    }
-    console.error('activate: token verification failed', err && err.message);
-    return json(res, 503, { error: 'auth_unavailable' });
-  }
-  const activatedBy = {
-    uid: String(decoded.uid || '').slice(0, 64),
-    provider: String((decoded.firebase && decoded.firebase.sign_in_provider) || 'unknown').slice(0, 24),
-    name: String(decoded.name || '').trim().slice(0, 60),
-    at: new Date().toISOString()
-  };
-  const outcome = await store.activate(slug, activatedBy);
-  if (outcome.result === 'missing') return json(res, 404, { error: 'not_found' });
-  if (outcome.result === 'blocked') return json(res, 409, { error: 'uid_mismatch' });
-  return json(res, 200, { ok: true, result: outcome.result });
+  const decoded = await verifyActivator(body.idToken, res);
+  if (!decoded) return;
+  return activateResult(res, await store.activate(slug, linkFromToken(decoded)));
 }
 
 /* --- which days are green, for the patient's own calendar --- */
