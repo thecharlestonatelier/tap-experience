@@ -33,6 +33,32 @@ const COLLECTION = process.env.CARD_COLLECTION || 'cards';
 
 function nowIso() { return new Date().toISOString(); }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_BAND = /^\d{2}:\d{2}$/;
+
+/* The per-pen hour she takes it: "morning" -> "08:00". Keys are capped and
+   only a valid HH:MM survives. Shared by the card's settings and its state. */
+function parseTimeBands(input) {
+  const times = {};
+  const src = (input.times && typeof input.times === 'object') ? input.times : {};
+  Object.keys(src).slice(0, 6).forEach(band => {
+    const v = String(src[band] || '');
+    if (TIME_BAND.test(v)) times[String(band).slice(0, 16)] = v;
+  });
+  return times;
+}
+
+/* A save changes nothing when the start day and the times both match what
+   the card already holds. */
+function settingsUnchanged(next, prev) {
+  return next.startDate === (prev.startDate || '') &&
+         JSON.stringify(next.times) === JSON.stringify(prev.times || {});
+}
+
+function emptySettings(settings) {
+  return !settings.rev && !settings.startDate && !Object.keys(settings.times).length;
+}
+
 /* Whatever the dashboard posts, only these fields are ever stored. */
 /* Counters live on the record but are not editable from the dashboard, so
    every save has to carry them forward or a card's history resets the first
@@ -62,21 +88,19 @@ function carryCounters(out, existing) {
    it safe: the phone remembers the last rev it applied, so a value set
    here lands once and her own later choice is not stamped on again at
    every open. Leave a field empty and the phone keeps deciding. */
+/* The settings the card already holds, or an empty object. */
+function settingsOf(existing) { return (existing && existing.settings) || {}; }
+
 function sanitizeSettings(input, existing) {
-  const prev = (existing && existing.settings) || {};
+  const prev = settingsOf(existing);
   if (!input || typeof input !== 'object') return prev.rev ? prev : undefined;
 
-  const times = {};
-  const src = (input.times && typeof input.times === 'object') ? input.times : {};
-  Object.keys(src).slice(0, 6).forEach(band => {
-    const v = String(src[band] || '');
-    if (/^\d{2}:\d{2}$/.test(v)) times[String(band).slice(0, 16)] = v;
-  });
-
+  const times = parseTimeBands(input);
+  const baseRev = Number(prev.rev) || 0;
   const out = {
-    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '') ? input.startDate : '',
+    startDate: ISO_DATE.test(input.startDate || '') ? input.startDate : '',
     times,
-    rev: Number(prev.rev) || 0
+    rev: baseRev
   };
 
   // A new rev only when something actually changed, so opening the editor
@@ -87,10 +111,8 @@ function sanitizeSettings(input, existing) {
   // wants the card's own values put back. Nothing has "changed" in the
   // form — it already reads what it should — so without this there would
   // be no way to send it.
-  const same = out.startDate === (prev.startDate || '') &&
-               JSON.stringify(out.times) === JSON.stringify(prev.times || {});
-  if (!same || input.force) out.rev = (Number(prev.rev) || 0) + 1;
-  if (!out.rev && !out.startDate && !Object.keys(times).length) return undefined;
+  if (!settingsUnchanged(out, prev) || input.force) out.rev = baseRev + 1;
+  if (emptySettings(out)) return undefined;
   return out;
 }
 
@@ -101,16 +123,10 @@ function sanitizeSettings(input, existing) {
 function sanitizeState(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const str = (v, n) => String(v == null ? '' : v).slice(0, n);
-  const times = {};
-  const src = (input.times && typeof input.times === 'object') ? input.times : {};
-  Object.keys(src).slice(0, 6).forEach(b => {
-    const v = String(src[b] || '');
-    if (/^\d{2}:\d{2}$/.test(v)) times[String(b).slice(0, 16)] = v;
-  });
 
   return {
-    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '') ? input.startDate : '',
-    times,
+    startDate: ISO_DATE.test(input.startDate || '') ? input.startDate : '',
+    times: parseTimeBands(input),
     tz: str(input.tz, 60),
     rev: Number(input.rev) || 0,
     reminders: !!input.reminders,
