@@ -329,52 +329,62 @@ async function queryCard(url, pathname) {
   return (await store.get(slug)) ? slug : undefined;
 }
 
-function serveStatic(res, urlPath, { inject, vial, remember, setCard } = {}) {
+/* The file a static path points at inside WEB_ROOT, or the status to send
+   when it cannot be decoded or climbs out of the root. Never let a crafted
+   path escape: sending the 403 and stopping the router is what keeps one
+   GET from taking the service down. */
+function resolveStaticPath(urlPath) {
   const decoded = safeDecode(urlPath);
-  if (decoded === null) {
-    send(res, 400, 'Bad request', { 'Content-Type': 'text/plain; charset=utf-8' });
-    return true;
-  }
+  if (decoded === null) return { status: 400, body: 'Bad request', plain: true };
   const rel = decoded.replace(/^\/+/, '');
   const full = path.join(WEB_ROOT, rel);
-
-  // Never let a crafted path climb out of the web root. Sending the 403
-  // and returning true makes the router stop here — returning send()'s
-  // falsy result once let the router fall through to a second writeHead
-  // on an already-ended response, and the unhandled throw killed the
-  // whole service. One GET could take the site down.
   if (full !== WEB_ROOT && !full.startsWith(WEB_ROOT + path.sep)) {
-    send(res, 403, 'Forbidden');
-    return true;
+    return { status: 403, body: 'Forbidden', plain: false };
   }
-  if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) return false;
+  return { full };
+}
 
-  const ext = path.extname(full);
-  let body = fs.readFileSync(full);
+/* A card address is a path, not a fragment, so the page has to be told which
+   card it is before its scripts run. */
+function injectCard(body, { inject, vial, remember }) {
+  const pre = [];
+  if (inject) pre.push(`window.__CARD_SLUG__=${JSON.stringify(inject)};`);
+  // The vial label names the vial only. Which patient it is logged against
+  // comes from the card already open on this phone.
+  if (vial) pre.push(`window.__VIAL__=${JSON.stringify(vial)};`);
+  // Who this browser last opened a card as, when the page itself has been
+  // forgotten.
+  if (remember) pre.push(`window.__CARD_MEMORY__=${JSON.stringify(remember)};`);
+  return Buffer.from(String(body).replace(
+    '<script src="assets/protocol.js"></script>',
+    `<script>${pre.join('')}</script>\n<script src="assets/protocol.js"></script>`));
+}
 
-  // A card address is a path, not a fragment, so the page has to be told
-  // which card it is before its scripts run.
-  if ((inject || vial || remember) && ext === '.html') {
-    const pre = [];
-    if (inject) pre.push(`window.__CARD_SLUG__=${JSON.stringify(inject)};`);
-    // The vial label names the vial only. Which patient it is logged
-    // against comes from the card already open on this phone.
-    if (vial) pre.push(`window.__VIAL__=${JSON.stringify(vial)};`);
-    // Who this browser last opened a card as, when the page itself has
-    // been forgotten.
-    if (remember) pre.push(`window.__CARD_MEMORY__=${JSON.stringify(remember)};`);
-    body = Buffer.from(String(body).replace(
-      '<script src="assets/protocol.js"></script>',
-      `<script>${pre.join('')}</script>\n` +
-      '<script src="assets/protocol.js"></script>'));
-  }
-
+function staticHeaders(ext, setCard) {
   const headers = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Cache-Control': ext === '.html' ? 'no-store' : 'public, max-age=300'
   };
   if (setCard) headers['Set-Cookie'] = cardCookie(setCard);
-  send(res, 200, body, headers);
+  return headers;
+}
+
+function serveStatic(res, urlPath, options = {}) {
+  const resolved = resolveStaticPath(urlPath);
+  if (resolved.status) {
+    const headers = resolved.plain ? { 'Content-Type': 'text/plain; charset=utf-8' } : {};
+    send(res, resolved.status, resolved.body, headers);
+    return true;
+  }
+  const full = resolved.full;
+  if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) return false;
+
+  const ext = path.extname(full);
+  let body = fs.readFileSync(full);
+  if (ext === '.html' && (options.inject || options.vial || options.remember)) {
+    body = injectCard(body, options);
+  }
+  send(res, 200, body, staticHeaders(ext, options.setCard));
   return true;
 }
 
