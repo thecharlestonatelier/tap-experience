@@ -35,6 +35,8 @@ function nowIso() { return new Date().toISOString(); }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_BAND = /^\d{2}:\d{2}$/;
+const DROPPED_ID = /^[A-Za-z0-9#._-]{1,48}$/;
+const CARD_STATUSES = ['active', 'blank', 'retired'];
 
 /* The per-pen hour she takes it: "morning" -> "08:00". Keys are capped and
    only a valid HH:MM survives. Shared by the card's settings and its state. */
@@ -152,52 +154,80 @@ function sanitizeState(input) {
   };
 }
 
-function sanitize(input, existing = null) {
-  // The display name in order of authority: what was typed, then the
-  // first and last names the dashboard mints cards from, then the name
-  // the record already had. An explicitly empty or whitespace-only name
-  // counts as "not typed" — otherwise clearing the name would silently
-  // leave a prescribed card nameless.
-  const typedName = String(input.name ?? '').trim();
-  const derivedName = (input.firstName || input.lastName)
+/* The display name in order of authority: what was typed, then the first
+   and last names the dashboard mints cards from, then the name the record
+   already had. An explicitly empty or whitespace-only name counts as "not
+   typed" — otherwise clearing the name would silently leave a prescribed
+   card nameless. */
+function deriveName(input, existing) {
+  const typed = String(input.name ?? '').trim();
+  const derived = (input.firstName || input.lastName)
     ? [input.firstName, input.lastName]
         .map(x => String(x ?? '').trim())
         .filter(Boolean)
         .join(' ')
     : '';
+  return String(typed || derived || (existing ? existing.name : '')).trim().slice(0, 60);
+}
+
+function resolveStartDate(input, existing) {
+  if (ISO_DATE.test(input.startDate || '')) return input.startDate;
+  return existing ? existing.startDate : null;
+}
+
+/* The status before name/pens are known. A retired card is the atelier's
+   word and is never second-guessed; otherwise the status is settled after
+   the record is built. */
+function pickStatus(input, existing) {
+  if (CARD_STATUSES.includes(input.status)) return input.status;
+  return existing ? existing.status : null;
+}
+
+function settleStatus(status, rec) {
+  if (status === 'retired') return 'retired';
+  return (rec.name || rec.pens.length || rec.added.length) ? 'active' : 'blank';
+}
+
+function sanitizePens(list, existing) {
+  if (Array.isArray(list)) return list.slice(0, 8).map(sanitizePen).filter(Boolean);
+  return existing ? existing.pens : [];
+}
+
+function sanitizeAddedList(list, existing) {
+  if (Array.isArray(list)) return list.slice(0, 8).map(sanitizeAdded).filter(Boolean);
+  return existing ? (existing.added || []) : [];
+}
+
+function sanitizeDropped(list, existing) {
+  if (!Array.isArray(list)) return existing ? (existing.dropped || []) : [];
+  return list.slice(0, 8).map(id => String(id || '')).filter(id => DROPPED_ID.test(id));
+}
+
+function sanitizeVisitsList(list, existing) {
+  if (Array.isArray(list)) return sanitizeVisits(list);
+  return existing ? (existing.visits || []) : [];
+}
+
+function sanitize(input, existing = null) {
   const rec = {
     slug: normalizeSlug(input.slug || (existing && existing.slug)),
-    name: String(typedName || derivedName || (existing ? existing.name : ''))
-      .trim().slice(0, 60),
-    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')
-      ? input.startDate
-      : (existing ? existing.startDate : null),
-    status: ['active', 'blank', 'retired'].includes(input.status)
-      ? input.status
-      : (existing ? existing.status : null),   // settled below once name/pens are known
+    name: deriveName(input, existing),
+    startDate: resolveStartDate(input, existing),
+    status: pickStatus(input, existing),
     note: String(input.note ?? (existing ? existing.note : '')).slice(0, 500),
-    pens: Array.isArray(input.pens)
-      ? input.pens.slice(0, 8).map(sanitizePen).filter(Boolean)
-      : (existing ? existing.pens : []),
+    pens: sanitizePens(input.pens, existing),
     // What the patient put on her own card. Kept apart from `pens` on
     // purpose: `pens` is what the atelier prescribed, and a tapped card
     // must never be able to rewrite that. This list she owns.
-    added: Array.isArray(input.added)
-      ? input.added.slice(0, 8).map(sanitizeAdded).filter(Boolean)
-      : (existing ? (existing.added || []) : []),
+    added: sanitizeAddedList(input.added, existing),
     // Prescribed pens the patient has taken off her own schedule. Her
     // removal is recorded here rather than by deleting from `pens`, so
     // what was prescribed stays legible and the atelier can see what she
     // stopped and put it back.
-    dropped: Array.isArray(input.dropped)
-      ? input.dropped.slice(0, 8)
-          .map(id => String(id || '')).filter(id => /^[A-Za-z0-9#._-]{1,48}$/.test(id))
-      : (existing ? (existing.dropped || []) : []),
+    dropped: sanitizeDropped(input.dropped, existing),
     // Aesthetic treatments given in the room. The atelier's record, not
     // the patient's — a tapped card cannot reach this.
-    visits: Array.isArray(input.visits)
-      ? sanitizeVisits(input.visits)
-      : (existing ? (existing.visits || []) : []),
+    visits: sanitizeVisitsList(input.visits, existing),
     createdAt: existing ? existing.createdAt : nowIso(),
     updatedAt: nowIso()
   };
@@ -207,10 +237,8 @@ function sanitize(input, existing = null) {
   // pen she added herself — and only then. Saying so here means the
   // dashboard never has to remember to set it, and a patient who starts
   // using an unassigned tag becomes visible exactly the way a prescribed
-  // card is. Retired is the atelier's word and is never second-guessed.
-  if (rec.status !== 'retired') {
-    rec.status = (rec.name || rec.pens.length || rec.added.length) ? 'active' : 'blank';
-  }
+  // card is.
+  rec.status = settleStatus(rec.status, rec);
   return carryCounters(rec, existing);
 }
 
