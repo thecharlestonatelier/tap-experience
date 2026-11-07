@@ -27,6 +27,8 @@
    protocol behind it.
    ================================================================== */
 
+const { fileJson } = require('./file-json');
+
 const COLLECTION = process.env.FEED_COLLECTION || 'feeds';
 const MAX_BYTES = 400 * 1024;      // ~1500 events; far past any real protocol
 
@@ -59,14 +61,9 @@ function firestoreFeeds() {
 }
 
 function fileFeeds(file) {
-  const fs = require('node:fs');
   const path = require('node:path');
   const target = file || path.join(__dirname, '..', '.data', 'feeds.json');
-  const readAll = () => { try { return JSON.parse(fs.readFileSync(target, 'utf8')); } catch { return {}; } };
-  const writeAll = a => {
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, JSON.stringify(a, null, 2));
-  };
+  const { readAll, writeAll } = fileJson(target);
   return {
     kind: 'file',
     file: target,

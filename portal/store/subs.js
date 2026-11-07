@@ -33,6 +33,7 @@
    ================================================================== */
 
 const crypto = require('node:crypto');
+const { fileJson } = require('./file-json');
 
 const COLLECTION = process.env.SUB_COLLECTION || 'reminders';
 const MAX_DUE = 200;   // roughly four months of daily dosing
@@ -124,17 +125,9 @@ function firestoreSubs() {
 /* ---------- JSON file ---------- */
 
 function fileSubs(file) {
-  const fs = require('node:fs');
   const path = require('node:path');
   const target = file || path.join(__dirname, '..', '.data', 'reminders.json');
-
-  const readAll = () => {
-    try { return JSON.parse(fs.readFileSync(target, 'utf8')); } catch { return {}; }
-  };
-  const writeAll = all => {
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, JSON.stringify(all, null, 2));
-  };
+  const { readAll, writeAll } = fileJson(target);
 
   return {
     kind: 'file',

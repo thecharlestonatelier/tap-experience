@@ -26,6 +26,7 @@
 
 const { isValidSlug, normalizeSlug } = require('../lib/slug');
 const { sanitizeVisits } = require('../lib/services');
+const { fileJson } = require('./file-json');
 
 const COLLECTION = process.env.CARD_COLLECTION || 'cards';
 
@@ -382,17 +383,9 @@ function firestoreStore() {
 /* ---------- JSON file (local) ---------- */
 
 function fileStore(file) {
-  const fs = require('node:fs');
   const path = require('node:path');
   const target = file || path.join(__dirname, '..', '.data', 'cards.json');
-
-  function readAll() {
-    try { return JSON.parse(fs.readFileSync(target, 'utf8')); } catch { return {}; }
-  }
-  function writeAll(all) {
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, JSON.stringify(all, null, 2));
-  }
+  const { readAll, writeAll } = fileJson(target);
 
   return {
     kind: 'file',

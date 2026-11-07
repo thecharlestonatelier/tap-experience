@@ -73,19 +73,11 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/server.js::anonymous@706": {
+    "portal/server.js::anonymous@719": {
       "accepted": "2026-11-07",
       "cc": 6,
       "coverage": 50.0,
       "crap": 10.5,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/server.js::handleAdded": {
-      "accepted": "2026-11-07",
-      "cc": 11,
-      "coverage": 66.7,
-      "crap": 15.5,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
@@ -201,7 +193,7 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/store/index.js::anonymous@145": {
+    "portal/store/index.js::anonymous@146": {
       "accepted": "2026-11-07",
       "cc": 6,
       "coverage": 37.5,
@@ -209,7 +201,7 @@
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/store/index.js::anonymous@360": {
+    "portal/store/index.js::anonymous@361": {
       "accepted": "2026-11-07",
       "cc": 5,
       "coverage": 0.0,

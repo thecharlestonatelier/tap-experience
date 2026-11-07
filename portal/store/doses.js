@@ -16,6 +16,8 @@
 /* The test service points this at its own collection (administrations-test)
    so a rehearsal dose never lands among a real patient's administrations.
    Production leaves the default. */
+const { fileJson } = require('./file-json');
+
 const COLLECTION = process.env.DOSE_COLLECTION || 'administrations';
 
 function nowIso() { return new Date().toISOString(); }
@@ -100,14 +102,9 @@ function firestoreDoses(db) {
 }
 
 function fileDoses(file) {
-  const fs = require('node:fs');
   const path = require('node:path');
   const target = file || path.join(__dirname, '..', '.data', 'administrations.json');
-  const readAll = () => { try { return JSON.parse(fs.readFileSync(target, 'utf8')); } catch { return {}; } };
-  const writeAll = a => {
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, JSON.stringify(a, null, 2));
-  };
+  const { readAll, writeAll } = fileJson(target);
   return {
     kind: 'file',
     file: target,
