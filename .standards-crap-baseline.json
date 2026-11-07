@@ -184,14 +184,6 @@
       "crap": 12.4,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/store/subs.js::sanitizeSub": {
-      "accepted": "2026-11-07",
-      "cc": 10,
-      "coverage": 87.5,
-      "crap": 10.2,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
     }
   },
   "measure": "branch",

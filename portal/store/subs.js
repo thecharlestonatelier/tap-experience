@@ -45,22 +45,24 @@ function idFor(endpoint) {
 function nowIso() { return new Date().toISOString(); }
 
 /* Only these fields are ever stored, whatever a device posts. */
+/* Future instants only, sorted, deduplicated, capped. A device sending a
+   year of history cannot make the scheduler chew through it. */
+function cleanDue(input, now) {
+  const horizon = now - 24 * 60 * 60 * 1000;
+  const list = Array.isArray(input.due) ? input.due : [];
+  const iso = list
+    .map(t => {
+      const d = new Date(t);
+      return isNaN(d) ? null : d.toISOString();
+    })
+    .filter(t => t && Date.parse(t) > horizon);
+  return Array.from(new Set(iso)).sort().slice(0, MAX_DUE);
+}
+
 function sanitizeSub(input, slug) {
   const sub = input && input.sub;
   if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint)) return null;
   if (!sub.keys || !sub.keys.p256dh || !sub.keys.auth) return null;
-
-  // Future instants only, sorted, deduplicated, capped. A device sending a
-  // year of history cannot make the scheduler chew through it.
-  const horizon = Date.now() - 24 * 60 * 60 * 1000;
-  const due = Array.from(new Set(
-    (Array.isArray(input.due) ? input.due : [])
-      .map(t => {
-        const d = new Date(t);
-        return isNaN(d) ? null : d.toISOString();
-      })
-      .filter(t => t && Date.parse(t) > horizon)
-  )).sort().slice(0, MAX_DUE);
 
   return {
     id: idFor(sub.endpoint),
@@ -72,7 +74,7 @@ function sanitizeSub(input, slug) {
         auth: String(sub.keys.auth).slice(0, 100)
       }
     },
-    due,
+    due: cleanDue(input, Date.now()),
     sentUpTo: '',
     tz: String(input.tz || '').slice(0, 60),
     createdAt: nowIso(),

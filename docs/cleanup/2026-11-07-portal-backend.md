@@ -20,9 +20,9 @@ characterization pin written before the code moved:
 - `activate.emulator.test.mjs` — the first-tap token path, against the Auth
   emulator (skipped when it is not running).
 
-The suite grew from 0 to **188 tests** (191 with the emulator test). Branch
-coverage over the whole tree rose from 0% (no runner) to **72%**; the
-service files from 0%.
+The suite grew from 0 to **203 tests** (202 pass, 1 emulator-gated skip;
+206 with the emulator running). Branch coverage over the whole tree rose
+from 0% (no runner) to **73%**; the service files from 0%.
 
 ## Refactored (CRAP before → after)
 
@@ -40,6 +40,10 @@ service files from 0%.
 | `handleCardItem` | server.js | CC 12, CRAP 23.3 | CC 8, CRAP 8.0 |
 | `nextDue` | lib/services.js | CC 12, CRAP 12.4 | CC 6, CRAP 6.0 |
 | `handleActivate` | server.js | CC 15, CRAP 59.7 | CC 6, CRAP 7.9 |
+| `handleAdded` | server.js | CC 11, CRAP 13.6 | CC 5, CRAP 5.4 |
+| `handlePushTest` | server.js | CC 7, CRAP 19 | CC 4, CRAP 4.6 |
+| `dueNow` | store/subs.js | CC 11, CRAP 11.3 | CC 4, CRAP 4.0 |
+| `sanitizeSub` | store/subs.js | CC 10, CRAP 10.2 | CC 9, CRAP 9.0 |
 
 Each commit is one function (or one cohesive shared helper), one behaviour
 change at a time, with the pin green throughout.
@@ -62,17 +66,27 @@ dropped them without touching production code:
 
 ## Baseline
 
-The accepted-debt baseline fell from **60 entries to 33**. Fixed functions
+The accepted-debt baseline fell from **60 entries to 23**. Fixed functions
 were removed; the split handlers that still exceed 10 are recorded
 individually.
 
-The three helpers split out of `handleActivate` (`verifyActivator`,
-`linkFromToken`, `activateResult`) are only reached through a verified
-token, so in the *deterministic* unit run — no emulator — they sit at 0%
-and are baselined. With the Auth emulator up they are covered and score
-well under 10. The baseline is snapshotted at the emulator-down floor on
-purpose: the CRAP gate only compares worse, so a later emulator run is
-never a false regression.
+The remaining entries are all gated on infrastructure the deterministic
+unit run does not have:
+
+- **Auth emulator only** — `verifyActivator`, `linkFromToken`,
+  `activateResult`, and the file store's `activate`.
+- **Firestore / network / binary** — `openStore`/`openDoses`/`openFeeds`/
+  `openSubs`, `adminAuth`, `proxyAuthHelper`, `artwork`, `zip`,
+  `seed.js::card`, `wallet.configured`.
+- **Borderline (CC 9-10, coverage-capped)** — `notifyAtelier`, `runReminders`,
+  `handleHealth`, `sanitizeVisit`, `sanitizeSettings`.
+
+## Duplication
+
+The four file stores shared their `readAll`/`writeAll`; they now call
+`store/file-json.js`. The duplication finding is gone, the blocking
+clean-code rules (`duplication`, `error-handling`) are clean, and the file
+stores are thin adapters.
 
 ## Running the activate pin
 
@@ -90,26 +104,33 @@ It pins: missing token 400, nonsense token 400, unknown card 404, first link
 
 ## What is left (follow-up)
 
-- `handleAdded` (CC 11, 67% branch) — needs its dropped-pen path pinned
-  above 70% before splitting; no emulator needed.
-- `readBody`, `validSession`, `handleHealth`, `handlePushTest`,
-  `sanitizeState` — low CC, partially covered; pinning only.
-- The store selectors and I/O wrappers (`openStore`, `openDoses`, `openFeeds`,
-  `openSubs`, `adminAuth`, `proxyAuthHelper`, `artwork`) — 4-5 CC each; their
-  uncovered branches need Firestore / network / image fixtures.
+The deterministic unit suite has reached its floor; what remains needs
+infrastructure or is borderline:
+
+- **Firestore emulator** — `store/index.js`'s transaction callback and the
+  store's `activate` on Firestore, plus the `open*` selectors' cloud branch.
+- **A failing-store or stubbed-fetch seam** — `handleHealth`'s 503 and
+  `notifyAtelier`/`runReminders`' gone/ok branches.
+- **Image / certificate fixtures** — `wallet.artwork`, `zip`,
+  `wallet.configured`.
+- **Borderline CC 9-10** — `sanitizeVisit`, `sanitizeSettings`,
+  `notifyAtelier`; at or within a point of the threshold.
+- Machine-generated `scripts/seed.js::card` (a seed fixture, not service
+  code).
 
 ## Clean-code notes
 
 `tools/clean-code` runs the generic (heuristic) adapter for JavaScript, so
-its findings are warnings. Remaining after this run:
+every finding is a warning; the blocking rules (`duplication`,
+`error-handling`) are **clean**. What remains is heuristic:
 
-- `duplication` — the file-store `readAll`/`writeAll` block repeats across
-  `store/doses.js`, `feeds.js`, `subs.js`, `index.js`. Extract one
-  `fileJson(path)` helper next.
-- `function-length` / `nesting-depth` — `firestoreStore` (72 lines),
-  `fileStore` (69), `proxyAuthHelper`, `runReminders`, `handleOverview`,
-  `handlePushAtelier`, `sanitizeState`.
+- `nesting-depth` on thin adapters (`fileStore`, `firestoreStore`,
+  `fileJson`, the `fire*` wrappers) — the brace-guesser miscounts these.
+- `function-length` on `wallet.zip` (a cohesive binary format) and
+  `firestoreStore` / `fileStore` (thin record adapters).
 - `commented-code` at `server.js:226` is a false positive (prose, not code).
+- `naming` at `push.js:170` — a one-letter loop index in a two-line loop,
+  which the standard allows.
 
 Mutation testing (Step 4) is still not run: the node adapter needs Stryker
 installed. Recommended before the next refactor batch.
@@ -120,6 +141,6 @@ installed. Recommended before the next refactor batch.
   `node --test tests/unit/`.
 - `.standards.json` (adapter `node`, `test_command`, `include`/`exclude`,
   `mode: gate`, `new_function_max: 10`, `pin_floor: 70`).
-- `.standards-crap-baseline.json` — 31 accepted entries.
+- `.standards-crap-baseline.json` — 23 accepted entries.
 - The harness CRAP engine was extended with JavaScript support during the
   first run so `tools/crap` ranks `.js` functions.
