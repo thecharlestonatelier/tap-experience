@@ -20,9 +20,31 @@ characterization pin written before the code moved:
 - `activate.emulator.test.mjs` — the first-tap token path, against the Auth
   emulator (skipped when it is not running).
 
-The suite grew from 0 to **203 tests** (202 pass, 1 emulator-gated skip;
-206 with the emulator running). Branch coverage over the whole tree rose
-from 0% (no runner) to **73%**; the service files from 0%.
+The suite grew from 0 to **208 tests** (206 pass; 2 emulator-gated suites —
+Auth and Firestore — that run only when those emulators are up). Branch
+coverage over the whole tree rose from 0% (no runner) to **73%**; the
+service files from 0%.
+
+## Mutation audit (Step 4)
+
+Stryker was added and run over two files to prove the pins detect a change
+in meaning:
+
+| File | score | result |
+|---|---|---|
+| `lib/slug.js` | **97.6%** | 41 killed, 1 equivalent survivor waived |
+| `lib/supply.js` | **86.0%** | 166 killed, 27 survived |
+
+The slug audit found the length guard in `isValidSlug` was redundant with
+the anchored `SHAPE` regex (proved by equivalent mutants), so it was
+removed and the 2/40 boundaries pinned. The supply audit found the "order
+one" (`low`) bucket was untested; it is now pinned. The remaining supply
+survivors are concentrated in the unexported `perMlOf`, `resolveDoses` and
+`templates` helpers, reached only through the real template catalogue —
+closing them needs synthetic-template fixtures or an exported seam, and is
+the next mutation follow-up. The one slug survivor (`randomSuffix`'s
+`||` fallback) is waived in `.standards-mutation-waivers`: `globalThis.crypto`
+exists on every supported Node, so the mutant is equivalent.
 
 ## Refactored (CRAP before → after)
 
@@ -88,19 +110,23 @@ The four file stores shared their `readAll`/`writeAll`; they now call
 clean-code rules (`duplication`, `error-handling`) are clean, and the file
 stores are thin adapters.
 
-## Running the activate pin
+## Running the emulator pins
 
-The token path is pinned by `tests/unit/activate.emulator.test.mjs`, which
-auto-skips when the emulator is unreachable (so `npm test` stays
-deterministic). To run it:
+Two suites pin behaviour that needs an emulator; both auto-skip when their
+emulator is unreachable, so `npm test` stays deterministic.
+
+**Auth** — `tests/unit/activate.emulator.test.mjs` pins the first-tap token
+path: missing token 400, nonsense token 400, unknown card 404, first link
+`linked`, same account `verified`, different account 409.
+
+**Firestore** — `tests/unit/store.firestore.test.mjs` pins the card, dose,
+feed and subscription stores and the four selectors' cloud branch, including
+the activate transaction.
 
 ```sh
-firebase emulators:start --only auth --project atelier-tap
-cd portal && node --test tests/unit/activate.emulator.test.mjs
+firebase emulators:start --only auth,firestore --project atelier-tap
+cd portal && node --test tests/unit/
 ```
-
-It pins: missing token 400, nonsense token 400, unknown card 404, first link
-`linked`, same account `verified`, different account 409.
 
 ## What is left (follow-up)
 
@@ -132,8 +158,9 @@ every finding is a warning; the blocking rules (`duplication`,
 - `naming` at `push.js:170` — a one-letter loop index in a two-line loop,
   which the standard allows.
 
-Mutation testing (Step 4) is still not run: the node adapter needs Stryker
-installed. Recommended before the next refactor batch.
+Mutation testing is wired (see the audit above). The next mutation pass is
+the unexported `supply.js` helpers; after that, run the same audit over the
+store shaping and the router handlers.
 
 ## Tooling
 
@@ -142,5 +169,8 @@ installed. Recommended before the next refactor batch.
 - `.standards.json` (adapter `node`, `test_command`, `include`/`exclude`,
   `mode: gate`, `new_function_max: 10`, `pin_floor: 70`).
 - `.standards-crap-baseline.json` — 23 accepted entries.
+- `@stryker-mutator/core` (mutation) as a `portal/` devDependency;
+  `mutation.test_command` in `.standards.json`; evidence-free equivalent
+  mutants in `.standards-mutation-waivers`.
 - The harness CRAP engine was extended with JavaScript support during the
   first run so `tools/crap` ranks `.js` functions.
