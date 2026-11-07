@@ -125,7 +125,7 @@ function supplyFor(rec, webRoot, now = Date.now()) {
 
   const startDate = effectiveStart(rec);
   const elapsed = elapsedDays(startDate, midnight);
-  addProjectedPens(rec, list, seen, startDate, elapsed, tally);
+  addProjectedPens(rec, { list, seen, startDate, elapsed, tally });
 
   return { out: tally.out, low: tally.low, pens: tally.pens, unknown: unknownOf(rec, list, seen) };
 }
@@ -208,7 +208,8 @@ function movementFor(pen, t, elapsed) {
   return { totalDays: L.days, days: L.days - elapsed, dosesLeft: Math.max(0, L.doses - taken) };
 }
 
-function addProjectedPens(rec, list, seen, startDate, elapsed, tally) {
+function addProjectedPens(rec, options) {
+  const { list, seen, startDate, elapsed, tally } = options;
   for (const pen of rec.pens || []) {
     if (seen.has(pen.template)) continue;
     const t = projectableTemplate(list, pen);
