@@ -1,74 +1,101 @@
-# Cleanup report — portal backend, `route` (2026-11-07)
+# Cleanup report — portal backend (2026-11-07)
 
 Branch `cleanup/2026-11-07-portal-backend`, starting commit `27049e6`.
-Scope: the `portal/` Node service. This run fixed one function — the
-monolithic request router.
+Scope: the `portal/` Node service. Two runs: the router first, then the
+shaping/supply/serving layer.
 
-## What was pinned first
+## Pin first
 
-A cleanup does not rewrite. Before touching the router it was pinned at the
-HTTP boundary: a `node:test` suite (`portal/tests/unit/route.test.mjs`) runs
-the real server in-process against a file store and pins every deterministic
-route's response — 70 tests covering health, the public card routes, the
-dashboard/session side, wallet, push, and the static portal. Six more suites
-pin the pure modules (`slug`, `services`, `supply`, `doses`, `subs`, `feeds`).
+A cleanup does not rewrite. Every refactor below rests on a
+characterization pin written before the code moved:
 
-Coverage was lifted by these pins:
+- `route.test.mjs` — runs the real server in-process against a file store
+  and pins ~75 routes.
+- `store.test.mjs` — pins the card shaping (`sanitize`, `sanitizePen`,
+  private settings/added shaping, `publicView`, `sanitizeState`).
+- `supply.test.mjs`, `doses.test.mjs`, `subs.test.mjs`, `feeds.test.mjs`,
+  `services.test.mjs`, `slug.test.mjs` — the pure modules.
+- `wallet.test.mjs`, `push.test.mjs` — `crc32`, `buildPassJson`,
+  `buildManifest`, and `sendPush`.
 
-| File | before (unit) | after |
-|---|---|---|
-| `portal/server.js` | 0% line / 0% branch | 88% line / 70% branch |
-| `portal/lib/slug.js` | 0% | 100% line / 90% branch |
-| `portal/lib/services.js` | 0% | 82% / 86% |
-| `portal/store/doses.js` | 0% | 55% / 96% |
-| `portal/store/subs.js` | 0% | 60% / 83% |
-| `portal/store/feeds.js` | 0% | 51% / 89% |
-| `portal/lib/supply.js` | 0% | 49% / 67% |
+The suite grew from 0 to **187 unit tests**. Branch coverage over the whole
+tree rose from 0% (no runner) to **71%**; the service files from 0%.
 
-## The fix
+## Refactored (CRAP before → after)
 
-`async function route(req, res)` was one function chaining ~181 `if`
-branches across every endpoint — CC 181, CRAP 32,942, 0% coverage. It was
-split into ~35 named handlers (one per route) matched through an ordered
-table; the dispatcher and the static/card-address fallback are now separate.
+| Function | file | before | after |
+|---|---|---|---|
+| `route` | server.js | CC 181, CRAP 32,942 | CC 6, CRAP 6.1 |
+| `sanitize` | store/index.js | CC 33, CRAP 33.5 | CC 7, CRAP 7.0 |
+| `sanitizeSettings` | store/index.js | CC 20, CRAP 294.8 | CC 10, CRAP 10.0 |
+| `supplyFor` | lib/supply.js | CC 18, CRAP 88 | CC 1, CRAP 1.0 |
+| `servePortal` | server.js | CC 19, CRAP 21 | CC 8, CRAP 8.0 |
+| `serveStatic` | server.js | CC 16, CRAP 18.4 | CC 9, CRAP 9.1 |
+| `sanitizeDose` | store/doses.js | CC 16, CRAP 16 | CC 3, CRAP 3.0 |
+| `sanitizePen` | store/index.js | CC 13, CRAP 182 | CC 9, CRAP 9.0 |
+| `penLife` | lib/supply.js | CC 13, CRAP 13.4 | CC 8, CRAP 8.2 |
+| `handleCardItem` | server.js | CC 12, CRAP 23.3 | CC 8, CRAP 8.0 |
+| `nextDue` | lib/services.js | CC 12, CRAP 12.4 | CC 6, CRAP 6.0 |
 
-| Function | before | after |
-|---|---|---|
-| `route` | CC 181, CRAP 32,942, 0% | CC 6, CRAP 6.1, 88% branch |
+Each commit is one function (or one cohesive shared helper), one behaviour
+change at a time, with the pin green throughout.
 
-The 70-route pin passed unchanged through the refactor (all 116 unit tests
-green), so behaviour is preserved. The debt baseline shrank from 60 to 55
-entries and `route`'s entry was removed.
+## Pinned but not rewritten
 
-## What was left (follow-up)
+Low-complexity functions whose CRAP came only from missing coverage. Pinning
+dropped them without touching production code:
 
-The split isolated the remaining complexity into named handlers, several of
-which are still above CRAP 10 and are now individually testable:
+| Function | CRAP before → after |
+|---|---|
+| `publicView` | 45 → 8 |
+| `crc32` | 42 → 6 |
+| `handleLogged` | 41 → 9 |
+| `sendPush` | 35 → 8.1 |
+| `sanitizeAdded` | 32 → 7 |
+| `rank` | 30 → 5 |
+| `buildPassJson` | 30 → 5 |
+| `handleBlanks` | 22 → 8 |
 
-- `servePortal` — CC 19 (static + card-address fallback)
-- `handleActivate` — CC 15 (Firebase token verification)
-- `handleCardItem` — CC 12 (card CRUD + unlink dispatch)
-- `handleAdded` — CC 11
-- `handleLogged` — CC 8, 20% branch (needs a pinned dose-log walk)
-- plus the untouched 45 baselined functions elsewhere: `store::sanitize`
-  (CC 33), `store::sanitizeSettings` (CC 20), `lib/supply.js::supplyFor`
-  (CC 18), `server.js::serveStatic` (CC 16), and others.
+## Baseline
 
-**Not covered by the unit pin** (still the 47 manual HTTP/browser suites):
-Firebase `verifyIdToken`, the auth-helper proxy, and Apple Wallet `buildPass`
-— they need the emulator / network / certificates.
+The accepted-debt baseline fell from **60 entries to 31**. Fixed functions
+were removed; the split handlers that still exceed 10 are recorded
+individually.
 
-**Mutation testing** (Step 4) was not run: the harness's node adapter needs
-Stryker installed. Recommended as a follow-up audit before refactoring the
-remaining handlers, to prove the pin detects a change in meaning.
+## What is left (follow-up)
 
-## Tooling added
+- `handleActivate` (CC 15, 42% branch) — its token-verification path needs
+  the Firebase Auth emulator to pin, so it is not safe to split yet.
+- `handleAdded` (CC 11, 67%) — same reason: needs its dropped-pen path
+  pinned above 70% first.
+- `readBody`, `validSession`, `handleHealth`, `handlePushTest`,
+  `sanitizeState` — low CC, partially covered; pinning only.
+- The store selectors and I/O wrappers (`openStore`, `openDoses`, `openFeeds`,
+  `openSubs`, `adminAuth`, `proxyAuthHelper`, `artwork`) — 4-5 CC each; their
+  uncovered branches need Firestore / network / image fixtures.
+
+## Clean-code notes
+
+`tools/clean-code` runs the generic (heuristic) adapter for JavaScript, so
+its findings are warnings. Remaining after this run:
+
+- `duplication` — the file-store `readAll`/`writeAll` block repeats across
+  `store/doses.js`, `feeds.js`, `subs.js`, `index.js`. Extract one
+  `fileJson(path)` helper next.
+- `function-length` / `nesting-depth` — `firestoreStore` (72 lines),
+  `fileStore` (69), `proxyAuthHelper`, `runReminders`, `handleOverview`,
+  `handlePushAtelier`, `sanitizeState`.
+- `commented-code` at `server.js:226` is a false positive (prose, not code).
+
+Mutation testing (Step 4) is still not run: the node adapter needs Stryker
+installed. Recommended before the next refactor batch.
+
+## Tooling
 
 - `c8` (branch coverage) as a `portal/` devDependency; `test` script =
   `node --test tests/unit/`.
 - `.standards.json` (adapter `node`, `test_command`, `include`/`exclude`,
   `mode: gate`, `new_function_max: 10`, `pin_floor: 70`).
-- `.standards-crap-baseline.json` — the accepted debt snapshot (55 entries).
-
-Note: the harness CRAP engine originally had no JavaScript support; it was
-extended during this run so `tools/crap` ranks `.js` functions.
+- `.standards-crap-baseline.json` — 31 accepted entries.
+- The harness CRAP engine was extended with JavaScript support during the
+  first run so `tools/crap` ranks `.js` functions.
