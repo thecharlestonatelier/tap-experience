@@ -492,6 +492,18 @@ test('GET /studio serves the dashboard', async () => {
   assert.match(r.headers.get('content-type') || '', /text\/html/);
 });
 
+test('GET /studio/<file> serves a studio asset', async () => {
+  const r = await req('GET', '/studio/sw.js');
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type') || '', /javascript/);
+  assert.equal(r.headers.get('cache-control'), 'no-store');
+});
+
+test('GET /studio/<missing> falls through to 404', async () => {
+  const r = await req('GET', '/studio/missing.js');
+  assert.equal(r.status, 404);
+});
+
 test('GET /<valid slug> injects the card and serves the portal', async () => {
   const r = await req('GET', '/active.a');
   assert.equal(r.status, 200);

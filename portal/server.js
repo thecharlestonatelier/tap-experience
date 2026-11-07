@@ -927,49 +927,55 @@ async function handleBlanks(req, res) {
 }
 
 /* --- static portal and card addresses --- */
+/* A file inside portal/studio, or null when the path escapes it or is not a
+   file. */
+function studioFile(rel) {
+  const studioRoot = path.join(__dirname, 'studio');
+  const file = path.join(studioRoot, rel);
+  if (file !== studioRoot && !file.startsWith(studioRoot + path.sep)) return null;
+  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) return null;
+  return file;
+}
+
+/* The clinician's dashboard, served from portal/studio. Returns true when it
+   answered. */
+function serveStudio(res, p) {
+  const rel = (p === '/studio' || p === '/studio/') ? 'index.html'
+            : p.startsWith('/studio/') ? p.slice('/studio/'.length)
+            : null;
+  if (rel === null) return false;
+  const file = studioFile(rel);
+  if (!file) return false;
+  send(res, 200, fs.readFileSync(file), {
+    'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
+    'Cache-Control': 'no-store'
+  });
+  return true;
+}
+
+/* A card's own address, `/phil.h`, opens the portal with the card injected.
+   An unassigned tag still opens it, which is how a blank card is set up.
+   Returns true when it answered. */
+async function serveCardAddress(res, p) {
+  const candidate = normalizeSlug(p);
+  if (!isValidSlug(candidate)) return false;
+  const rec = await store.get(candidate);
+  if (rec && serveStatic(res, '/index.html', { inject: candidate, setCard: candidate })) return true;
+  return !!serveStatic(res, '/index.html', { inject: candidate });
+}
+
 async function servePortal(req, res, url, p) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     return json(res, 405, { error: 'method_not_allowed' });
   }
+  if (serveStudio(res, p)) return;
 
-  /* --- the clinician's dashboard --- */
-  if (p === '/studio' || p === '/studio/') {
-    const file = path.join(__dirname, 'studio', 'index.html');
-    if (fs.existsSync(file)) {
-      return send(res, 200, fs.readFileSync(file), {
-        'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'
-      });
-    }
-  }
-  if (p.startsWith('/studio/')) {
-    const rel = p.slice('/studio/'.length);
-    const studioRoot = path.join(__dirname, 'studio');
-    const file = path.join(__dirname, 'studio', rel);
-    if ((file === studioRoot || file.startsWith(studioRoot + path.sep)) &&
-        fs.existsSync(file) && !fs.statSync(file).isDirectory()) {
-      return send(res, 200, fs.readFileSync(file), {
-        'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
-        'Cache-Control': 'no-store'
-      });
-    }
-  }
-
-  if (p === '/' ) {
+  if (p === '/') {
     if (serveStatic(res, '/index.html', { setCard: await queryCard(url, p) })) return;
     return send(res, 404, 'Not found');
   }
   if (serveStatic(res, p, { setCard: await queryCard(url, p) })) return;
-
-  /* --- a card address --- */
-  const candidate = normalizeSlug(p);
-  if (isValidSlug(candidate)) {
-    const rec = await store.get(candidate);
-    if (rec) {
-      if (serveStatic(res, '/index.html', { inject: candidate, setCard: candidate })) return;
-    }
-    // An unassigned tag still opens the portal, which offers to set it up.
-    if (serveStatic(res, '/index.html', { inject: candidate })) return;
-  }
+  if (await serveCardAddress(res, p)) return;
 
   send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
 }
