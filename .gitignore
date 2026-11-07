@@ -1,6 +1,7 @@
 node_modules/
 portal/.data/
 portal/.data-*/
+coverage.json
 
 .superpowers/
 .agents/
