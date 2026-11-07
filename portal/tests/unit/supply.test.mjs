@@ -104,3 +104,35 @@ test('supplyFor ignores an unknown template', () => {
   assert.deepEqual(
     supply.supplyFor({ pens: [{ template: 'zzz' }], startDate: '2026-03-01' }, WEB, now).pens, []);
 });
+
+test('penLife treats a weekly flag as one dose in seven', () => {
+  assert.deepEqual(supply.penLife({ volumeMl: 3, schedule: { weekly: true } }, [{ days: 84, units: 25 }]),
+    { days: 78, doses: 12, left: 0 });
+});
+
+test('penLife runs a phase with no day limit until the pen empties', () => {
+  assert.deepEqual(supply.penLife({ volumeMl: 3, schedule: { on: 7, off: 0 } }, [{ units: 25 }]),
+    { days: 12, doses: 12, left: 0 });
+});
+
+test('penLife stops at a phase with no units', () => {
+  assert.deepEqual(supply.penLife({ volumeMl: 3, schedule: { on: 7, off: 0 } }, [{ days: 30, units: 0 }]),
+    { days: 0, doses: 0, left: 3 });
+});
+
+test('penLife with no phases never draws', () => {
+  assert.deepEqual(supply.penLife({ volumeMl: 3 }, []), { days: 0, doses: 0, left: 3 });
+});
+
+test('penLife stops when one dose will not fit', () => {
+  assert.deepEqual(supply.penLife({ volumeMl: 1, schedule: { on: 7, off: 0 } }, [{ days: 30, units: 200 }]),
+    { days: 0, doses: 0, left: 1 });
+});
+
+test('penLife steps through two phases', () => {
+  const out = supply.penLife({ volumeMl: 3, schedule: { on: 7, off: 0 } },
+    [{ days: 3, units: 25 }, { days: 30, units: 10 }]);
+  assert.equal(out.days, 25);
+  assert.equal(out.doses, 25);
+  assert.ok(Math.abs(out.left - 0.05) < 1e-9);
+});

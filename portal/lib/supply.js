@@ -68,17 +68,31 @@ function templates(webRoot) {
    fit in what is left of the vial. */
 /* `upTo` stops the walk after that many days, which is how many doses a
    patient is through rather than how many the pen holds. */
-function penLife(t, phases, upTo) {
-  const vol = t.volumeMl || 3;
+/* The cycle length and how many of its days are "on". A weekly schedule is
+   one day in seven; an on/off schedule is on with the rest off. */
+function scheduleOf(t) {
   const sc = t.schedule || { on: 7, off: 0 };
-  const cyc = sc.weekly ? 7 : (sc.on + sc.off);
-  const on = sc.weekly ? 1 : sc.on;
+  return sc.weekly ? { cyc: 7, on: 1 } : { cyc: sc.on + sc.off, on: sc.on };
+}
+
+/* Where each phase ends, and how many days the walk covers. A phase with no
+   day count runs to the pen's own end; `upTo` stops the walk early. */
+function phaseEnds(phases, upTo) {
   let bound = 0;
   const ends = (phases || []).map(ph => (bound += (ph.days == null ? 3650 : ph.days)));
+  return { ends, bound: upTo == null ? bound : Math.min(bound, upTo) };
+}
+
+/* Whether the schedule draws on day `i`. */
+function drawsOn(i, cyc, on) { return i % cyc < on; }
+
+function penLife(t, phases, upTo) {
+  const vol = t.volumeMl || 3;
+  const { cyc, on } = scheduleOf(t);
+  const { ends, bound } = phaseEnds(phases, upTo);
   let ml = vol, doses = 0, last = 0;
-  if (upTo != null) bound = Math.min(bound, upTo);
   for (let i = 0; i < bound; i++) {
-    if (i % cyc >= on) continue;
+    if (!drawsOn(i, cyc, on)) continue;
     const pi = ends.findIndex(e => i < e);
     if (pi === -1) break;
     const u = Number(phases[pi].units) || 0;
