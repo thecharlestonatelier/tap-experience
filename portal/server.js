@@ -537,22 +537,19 @@ async function handleDose(req, res) {
    the atelier never saw a peptide a patient added, and a phone whose
    storage was cleared lost it. Now it lands on the record, in its own
    list, so the dashboard shows it and another phone finds it. */
-async function handleAdded(req, res, url, p) {
-  const slug = assertSlug(p.slice('/api/added/'.length));
-  const rec = await store.get(slug);
-  if (!rec) return json(res, 404, { error: 'not_found' });
-  const body = await readBody(req) || {};
+/* The two lists a patient may touch, and only those two. */
+function addedPatch(body) {
   const patch = {};
   if (Array.isArray(body.added)) patch.added = body.added;
   if (Array.isArray(body.dropped)) patch.dropped = body.dropped;
-  if (!Object.keys(patch).length) return json(res, 400, { error: 'bad_request' });
-  const before = (rec.dropped || []).slice();
-  const saved = await store.put(sanitize(patch, rec));
+  return patch;
+}
 
-  /* Stopping a prescription is the one thing a patient can do here that
-     the atelier would want to hear about rather than find later. Only a
-     pen that was not already off counts — her phone re-posts the whole
-     list, so without this every save would ring. */
+/* Stopping a prescription is the one thing a patient can do here that the
+   atelier would want to hear about rather than find later. Only a pen that
+   was not already off counts — her phone re-posts the whole list, so
+   without this every save would ring. */
+function announceStopped(before, saved) {
   const fresh = (saved.dropped || []).filter(id => !before.includes(id));
   if (fresh.length) {
     notifyAtelier(
@@ -560,7 +557,23 @@ async function handleAdded(req, res, url, p) {
       'stopped'
     ).catch(() => {});
   }
-  return json(res, 200, { ok: true, added: saved.added || [], dropped: saved.dropped || [] });
+}
+
+/* The two lists the card returns after a save. */
+function savedLists(saved) {
+  return { ok: true, added: saved.added || [], dropped: saved.dropped || [] };
+}
+
+async function handleAdded(req, res, url, p) {
+  const slug = assertSlug(p.slice('/api/added/'.length));
+  const rec = await store.get(slug);
+  if (!rec) return json(res, 404, { error: 'not_found' });
+  const patch = addedPatch(await readBody(req) || {});
+  if (!Object.keys(patch).length) return json(res, 400, { error: 'bad_request' });
+  const before = (rec.dropped || []).slice();
+  const saved = await store.put(sanitize(patch, rec));
+  announceStopped(before, saved);
+  return json(res, 200, savedLists(saved));
 }
 
 /* --- the calendar she can subscribe to --- */

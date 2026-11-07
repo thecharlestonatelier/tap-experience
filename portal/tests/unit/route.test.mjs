@@ -591,3 +591,16 @@ test('POST /api/cards/<missing>/unlink returns 404', async () => {
   const r = await req('POST', '/api/cards/missing.x/unlink', { headers: studio() });
   assert.equal(r.status, 404);
 });
+
+/* ---------- added-patch edges ---------- */
+
+test('POST /api/added/<slug> with nothing to change returns 400', async () => {
+  const r = await req('POST', '/api/added/active.a', { body: {} });
+  assert.equal(r.status, 400);
+});
+
+test('POST /api/added/<slug> with an empty dropped list is a no-op', async () => {
+  const r = await req('POST', '/api/added/active.a', { body: { dropped: [] } });
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.dropped, []);
+});
