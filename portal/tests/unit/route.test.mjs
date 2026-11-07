@@ -604,3 +604,39 @@ test('POST /api/added/<slug> with an empty dropped list is a no-op', async () =>
   assert.equal(r.status, 200);
   assert.deepEqual(r.body.dropped, []);
 });
+
+/* ---------- session cookie edges ---------- */
+
+test('GET /api/session with a malformed cookie is signed out', async () => {
+  const r = await req('GET', '/api/session', { headers: { Cookie: 'ca_studio=garbage' } });
+  assert.deepEqual(r.body, { signedIn: false, required: true });
+});
+
+test('GET /api/session with a bad signature is signed out', async () => {
+  const r = await req('GET', '/api/session', { headers: { Cookie: 'ca_studio=9999999999999.bad' } });
+  assert.deepEqual(r.body, { signedIn: false, required: true });
+});
+
+test('GET /api/session with an expired token is signed out', async () => {
+  const r = await req('GET', '/api/session', { headers: { Cookie: 'ca_studio=1.abc' } });
+  assert.deepEqual(r.body, { signedIn: false, required: true });
+});
+
+/* ---------- body edges ---------- */
+
+test('POST /api/dose with malformed JSON returns 400', async () => {
+  const r = await req('POST', '/api/dose', { raw: '{not json', headers: { 'Content-Type': 'application/json' } });
+  assert.equal(r.status, 400);
+});
+
+test('POST /api/dose with an oversized body returns 413', async () => {
+  const r = await req('POST', '/api/dose', {
+    raw: 'x'.repeat(70 * 1024), headers: { 'Content-Type': 'application/json' },
+  });
+  assert.equal(r.status, 413);
+});
+
+test('POST /api/push/test without a session returns 401', async () => {
+  const r = await req('POST', '/api/push/test', { body: { slug: 'active.a' } });
+  assert.equal(r.status, 401);
+});

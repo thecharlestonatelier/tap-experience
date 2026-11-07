@@ -105,14 +105,6 @@
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/server.js::handlePushTest": {
-      "accepted": "2026-11-07",
-      "cc": 7,
-      "coverage": 37.5,
-      "crap": 19.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/server.js::linkFromToken": {
       "accepted": "2026-11-07",
       "cc": 5,
@@ -137,27 +129,11 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/server.js::readBody": {
-      "accepted": "2026-11-07",
-      "cc": 9,
-      "coverage": 55.6,
-      "crap": 16.1,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/server.js::runReminders": {
       "accepted": "2026-11-07",
       "cc": 9,
       "coverage": 66.7,
       "crap": 12.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/server.js::validSession": {
-      "accepted": "2026-11-07",
-      "cc": 6,
-      "coverage": 33.3,
-      "crap": 16.7,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
@@ -193,14 +169,6 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/store/index.js::anonymous@146": {
-      "accepted": "2026-11-07",
-      "cc": 6,
-      "coverage": 37.5,
-      "crap": 14.8,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/store/index.js::anonymous@361": {
       "accepted": "2026-11-07",
       "cc": 5,
@@ -222,14 +190,6 @@
       "cc": 10,
       "coverage": 93.8,
       "crap": 10.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/store/index.js::sanitizeState": {
-      "accepted": "2026-11-07",
-      "cc": 9,
-      "coverage": 64.3,
-      "crap": 12.7,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },

@@ -934,12 +934,9 @@ async function handlePushPhones(req, res, url, p) {
 
 /* Send one to a card's phones now, so the atelier can prove it works
    without waiting for a dose to come round. */
-async function handlePushTest(req, res) {
-  if (!requireClinician(req, res)) return;
-  if (!push.configured()) return json(res, 503, { error: 'push_not_configured' });
-  const body = await readBody(req);
-  const slug = assertSlug(body.slug || '');
-  const targets = await subs.forSlug(slug);
+/* Send the test notification to each of a card's phones, dropping any the
+   push service says are gone. */
+async function sendToPhones(targets, slug) {
   let sent = 0, dropped = 0;
   for (const rec of targets) {
     const out = await push.sendPush(rec.sub, {
@@ -951,6 +948,16 @@ async function handlePushTest(req, res) {
     if (out.ok) sent++;
     if (out.gone) { await subs.remove(rec.id); dropped++; }
   }
+  return { sent, dropped };
+}
+
+async function handlePushTest(req, res) {
+  if (!requireClinician(req, res)) return;
+  if (!push.configured()) return json(res, 503, { error: 'push_not_configured' });
+  const body = await readBody(req);
+  const slug = assertSlug(body.slug || '');
+  const targets = await subs.forSlug(slug);
+  const { sent, dropped } = await sendToPhones(targets, slug);
   return json(res, 200, { phones: targets.length, sent, dropped });
 }
 

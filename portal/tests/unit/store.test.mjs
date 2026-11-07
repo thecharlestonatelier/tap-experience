@@ -207,3 +207,23 @@ test('sanitize keeps a start day on an added peptide', () => {
   const rec = store.sanitize({ slug: 'x.y', added: [{ id: 'a', template: 'ghk', startDate: '2026-01-01' }] });
   assert.deepEqual(rec.added, [{ id: 'a', template: 'ghk', startDate: '2026-01-01' }]);
 });
+
+test('sanitizeState caps times at six and empties non-arrays', () => {
+  const st = store.sanitizeState({
+    times: { a: '01:00', b: '02:00', c: '03:00', d: '04:00', e: '05:00', f: '06:00', g: '07:00' },
+    today: 'not-array', supply: 'not-array',
+  });
+  assert.equal(Object.keys(st.times).length, 6);
+  assert.deepEqual(st.today, []);
+  assert.deepEqual(st.supply, []);
+});
+
+test('sanitizeState blanks invalid times and dates in the arrays', () => {
+  const st = store.sanitizeState({
+    today: [{ at: '8am' }],
+    supply: [{ lastDose: 'bad', startDate: 'bad' }],
+  });
+  assert.equal(st.today[0].at, '');
+  assert.equal(st.supply[0].lastDose, '');
+  assert.equal(st.supply[0].startDate, '');
+});
