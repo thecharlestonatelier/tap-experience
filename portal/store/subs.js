@@ -161,16 +161,30 @@ function openSubs() {
    delivered — a scheduler that was down since breakfast should not fire
    breakfast's reminder at four in the afternoon. And anything at or
    before `sentUpTo` has already been handled. */
+/* Whether one due instant should fire now: past, not already sent, and not
+   too stale to be useful. */
+function shouldFire(t, now, sent, graceMs) {
+  if (t <= sent) return false;                 // already nudged
+  if (now - t > graceMs) return false;         // too stale to be useful
+  return true;
+}
+
+/* The most recent qualifying instant, or null. The list is sorted, so the
+   first future instant ends the walk. */
+function latestDue(times, now, sent, graceMs) {
+  let pick = null;
+  for (const t of times) {
+    if (isNaN(t) || t > now) break;
+    if (!shouldFire(t, now, sent, graceMs)) continue;
+    if (pick === null || t > pick) pick = t;
+  }
+  return pick;
+}
+
 function dueNow(rec, now = Date.now(), graceMs = 2 * 60 * 60 * 1000) {
   const sent = rec.sentUpTo ? Date.parse(rec.sentUpTo) : 0;
-  let pick = null;
-  for (const iso of rec.due || []) {
-    const t = Date.parse(iso);
-    if (isNaN(t) || t > now) break;              // sorted, so the rest are future
-    if (t <= sent) continue;                     // already nudged
-    if (now - t > graceMs) continue;             // too stale to be useful
-    if (pick === null || t > pick) pick = t;     // the most recent one that qualifies
-  }
+  const times = (rec.due || []).map(iso => Date.parse(iso));
+  const pick = latestDue(times, now, sent, graceMs);
   return pick === null ? null : new Date(pick).toISOString();
 }
 

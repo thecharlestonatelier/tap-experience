@@ -640,3 +640,39 @@ test('POST /api/push/test without a session returns 401', async () => {
   const r = await req('POST', '/api/push/test', { body: { slug: 'active.a' } });
   assert.equal(r.status, 401);
 });
+
+/* ---------- push subscribe / atelier edges ---------- */
+
+test('POST /api/push/subscribe for a missing card returns 404', async () => {
+  const r = await req('POST', '/api/push/subscribe', {
+    body: { slug: 'missing.x', sub: { endpoint: 'https://push.example.com/m', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+  });
+  assert.equal(r.status, 404);
+});
+
+test('POST /api/push/subscribe for a retired card returns 404', async () => {
+  await req('POST', '/api/cards', { headers: studio(), body: { slug: 'ret.x', name: 'Ret', status: 'retired' } });
+  const r = await req('POST', '/api/push/subscribe', {
+    body: { slug: 'ret.x', sub: { endpoint: 'https://push.example.com/r', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+  });
+  assert.equal(r.status, 404);
+});
+
+test('POST /api/push/atelier without a session returns 401', async () => {
+  const r = await req('POST', '/api/push/atelier', { body: {} });
+  assert.equal(r.status, 401);
+});
+
+test('POST /api/push/atelier with a bad body returns 400', async () => {
+  const r = await req('POST', '/api/push/atelier', { headers: studio(), body: { sub: {} } });
+  assert.equal(r.status, 400);
+});
+
+test('dropping a pen notifies a subscribed atelier phone', async () => {
+  await req('POST', '/api/push/atelier', {
+    headers: studio(),
+    body: { sub: { endpoint: 'https://push.example.com/atelier2', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+  });
+  const r = await req('POST', '/api/added/active.a', { body: { dropped: ['ghk'] } });
+  assert.equal(r.status, 200);
+});

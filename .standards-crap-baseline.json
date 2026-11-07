@@ -89,22 +89,6 @@
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/server.js::handlePushAtelier": {
-      "accepted": "2026-11-07",
-      "cc": 9,
-      "coverage": 66.7,
-      "crap": 12.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/server.js::handlePushSubscribe": {
-      "accepted": "2026-11-07",
-      "cc": 6,
-      "coverage": 50.0,
-      "crap": 10.5,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/server.js::linkFromToken": {
       "accepted": "2026-11-07",
       "cc": 5,
@@ -116,8 +100,8 @@
     "portal/server.js::notifyAtelier": {
       "accepted": "2026-11-07",
       "cc": 5,
-      "coverage": 33.3,
-      "crap": 12.4,
+      "coverage": 40.0,
+      "crap": 10.4,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
@@ -190,14 +174,6 @@
       "cc": 10,
       "coverage": 93.8,
       "crap": 10.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/store/subs.js::dueNow": {
-      "accepted": "2026-11-07",
-      "cc": 11,
-      "coverage": 86.7,
-      "crap": 11.3,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
