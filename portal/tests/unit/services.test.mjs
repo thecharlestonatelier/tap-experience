@@ -89,3 +89,23 @@ test('nextDue ends a liquid-lipo course at two', () => {
   assert.equal(out.done, true);
   assert.equal(out.course, '2 of 2');
 });
+
+test('servicesFor ranks overdue before soon and the rest', () => {
+  const visits = [
+    v('toxin', '2025-12-01'),   // overdue
+    v('prx', '2026-03-14'),     // soon
+    v('filler', '2026-03-01'),  // no cadence
+  ];
+  const ids = services.servicesFor({ visits }, now).map(s => s.id);
+  assert.equal(ids[0], 'toxin');
+  assert.ok(ids.includes('filler'));
+});
+
+test('servicesFor is empty for a card with no visits', () => {
+  assert.deepEqual(services.servicesFor({}, now), []);
+});
+
+test('servicesFor sorts two due services by soonest', () => {
+  const out = services.servicesFor({ visits: [v('toxin', '2026-03-10'), v('b12', '2026-03-01')] }, now);
+  assert.deepEqual(out.map(s => s.id).sort(), ['b12', 'toxin']);
+});

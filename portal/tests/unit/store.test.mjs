@@ -198,3 +198,12 @@ test('assertSlug normalizes and rejects an invalid slug', () => {
   assert.equal(store.assertSlug('/Phil.H/'), 'phil.h');
   assert.throws(() => store.assertSlug('bad slug!'), /invalid_slug/);
 });
+
+test('sanitize drops malformed added peptides', () => {
+  assert.deepEqual(store.sanitize({ slug: 'x.y', added: [null, { template: 'ghk' }, { id: 'bad id!', template: 'ghk' }] }).added, []);
+});
+
+test('sanitize keeps a start day on an added peptide', () => {
+  const rec = store.sanitize({ slug: 'x.y', added: [{ id: 'a', template: 'ghk', startDate: '2026-01-01' }] });
+  assert.deepEqual(rec.added, [{ id: 'a', template: 'ghk', startDate: '2026-01-01' }]);
+});

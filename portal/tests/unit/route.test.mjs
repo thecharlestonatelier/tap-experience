@@ -529,3 +529,38 @@ test('POST /<static path> is refused with 405', async () => {
   const r = await req('POST', '/whatever');
   assert.equal(r.status, 405);
 });
+
+/* ---------- log and blank edges ---------- */
+
+test('GET /api/logged/<missing> returns 404', async () => {
+  const r = await req('GET', '/api/logged/missing.x');
+  assert.equal(r.status, 404);
+});
+
+test('GET /api/logged/<slug> with no doses is empty', async () => {
+  const r = await req('GET', '/api/logged/blank.b');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body, { days: {} });
+});
+
+test('POST /api/blanks without a session returns 401', async () => {
+  const r = await req('POST', '/api/blanks', { body: { count: 1 } });
+  assert.equal(r.status, 401);
+});
+
+test('GET /api/logged groups doses by day and names each pen', async () => {
+  await req('POST', '/api/cards', { headers: studio(), body: { slug: 'log.d', name: 'Log' } });
+  await req('POST', '/api/dose', { body: { slug: 'log.d', units: 5, template: 'ghk', day: '2026-04-01', at: '2026-04-01T09:00:00Z' } });
+  await req('POST', '/api/dose', { body: { slug: 'log.d', units: 5, day: '2026-04-01', at: '2026-04-01T21:00:00Z' } });
+  await req('POST', '/api/dose', { body: { slug: 'log.d', units: 5, template: 'b12', day: '2026-04-02', at: '2026-04-02T09:00:00Z' } });
+  const r = await req('GET', '/api/logged/log.d');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body.days['2026-04-01'].sort(), ['ghk', 'pen']);
+  assert.deepEqual(r.body.days['2026-04-02'], ['b12']);
+});
+
+test('POST /api/blanks with count 0 falls back to the default batch', async () => {
+  const r = await req('POST', '/api/blanks', { headers: studio(), body: { count: 0 } });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.cards.length, 10);
+});
