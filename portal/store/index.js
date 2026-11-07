@@ -226,25 +226,33 @@ function sanitizeAdded(rec) {
   return out;
 }
 
+function sanitizePhases(phases) {
+  return phases.slice(0, 12).map(ph => ({
+    name: String(ph.name || '').slice(0, 40),
+    units: Number(ph.units) || 0,
+    days: ph.days == null ? null : (Number(ph.days) || null)
+  })).filter(ph => ph.units > 0);
+}
+
+function sanitizeSchedule(schedule) {
+  if (schedule.weekly) {
+    return { weekly: true, day: Math.min(7, Math.max(1, Number(schedule.day) || 1)) };
+  }
+  return { on: Number(schedule.on) || 5, off: Number(schedule.off) || 2 };
+}
+
 function sanitizePen(pen) {
   if (!pen || typeof pen.template !== 'string') return null;
   const out = { template: pen.template.slice(0, 24) };
 
   // Phases are optional — without them the template's own titration stands.
   if (Array.isArray(pen.phases) && pen.phases.length) {
-    out.phases = pen.phases.slice(0, 12).map(ph => ({
-      name: String(ph.name || '').slice(0, 40),
-      units: Number(ph.units) || 0,
-      days: ph.days == null ? null : (Number(ph.days) || null)
-    })).filter(ph => ph.units > 0);
+    out.phases = sanitizePhases(pen.phases);
   }
   if (pen.schedule && typeof pen.schedule === 'object') {
-    const s = pen.schedule;
-    out.schedule = s.weekly
-      ? { weekly: true, day: Math.min(7, Math.max(1, Number(s.day) || 1)) }
-      : { on: Number(s.on) || 5, off: Number(s.off) || 2 };
+    out.schedule = sanitizeSchedule(pen.schedule);
   }
-  if (pen.startDate && /^\d{4}-\d{2}-\d{2}$/.test(pen.startDate)) out.startDate = pen.startDate;
+  if (pen.startDate && ISO_DATE.test(pen.startDate)) out.startDate = pen.startDate;
   return out;
 }
 
