@@ -17,9 +17,12 @@ characterization pin written before the code moved:
   `services.test.mjs`, `slug.test.mjs` — the pure modules.
 - `wallet.test.mjs`, `push.test.mjs` — `crc32`, `buildPassJson`,
   `buildManifest`, and `sendPush`.
+- `activate.emulator.test.mjs` — the first-tap token path, against the Auth
+  emulator (skipped when it is not running).
 
-The suite grew from 0 to **187 unit tests**. Branch coverage over the whole
-tree rose from 0% (no runner) to **71%**; the service files from 0%.
+The suite grew from 0 to **188 tests** (191 with the emulator test). Branch
+coverage over the whole tree rose from 0% (no runner) to **72%**; the
+service files from 0%.
 
 ## Refactored (CRAP before → after)
 
@@ -36,6 +39,7 @@ tree rose from 0% (no runner) to **71%**; the service files from 0%.
 | `penLife` | lib/supply.js | CC 13, CRAP 13.4 | CC 8, CRAP 8.2 |
 | `handleCardItem` | server.js | CC 12, CRAP 23.3 | CC 8, CRAP 8.0 |
 | `nextDue` | lib/services.js | CC 12, CRAP 12.4 | CC 6, CRAP 6.0 |
+| `handleActivate` | server.js | CC 15, CRAP 59.7 | CC 6, CRAP 7.9 |
 
 Each commit is one function (or one cohesive shared helper), one behaviour
 change at a time, with the pin green throughout.
@@ -58,16 +62,36 @@ dropped them without touching production code:
 
 ## Baseline
 
-The accepted-debt baseline fell from **60 entries to 31**. Fixed functions
+The accepted-debt baseline fell from **60 entries to 33**. Fixed functions
 were removed; the split handlers that still exceed 10 are recorded
 individually.
 
+The three helpers split out of `handleActivate` (`verifyActivator`,
+`linkFromToken`, `activateResult`) are only reached through a verified
+token, so in the *deterministic* unit run — no emulator — they sit at 0%
+and are baselined. With the Auth emulator up they are covered and score
+well under 10. The baseline is snapshotted at the emulator-down floor on
+purpose: the CRAP gate only compares worse, so a later emulator run is
+never a false regression.
+
+## Running the activate pin
+
+The token path is pinned by `tests/unit/activate.emulator.test.mjs`, which
+auto-skips when the emulator is unreachable (so `npm test` stays
+deterministic). To run it:
+
+```sh
+firebase emulators:start --only auth --project atelier-tap
+cd portal && node --test tests/unit/activate.emulator.test.mjs
+```
+
+It pins: missing token 400, nonsense token 400, unknown card 404, first link
+`linked`, same account `verified`, different account 409.
+
 ## What is left (follow-up)
 
-- `handleActivate` (CC 15, 42% branch) — its token-verification path needs
-  the Firebase Auth emulator to pin, so it is not safe to split yet.
-- `handleAdded` (CC 11, 67%) — same reason: needs its dropped-pen path
-  pinned above 70% first.
+- `handleAdded` (CC 11, 67% branch) — needs its dropped-pen path pinned
+  above 70% before splitting; no emulator needed.
 - `readBody`, `validSession`, `handleHealth`, `handlePushTest`,
   `sanitizeState` — low CC, partially covered; pinning only.
 - The store selectors and I/O wrappers (`openStore`, `openDoses`, `openFeeds`,
