@@ -3,8 +3,12 @@
    schedule — the arithmetic that tells the atelier who is short. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 
 import supply from '../../lib/supply.js';
+
+const WEB = fileURLToPath(new URL('../../../patients/jessica/', import.meta.url));
+const now = Date.parse('2026-03-15T00:00:00');
 
 test('effectiveStart prefers the phone state, then settings, then the record', () => {
   assert.equal(supply.effectiveStart({
@@ -49,4 +53,54 @@ test('penLife stops at upTo days', () => {
   assert.equal(out.days, 7);
   assert.equal(out.doses, 7);
   assert.equal(out.left, 1.25);
+});
+
+/* ---------- supplyFor: what is left in each pen ---------- */
+
+test('supplyFor is empty for a card with no pens and no report', () => {
+  assert.deepEqual(supply.supplyFor({}, WEB, now), { out: [], low: [], pens: [], unknown: [] });
+});
+
+test('supplyFor reads a phone report with a last dose', () => {
+  const r = supply.supplyFor(
+    { state: { supply: [{ template: 'nad', lastDose: '2026-03-01', dosesLeft: 3 }] } }, WEB, now);
+  assert.deepEqual(r.out, ['NAD+ (pen, retired)']);
+  assert.deepEqual(r.pens, [{ name: 'NAD+ (pen, retired)', days: -14, dosesLeft: 3, runsOut: '2026-03-01' }]);
+});
+
+test('supplyFor reads a phone report that is out', () => {
+  const r = supply.supplyFor({ state: { supply: [{ template: 'nad', dosesLeft: 0 }] } }, WEB, now);
+  assert.deepEqual(r.out, ['NAD+ (pen, retired)']);
+  assert.deepEqual(r.pens, [{ name: 'NAD+ (pen, retired)', days: 0, dosesLeft: 0, runsOut: '2026-03-15' }]);
+});
+
+test('supplyFor keeps a phone report with doses left and no date', () => {
+  const r = supply.supplyFor({ state: { supply: [{ template: 'nad', dosesLeft: 5 }] } }, WEB, now);
+  assert.deepEqual(r.pens, [{ name: 'NAD+ (pen, retired)', days: null, dosesLeft: 5, runsOut: null }]);
+});
+
+test('supplyFor projects a prescribed pen from its start day', () => {
+  const r = supply.supplyFor({ pens: [{ template: 'glow' }], startDate: '2026-03-01' }, WEB, now);
+  assert.deepEqual(r.pens, [{ name: 'Glow Blend', days: 26, dosesLeft: 20, runsOut: '2026-04-10' }]);
+});
+
+test('supplyFor names a self-sized vial as unknown, not fine', () => {
+  const r = supply.supplyFor({ pens: [{ template: 'tirz' }], startDate: '2026-03-01' }, WEB, now);
+  assert.deepEqual(r.pens, []);
+  assert.deepEqual(r.unknown, ['Tirzepatide']);
+});
+
+test('supplyFor lets the phone report win over the projection', () => {
+  const r = supply.supplyFor(
+    { pens: [{ template: 'ghk' }], state: { supply: [{ template: 'ghk', dosesLeft: 2 }] } }, WEB, now);
+  assert.deepEqual(r.pens, [{ name: 'GHK-Cu', days: null, dosesLeft: 2, runsOut: null }]);
+});
+
+test('supplyFor projects nothing without a start day', () => {
+  assert.deepEqual(supply.supplyFor({ pens: [{ template: 'glow' }] }, WEB, now).pens, []);
+});
+
+test('supplyFor ignores an unknown template', () => {
+  assert.deepEqual(
+    supply.supplyFor({ pens: [{ template: 'zzz' }], startDate: '2026-03-01' }, WEB, now).pens, []);
 });
