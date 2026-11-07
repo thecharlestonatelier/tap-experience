@@ -20,31 +20,48 @@ const COLLECTION = process.env.DOSE_COLLECTION || 'administrations';
 
 function nowIso() { return new Date().toISOString(); }
 
+function clipText(v, n) { return String(v || '').slice(0, n); }
+
+function positiveUnits(v) {
+  const units = Number(v);
+  return Number.isFinite(units) && units > 0 ? Math.round(units) : 0;
+}
+
+function milligrams(v) {
+  return Number.isFinite(Number(v)) ? Number(v) : null;
+}
+
+function doseAt(v) {
+  return /^\d{4}-\d{2}-\d{2}T/.test(v || '') ? v : nowIso();
+}
+
+function doseDay(day, at) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day || '')) return day;
+  return (at || nowIso()).slice(0, 10);
+}
+
 /* Only the fields an administration is allowed to carry. Anything the
    browser sends beyond these is dropped rather than stored — the tag is
    public and a POST is a POST. */
 function sanitizeDose(input) {
   if (!input || typeof input.slug !== 'string') return null;
-  const units = Number(input.units);
   return {
     slug: input.slug.slice(0, 40),
-    pen: String(input.pen || '').slice(0, 60),
-    template: String(input.template || '').slice(0, 24),
-    lot: String(input.lot || '').slice(0, 24),
+    pen: clipText(input.pen, 60),
+    template: clipText(input.template, 24),
+    lot: clipText(input.lot, 24),
     // How the pen is taken, so the log reads on its own.
-    frequency: String(input.frequency || '').slice(0, 40),
+    frequency: clipText(input.frequency, 40),
     // Which site she used, when she logged it by hand and chose one.
     // A tapped vial does not ask, so this is often empty.
-    site: String(input.site || '').slice(0, 40),
-    units: Number.isFinite(units) && units > 0 ? Math.round(units) : 0,
-    mg: Number.isFinite(Number(input.mg)) ? Number(input.mg) : null,
-    at: /^\d{4}-\d{2}-\d{2}T/.test(input.at || '') ? input.at : nowIso(),
+    site: clipText(input.site, 40),
+    units: positiveUnits(input.units),
+    mg: milligrams(input.mg),
+    at: doseAt(input.at),
     // The calendar day as the PHONE saw it. An 8pm injection in Charleston
     // is already tomorrow in UTC, and a green mark that lands on the wrong
     // square is worse than no mark, so the date is not derived from `at`.
-    day: /^\d{4}-\d{2}-\d{2}$/.test(input.day || '')
-      ? input.day
-      : (input.at || nowIso()).slice(0, 10),
+    day: doseDay(input.day, input.at),
     recordedAt: nowIso()
   };
 }
