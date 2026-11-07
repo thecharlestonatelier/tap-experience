@@ -136,3 +136,9 @@ test('penLife steps through two phases', () => {
   assert.equal(out.doses, 25);
   assert.ok(Math.abs(out.left - 0.05) < 1e-9);
 });
+
+test('supplyFor flags a pen low with five days left', () => {
+  const r = supply.supplyFor({ pens: [{ template: 'glow' }], startDate: '2026-02-08' }, WEB, now);
+  assert.deepEqual(r.low, [{ name: 'Glow Blend', days: 5 }]);
+  assert.deepEqual(r.out, []);
+});

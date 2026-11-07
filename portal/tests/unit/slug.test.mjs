@@ -86,3 +86,19 @@ test('blankSlug is six alphabet characters', () => {
   assert.equal(out.length, 6);
   assert.match(out, /^[23456789bcdfghjkmnpqrstvwxz]{6}$/);
 });
+
+test('isValidSlug pins the length boundaries', () => {
+  assert.equal(slug.isValidSlug('ph'), true);            // 2: the floor
+  assert.equal(slug.isValidSlug('a'.repeat(40)), true);  // 40: the ceiling
+  assert.equal(slug.isValidSlug('a'.repeat(41)), false); // 41: past it
+});
+
+test('baseSlug drops to the stem when there is no last name', () => {
+  assert.equal(slug.baseSlug('Ann', ''), 'ann');
+  assert.equal(slug.baseSlug('A', 'B'), 'a.b');
+  assert.equal(slug.baseSlug('   ', 'B'), '');
+});
+
+test('makeSlug of a nameless card is empty', () => {
+  assert.equal(slug.makeSlug('', ''), '');
+});

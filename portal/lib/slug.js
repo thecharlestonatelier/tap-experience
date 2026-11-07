@@ -64,7 +64,9 @@ function blankSlug() {
 function isValidSlug(s) {
   if (typeof s !== 'string') return false;
   const v = s.toLowerCase();
-  if (v.length < 2 || v.length > 40) return false;
+  // SHAPE is anchored and caps the length at 40 (1 + up to 38 + 1), so it
+  // is the single bound; a separate length test here would be redundant and
+  // the mutation audit proved it changed no outcome.
   if (!SHAPE.test(v)) return false;
   if (v.includes('..') || v.includes('--')) return false;
   return !RESERVED.has(v.split(/[.\-]/)[0]) && !RESERVED.has(v);
