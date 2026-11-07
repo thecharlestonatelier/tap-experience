@@ -7,3 +7,6 @@ coverage.json
 .agents/
 .firebase/
 graphify-out/
+
+firebase-debug.log
+firestore-debug.log
