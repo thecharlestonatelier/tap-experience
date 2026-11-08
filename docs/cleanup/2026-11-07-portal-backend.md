@@ -188,8 +188,17 @@ The **browser harness** (`portal/tests/browser/`) and the `vm` engine pin
 10 engine tests green, all 14 fetch call sites still exercised (~72.5% of
 `protocol.js` lines).
 
-Remaining: three portal edges (`server.js -> push.js`, `server.js ->
-wallet.js`, `scripts/push-keys.js -> push.js`), debt 4.
+Two small moves cleared the rest:
+
+- split `lib/push.js` into a pure `lib/push-crypto.js` (domain) and a
+  delivering `lib/push.js` (infrastructure), so the key CLI imports the
+  crypto, not the transport;
+- declared the real entry points (the service as `npm start`, the key CLI as
+  a `bin`), which the tool exempts as composition roots that may wire the
+  adapters.
+
+Final: **0 `adapter->infrastructure` violations, debt 0, no cycles**, gate
+clean, with 271 unit + 6 browser tests green throughout.
 
 ## Clean-code notes
 
