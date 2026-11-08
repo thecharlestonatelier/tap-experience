@@ -94,9 +94,15 @@ function firestoreDoses(db) {
       return { id, duplicate: false };
     },
     async forSlug(slug, limit = 60) {
-      const snap = await col.where('slug', '==', slug)
-        .orderBy('at', 'desc').limit(limit).get();
-      return snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      // Firestore wants a composite index for where(slug) + orderBy(at), and
+      // a new test twin has none. A per-card dose log is small, so fetch the
+      // card's documents and sort here; the same code then works in every
+      // collection and environment.
+      const snap = await col.where('slug', '==', slug).limit(1000).get();
+      return snap.docs
+        .map(d => Object.assign({ id: d.id }, d.data()))
+        .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+        .slice(0, limit);
     }
   };
 }

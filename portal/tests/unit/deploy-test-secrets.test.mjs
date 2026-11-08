@@ -24,3 +24,15 @@ test('the test deploy binds test-only push secrets', () => {
   assert.match(script, /vapid-private-key-test:latest/);
   assert.match(script, /push-run-secret-test:latest/);
 });
+
+test('the test deploy points every collection at a test twin', () => {
+  for (const twin of [
+    'CARD_COLLECTION=cards-test',
+    'DOSE_COLLECTION=administrations-test',
+    'FEED_COLLECTION=feeds-test',
+    'SUB_COLLECTION=reminders-test',
+    'TOMBSTONE_COLLECTION=tombstones-test',
+  ]) {
+    assert.match(script, new RegExp(twin), `${twin} is missing`);
+  }
+});
