@@ -14,3 +14,7 @@ firestore-debug.log
 
 # security-audit sandbox artifacts
 security/sandbox/out/
+
+# Local worktrees and agent backups
+.worktrees/
+.opencode/.agent-backups/
