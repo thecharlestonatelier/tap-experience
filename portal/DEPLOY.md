@@ -53,7 +53,6 @@ hosting question from "what's cheap" to "who will sign a BAA."
 - **AWS** — same posture, self-serve BAA through Artifact.
 - **Netlify** — does not offer a BAA at any tier. Upgrading your plan does not
   change this, which is why the new service does not live there.
-- **Vercel** — BAA on Enterprise only.
 
 These are my understanding of each vendor's current terms, not legal advice.
 Confirm the BAA directly with whoever you pick before real patient data goes in.
