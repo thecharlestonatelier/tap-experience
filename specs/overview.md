@@ -9,7 +9,7 @@ One map of the specification set. Each file owns one subsystem or one change.
 | `000-system.md` | System baseline. The whole Charleston Atelier tap card portal. |
 | `2026-10-22-001-first-tap-auth.md` | First-tap authentication. The Google sign-in gate and card linking. |
 | `2026-10-23-002-email-password-auth.md` | Email and password authentication, next to the Google sign-in. |
-| `2026-10-27-003-start-time-customization.md` | Protocol start date and time customization. The per-pen chips and the lock. |
+| `2026-10-27-003-start-time-customization.md` | Protocol start date and time customization. The per-pen chip, the edit modal, and the lock. |
 
 ## How to read the set
 
