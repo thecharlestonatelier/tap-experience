@@ -63,3 +63,18 @@ test('sanitizeDose keeps a valid mg and drops a bad one', () => {
 test('sanitizeDose rounds a positive unit count', () => {
   assert.equal(doses.sanitizeDose({ slug: 'x.y', units: '10.6' }).units, 11);
 });
+
+test('sanitizeDose keeps an explicit day over the at date', () => {
+  const d = doses.sanitizeDose({ slug: 'x.y', units: 5, day: '2026-03-01', at: '2026-03-05T10:00:00Z' });
+  assert.equal(d.day, '2026-03-01');
+});
+
+test('sanitizeDose rejects a non-object and a non-string slug', () => {
+  assert.equal(doses.sanitizeDose(null), null);
+  assert.equal(doses.sanitizeDose('x'), null);
+  assert.equal(doses.sanitizeDose({ slug: 5 }), null);
+});
+
+test('doses default the collection name', () => {
+  assert.equal(doses.COLLECTION, 'administrations');
+});

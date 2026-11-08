@@ -93,3 +93,49 @@ test('a resubscribe keeps createdAt and sentUpTo', async () => {
   assert.equal(merged.createdAt, base.createdAt);
   assert.equal(merged.sentUpTo, base.sentUpTo);
 });
+
+const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+test('subs default the collection name', () => {
+  assert.equal(subs.COLLECTION, 'reminders');
+});
+
+test('sanitizeSub stamps ISO created and updated times', () => {
+  const out = subs.sanitizeSub({ sub: { endpoint: 'https://e/x', keys: { p256dh: 'p', auth: 'a' } }, due: [] }, 'x');
+  assert.match(out.createdAt, ISO);
+  assert.match(out.updatedAt, ISO);
+});
+
+test('sanitizeSub rejects a non-string endpoint', () => {
+  assert.equal(subs.sanitizeSub({ sub: { endpoint: 5, keys: { p256dh: 'p', auth: 'a' } } }, 'x'), null);
+});
+
+test('dueNow treats an instant equal to sentUpTo as sent', () => {
+  assert.equal(subs.dueNow({ due: ['2026-03-15T10:00:00.000Z'], sentUpTo: '2026-03-15T10:00:00.000Z' }, now), null);
+});
+
+test('dueNow fires an instant exactly at the grace edge', () => {
+  assert.equal(subs.dueNow({ due: ['2026-03-15T10:00:00.000Z'] }, now), '2026-03-15T10:00:00.000Z');
+});
+
+test('dueNow picks the latest of several', () => {
+  assert.equal(subs.dueNow({ due: ['2026-03-15T10:00:00.000Z', '2026-03-15T11:00:00.000Z', '2026-03-15T11:30:00.000Z'] }, now),
+    '2026-03-15T11:30:00.000Z');
+});
+
+test('the file subs store pings, filters and marks sent', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tap-subs2-'));
+  process.env.CARD_STORE = 'file';
+  process.env.SUB_FILE = path.join(tmp, 'subs.json');
+  const store = subs.openSubs();
+  await store.ping();
+  assert.ok(fs.existsSync(path.join(tmp, 'subs.json')));
+  const base = (id, slug) => ({ id, slug, sub: { endpoint: 'https://e/x', keys: { p256dh: 'p', auth: 'a' } }, due: [], sentUpTo: '', tz: '', createdAt: 't', updatedAt: 't' });
+  await store.put(base('a', 'x'));
+  await store.put(base('b', 'y'));
+  assert.equal((await store.forSlug('x')).length, 1);
+  assert.equal((await store.forSlug('nope')).length, 0);
+  await store.markSent('a', '2026-01-01T00:00:00.000Z');
+  assert.equal((await store.forSlug('x'))[0].sentUpTo, '2026-01-01T00:00:00.000Z');
+  await store.markSent('missing', '2026-01-01T00:00:00.000Z');
+});

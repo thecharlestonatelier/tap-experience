@@ -20,7 +20,7 @@ characterization pin written before the code moved:
 - `activate.emulator.test.mjs` — the first-tap token path, against the Auth
   emulator (skipped when it is not running).
 
-The suite grew from 0 to **248 tests** (all pass). The Auth and Firestore
+The suite grew from 0 to **261 tests** (all pass). The Auth and Firestore
 pins run under `firebase emulators:exec`, which starts the emulators, runs
 the suite and tears them down — the harness owns their lifecycle, so a human
 never starts one by hand. Branch coverage over the whole tree rose from 0%
@@ -45,11 +45,14 @@ A broader audit over `slug`, `services`, `doses` and `subs` scored **67.4%**
 - **Real assertion gaps** — ordering (`rank`), date edges (`dueResult`,
   `doseDay`) and the due-list (`latestDue`, `cleanDue`).
 
-Strengthening the ordering/date/due-list pins lifted it to **74.8%** (264
-killed, 89 survived). The remaining survivors are the offline store paths
-plus `rank` (15), `dueResult` (5), `doseDay` (4) and `latestDue` (4). An
-emulator-live mutation run (which would score the store paths) crashed
-inside Stryker with no report and is a follow-up.
+Strengthening the ordering/date/due-list pins lifted it to **83.0%** (293
+killed, 60 survived, 1 waived). Per file: `slug.js` 97.6%, `subs.js` 81.9%,
+`services.js` 79.0%, `doses.js` 76.1%. The survivors are now dominated by the
+Firestore adapters (`openDoses`/`openSubs` selectors, `put`, `forSlug`,
+`firestoreSubs`) and the `servicesFor` sort comparator (`rank`, 14 — mostly
+equivalent orderings). Scoring the Firestore paths needs live emulators, and
+an emulator-live mutation run crashed Stryker's worker pool, so that is the
+open follow-up. A small `.stryker-tmp/` sandbox is now gitignored.
 
 The slug audit also found the length guard in `isValidSlug` was redundant
 with the anchored `SHAPE` regex, so it was removed and the 2/40 boundaries

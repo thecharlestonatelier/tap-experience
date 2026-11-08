@@ -144,3 +144,23 @@ test('nextDue marks a dose due today as soon, not overdue', () => {
   assert.equal(out.soon, true);
   assert.equal(out.overdue, false);
 });
+
+test('catalogue is a cached, non-empty list', () => {
+  assert.ok(services.catalogue().length > 0);
+  assert.equal(services.catalogue(), services.catalogue());
+});
+
+test('servicesFor orders overdue, then soonest, then the rest', () => {
+  const visits = [
+    v('toxin', '2025-12-01'),  // overdue
+    v('b12', '2026-02-22'),    // due in 7 days
+    v('prx', '2026-03-10'),    // due in 2 days
+    v('filler', '2026-03-01'), // no cadence
+  ];
+  assert.deepEqual(services.servicesFor({ visits }, now).map(s => s.id), ['toxin', 'prx', 'b12', 'filler']);
+});
+
+test('nextDue marks seven days as soon and eight as not', () => {
+  assert.equal(services.nextDue('toxin', [v('toxin', '2025-12-22')], now).soon, true);
+  assert.equal(services.nextDue('toxin', [v('toxin', '2025-12-23')], now).soon, false);
+});
