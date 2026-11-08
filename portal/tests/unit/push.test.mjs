@@ -18,7 +18,7 @@ const push = (await import('../../lib/push.js')).default;
 const ua = crypto.createECDH('prime256v1');
 ua.generateKeys();
 const sub = {
-  endpoint: 'https://push.example.com/x',
+  endpoint: 'https://fcm.googleapis.com/x',
   keys: { p256dh: ua.getPublicKey().toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') },
 };
 

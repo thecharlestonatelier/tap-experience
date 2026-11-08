@@ -31,6 +31,7 @@ export async function startPortal() {
     DOSE_FILE: path.join(dir, 'doses.json'),
     SUB_FILE: path.join(dir, 'subs.json'),
     FEED_FILE: path.join(dir, 'feeds.json'),
+    TOMBSTONE_FILE: path.join(dir, 'tombstones.json'),
     STUDIO_PASSPHRASE: 'testpassphrase',
     VAPID_PUBLIC_KEY: keys.publicKey,
     VAPID_PRIVATE_KEY: keys.privateKey,
@@ -57,7 +58,7 @@ export function stubPush(page) {
     };
     const KEY = 'stub.push.live';
     const fake = {
-      get endpoint() { return 'https://stub.push.example/' + keys.auth; },
+      get endpoint() { return 'https://fcm.googleapis.com/stub/' + keys.auth; },
       toJSON() { return { endpoint: this.endpoint, keys }; },
       async unsubscribe() { localStorage.removeItem(KEY); return true; },
     };

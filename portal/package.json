@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "CARD_STORE=file node server.js",
+    "dev": "CARD_STORE=file STUDIO_OPEN=1 node server.js",
     "seed": "node scripts/seed.js",
     "test": "firebase emulators:exec --only auth,firestore --project atelier-tap --config ../firebase.json \"node --test tests/unit/\"",
     "test:browser": "firebase emulators:exec --only auth --project atelier-tap --config ../firebase.json \"node --test tests/browser/\""

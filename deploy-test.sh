@@ -9,10 +9,11 @@
 #
 #   bash deploy-test.sh
 #
-# It reuses the production VAPID key pair and push-run secret (portal/setup.sh
-# creates those), because regenerating a VAPID pair silently turns every
-# patient's reminders off. Only the Studio passphrase is separate. Safe to
-# run again: everything it makes, it re-uses if it is already there.
+# It has its own VAPID key pair, push-run secret and Studio passphrase, so a
+# test workload never holds production signing material. The test VAPID pair
+# is created once and kept, because regenerating it turns off reminders for
+# every phone subscribed to the test service. Safe to run again: everything
+# it makes, it re-uses if it is already there.
 #
 set -euo pipefail
 
@@ -60,28 +61,43 @@ put_secret() { # put_secret NAME VALUE
   fi
 }
 
-# These two services sign reminders with the same VAPID pair, and Cloud
-# Scheduler proves itself with the same push-run secret. They must already
-# exist — portal/setup.sh creates them. Check first so a missing
-# prerequisite fails fast, before anything is written.
-step "Shared secrets (VAPID + push-run)"
-for s in vapid-public-key vapid-private-key push-run-secret; do
-  gcloud secrets describe "$s" --quiet >/dev/null 2>&1 ||
-    die "The shared secret '$s' is missing. Run 'bash portal/setup.sh' once
-   to create it (it also deploys production), then run this again."
-done
-echo "  reusing vapid-public-key, vapid-private-key, push-run-secret."
+# The test workload gets its own VAPID pair and push-run secret. Reusing the
+# production pair would put production signing material in a public service
+# with a shared passphrase.
+step "Test-only secrets (VAPID + push-run)"
+if gcloud secrets describe vapid-private-key-test >/dev/null 2>&1 &&
+   gcloud secrets describe vapid-public-key-test >/dev/null 2>&1; then
+  echo "  Test VAPID pair exists — keeping it."
+else
+  KEYS="$(node portal/scripts/push-keys.js 2>/dev/null | awk '/VAPID_PUBLIC_KEY/{p=$2} /VAPID_PRIVATE_KEY/{v=$2} END{print p" "v}')"
+  VP="$(echo "$KEYS" | cut -d' ' -f1)"
+  VK="$(echo "$KEYS" | cut -d' ' -f2)"
+  [ -n "$VP" ] && [ -n "$VK" ] ||
+    die "Could not generate a test VAPID pair (is node here?)."
+  put_secret vapid-public-key-test "$VP"
+  put_secret vapid-private-key-test "$VK"
+  echo "  Generated a test VAPID pair."
+  unset KEYS VP VK
+fi
+if gcloud secrets describe push-run-secret-test >/dev/null 2>&1; then
+  echo "  Test push-run secret exists — keeping it."
+else
+  put_secret push-run-secret-test "$(head -c 32 /dev/urandom | base64 | tr -d '=+/' | cut -c1-32)"
+  echo "  Created a test push-run secret."
+fi
 
-# The test Studio opens with its own passphrase, separate from production.
-# Override with TEST_STUDIO_PASS when this script must not carry one.
-PASS="${TEST_STUDIO_PASS:-thisisatestenvironment}"
+# The test Studio passphrase must be supplied; there is no known default.
+PASS="${TEST_STUDIO_PASS:-}"
+if [ -z "$PASS" ] || [ ${#PASS} -lt 12 ]; then
+  die "Set TEST_STUDIO_PASS to a test-only passphrase of at least 12 characters."
+fi
 put_secret studio-passphrase-test "$PASS"
 unset PASS
 
 step "Letting the service read those secrets"
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
 SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-for s in studio-passphrase-test vapid-public-key vapid-private-key push-run-secret; do
+for s in studio-passphrase-test vapid-public-key-test vapid-private-key-test push-run-secret-test; do
   gcloud secrets add-iam-policy-binding "$s" \
     --member="serviceAccount:${SA}" \
     --role="roles/secretmanager.secretAccessor" --quiet >/dev/null
@@ -118,7 +134,7 @@ gcloud run deploy "$SERVICE" \
   --region "$REGION" \
   --allow-unauthenticated \
   --set-env-vars CARD_STORE=firestore,NODE_ENV=production,CARD_COLLECTION=cards-test,SUB_COLLECTION=reminders-test,FEED_COLLECTION=feeds-test,DOSE_COLLECTION=administrations-test \
-  --set-secrets STUDIO_PASSPHRASE=studio-passphrase-test:latest,VAPID_PUBLIC_KEY=vapid-public-key:latest,VAPID_PRIVATE_KEY=vapid-private-key:latest,PUSH_RUN_SECRET=push-run-secret:latest
+  --set-secrets STUDIO_PASSPHRASE=studio-passphrase-test:latest,VAPID_PUBLIC_KEY=vapid-public-key-test:latest,VAPID_PRIVATE_KEY=vapid-private-key-test:latest,PUSH_RUN_SECRET=push-run-secret-test:latest
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
 
@@ -142,7 +158,7 @@ fi
 # URL and never the production one.
 step "The clock that fires test reminders"
 gcloud services enable cloudscheduler.googleapis.com --quiet >/dev/null 2>&1 || true
-RUN_SECRET="$(gcloud secrets versions access latest --secret=push-run-secret 2>/dev/null || true)"
+RUN_SECRET="$(gcloud secrets versions access latest --secret=push-run-secret-test 2>/dev/null || true)"
 if [ -n "$RUN_SECRET" ]; then
   if gcloud scheduler jobs describe atelier-reminders-test --location "$REGION" >/dev/null 2>&1; then
     gcloud scheduler jobs update http atelier-reminders-test \
