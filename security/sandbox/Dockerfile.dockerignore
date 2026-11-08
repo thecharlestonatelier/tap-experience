@@ -1,0 +1,9 @@
+portal/node_modules
+portal/.data
+portal/coverage
+portal/coverage.json
+.git
+**/node_modules
+**/.data
+**/coverage
+security/sandbox/out
