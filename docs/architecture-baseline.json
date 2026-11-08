@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "keys": [
+    "violation:patients/jessica/calendar.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/cards.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/dose.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/expect.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/index.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/ritual.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/storage.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/studio.html->patients/jessica/assets/protocol.js",
+    "violation:patients/jessica/tutorial.html->patients/jessica/assets/protocol.js",
+    "violation:portal/scripts/push-keys.js->portal/lib/push.js",
+    "violation:portal/server.js->portal/lib/push.js",
+    "violation:portal/server.js->portal/lib/wallet.js"
+  ]
+}
