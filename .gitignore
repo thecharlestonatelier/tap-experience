@@ -11,3 +11,6 @@ graphify-out/
 firebase-debug.log
 firestore-debug.log
 .stryker-tmp/
+
+# security-audit sandbox artifacts
+security/sandbox/out/
