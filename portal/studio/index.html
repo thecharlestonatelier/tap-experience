@@ -585,6 +585,15 @@ function tagAddress(slug) { return cardUrl(slug).replace(/^https?:\/\//, ''); }
 
 async function boot() {
   const s = await api('/api/session');
+  if (s.open) { await start(); return; }
+  if (s.configured === false) {
+    $('gate').hidden = false;
+    $('pass').disabled = true;
+    $('signIn').disabled = true;
+    const hint = $('gate').querySelector('.hint');
+    if (hint) hint.textContent = 'Studio is not configured on this server. Set STUDIO_PASSPHRASE and reload.';
+    return;
+  }
   if (s.required && !s.signedIn) {
     $('gate').hidden = false;
     $('pass').focus();

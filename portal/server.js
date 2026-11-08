@@ -36,6 +36,7 @@ const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs
 const { makeSlug, blankSlug, isValidSlug, normalizeSlug } = require('./lib/slug');
 const wallet = require('./lib/wallet');
 const push = require('./lib/push');
+const { authProxyHeaders, HOP_BY_HOP } = require('./lib/auth-proxy');
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -47,6 +48,9 @@ const WEB_ROOT = process.env.WEB_ROOT
         ? path.join(__dirname, 'public')
         : path.join(__dirname, '..', 'patients', 'jessica'));
 const STUDIO_PASSPHRASE = process.env.STUDIO_PASSPHRASE || '';
+/* Local development may deliberately open the dashboard, but never in
+   production and never by accident: the opt-in has to be explicit. */
+const STUDIO_OPEN = process.env.STUDIO_OPEN === '1' && process.env.NODE_ENV !== 'production';
 
 /* Cloud Run runs several instances and replaces them freely, so a random
    per-process secret would sign a cookie one instance could not verify —
@@ -263,7 +267,9 @@ function safeDecode(s) {
 }
 
 function isClinician(req) {
-  if (!STUDIO_PASSPHRASE) return true;   // unset locally: the dashboard is open
+  // No passphrase means no dashboard, unless local development explicitly
+  // opted in. A PHI endpoint must never turn itself on.
+  if (!STUDIO_PASSPHRASE) return STUDIO_OPEN;
   const cookie = /(?:^|;\s*)ca_studio=([^;]+)/.exec(req.headers.cookie || '');
   if (!cookie) return false;
   const value = safeDecode(cookie[1]);
@@ -405,17 +411,9 @@ function serveStatic(res, urlPath, options = {}) {
    whole round trip same-origin and immune to third-party storage rules. */
 
 const AUTH_HELPER_HOST = 'atelier-tap.firebaseapp.com';
-const HOP_BY_HOP = new Set([
-  'connection', 'keep-alive', 'transfer-encoding', 'upgrade',
-  'te', 'trailer', 'proxy-authenticate', 'proxy-authorization',
-  'content-length'
-]);
 
 function proxyAuthHelper(req, res, url) {
-  const headers = {};
-  for (const [k, v] of Object.entries(req.headers)) {
-    if (!HOP_BY_HOP.has(String(k).toLowerCase()) && k !== 'host') headers[k] = v;
-  }
+  const headers = authProxyHeaders(req.headers);
 
   const upstream = https.request({
     hostname: AUTH_HELPER_HOST,
@@ -699,7 +697,11 @@ async function handleDoses(req, res, url, p) {
 /* --- the dashboard's side --- */
 async function handleSessionPost(req, res) {
   const body = await readBody(req);
-  if (!STUDIO_PASSPHRASE) return json(res, 200, { ok: true, open: true });
+  if (!STUDIO_PASSPHRASE) {
+    return STUDIO_OPEN
+      ? json(res, 200, { ok: true, open: true })
+      : json(res, 503, { error: 'studio_not_configured' });
+  }
   const given = Buffer.from(String(body.passphrase || ''));
   const want = Buffer.from(STUDIO_PASSPHRASE);
   const ok = given.length === want.length && crypto.timingSafeEqual(given, want);
@@ -712,7 +714,12 @@ async function handleSessionPost(req, res) {
 }
 
 function handleSessionGet(req, res) {
-  return json(res, 200, { signedIn: isClinician(req), required: !!STUDIO_PASSPHRASE });
+  return json(res, 200, {
+    signedIn: isClinician(req),
+    required: !!STUDIO_PASSPHRASE || !STUDIO_OPEN,
+    configured: !!STUDIO_PASSPHRASE,
+    open: !STUDIO_PASSPHRASE && STUDIO_OPEN
+  });
 }
 
 /* --- the read-only overview --- */
@@ -1112,7 +1119,11 @@ const server = http.createServer((req, res) => {
 if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`atelier tap service on :${PORT}  store=${store.kind}  web=${WEB_ROOT}`);
-    if (!STUDIO_PASSPHRASE) console.warn('STUDIO_PASSPHRASE is unset — the dashboard is open.');
+    if (!STUDIO_PASSPHRASE) {
+      console.warn(STUDIO_OPEN
+        ? 'STUDIO_PASSPHRASE is unset — STUDIO_OPEN=1, so the dashboard is open (local only).'
+        : 'STUDIO_PASSPHRASE is unset — the dashboard is closed.');
+    }
   });
 }
 

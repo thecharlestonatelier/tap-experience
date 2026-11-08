@@ -222,7 +222,7 @@ test('POST /api/session with a wrong passphrase returns 401', async () => {
 test('GET /api/session reports signed-out when no cookie', async () => {
   const r = await req('GET', '/api/session');
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { signedIn: false, required: true });
+  assert.deepEqual(r.body, { signedIn: false, required: true, configured: true, open: false });
 });
 
 /* ---------- the read-only overview ---------- */
@@ -425,7 +425,7 @@ test('POST /api/added/<slug> dropping a prescribed pen notifies the atelier', as
 test('GET /api/session with a cookie reports signed in', async () => {
   const r = await req('GET', '/api/session', { headers: studio() });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { signedIn: true, required: true });
+  assert.deepEqual(r.body, { signedIn: true, required: true, configured: true, open: false });
 });
 
 test('POST /api/cards/<slug>/unlink clears the link', async () => {
@@ -609,17 +609,17 @@ test('POST /api/added/<slug> with an empty dropped list is a no-op', async () =>
 
 test('GET /api/session with a malformed cookie is signed out', async () => {
   const r = await req('GET', '/api/session', { headers: { Cookie: 'ca_studio=garbage' } });
-  assert.deepEqual(r.body, { signedIn: false, required: true });
+  assert.deepEqual(r.body, { signedIn: false, required: true, configured: true, open: false });
 });
 
 test('GET /api/session with a bad signature is signed out', async () => {
   const r = await req('GET', '/api/session', { headers: { Cookie: 'ca_studio=9999999999999.bad' } });
-  assert.deepEqual(r.body, { signedIn: false, required: true });
+  assert.deepEqual(r.body, { signedIn: false, required: true, configured: true, open: false });
 });
 
 test('GET /api/session with an expired token is signed out', async () => {
   const r = await req('GET', '/api/session', { headers: { Cookie: 'ca_studio=1.abc' } });
-  assert.deepEqual(r.body, { signedIn: false, required: true });
+  assert.deepEqual(r.body, { signedIn: false, required: true, configured: true, open: false });
 });
 
 /* ---------- body edges ---------- */
