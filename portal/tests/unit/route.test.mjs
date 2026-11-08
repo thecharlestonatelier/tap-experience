@@ -334,7 +334,7 @@ test('GET /api/push/key reports configured', async () => {
 
 test('POST /api/push/subscribe saves a subscription', async () => {
   const r = await req('POST', '/api/push/subscribe', {
-    body: { slug: 'active.a', sub: { endpoint: 'https://push.example.com/a', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+    body: { slug: 'active.a', sub: { endpoint: 'https://fcm.googleapis.com/a', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
   });
   assert.equal(r.status, 201);
   assert.equal(r.body.ok, true);
@@ -359,7 +359,7 @@ test('POST /api/push/run with the secret runs the sweep', async () => {
 test('POST /api/push/run sweeps a phone due right now', async () => {
   const due = new Date(Date.now() - 60000).toISOString();
   await req('POST', '/api/push/subscribe', {
-    body: { slug: 'active.a', sub: { endpoint: 'https://push.example.com/run', keys: { p256dh: 'pk', auth: 'au' } }, due: [due] },
+    body: { slug: 'active.a', sub: { endpoint: 'https://fcm.googleapis.com/run', keys: { p256dh: 'pk', auth: 'au' } }, due: [due] },
   });
   const r = await req('POST', '/api/push/run', { headers: { 'x-push-secret': 'test-run-secret' } });
   assert.equal(r.status, 200);
@@ -435,7 +435,7 @@ test('POST /api/cards/<slug>/unlink clears the link', async () => {
 
 test('POST /api/push/atelier turns the atelier phone off', async () => {
   const r = await req('POST', '/api/push/atelier', {
-    headers: studio(), body: { off: true, endpoint: 'https://push.example.com/x' },
+    headers: studio(), body: { off: true, endpoint: 'https://fcm.googleapis.com/x' },
   });
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { ok: true, on: false });
@@ -444,7 +444,7 @@ test('POST /api/push/atelier turns the atelier phone off', async () => {
 test('POST /api/push/atelier turns the atelier phone on', async () => {
   const r = await req('POST', '/api/push/atelier', {
     headers: studio(),
-    body: { sub: { endpoint: 'https://push.example.com/y', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+    body: { sub: { endpoint: 'https://fcm.googleapis.com/y', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
   });
   assert.equal(r.status, 201);
   assert.deepEqual(r.body, { ok: true, on: true });
@@ -457,7 +457,7 @@ test('GET /api/push/atelier reads the atelier subscriptions', async () => {
 });
 
 test('POST /api/push/unsubscribe with an endpoint removes it', async () => {
-  const r = await req('POST', '/api/push/unsubscribe', { body: { endpoint: 'https://push.example.com/x' } });
+  const r = await req('POST', '/api/push/unsubscribe', { body: { endpoint: 'https://fcm.googleapis.com/x' } });
   assert.equal(r.status, 200);
 });
 
@@ -645,7 +645,7 @@ test('POST /api/push/test without a session returns 401', async () => {
 
 test('POST /api/push/subscribe for a missing card returns 404', async () => {
   const r = await req('POST', '/api/push/subscribe', {
-    body: { slug: 'missing.x', sub: { endpoint: 'https://push.example.com/m', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+    body: { slug: 'missing.x', sub: { endpoint: 'https://fcm.googleapis.com/m', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
   });
   assert.equal(r.status, 404);
 });
@@ -653,7 +653,7 @@ test('POST /api/push/subscribe for a missing card returns 404', async () => {
 test('POST /api/push/subscribe for a retired card returns 404', async () => {
   await req('POST', '/api/cards', { headers: studio(), body: { slug: 'ret.x', name: 'Ret', status: 'retired' } });
   const r = await req('POST', '/api/push/subscribe', {
-    body: { slug: 'ret.x', sub: { endpoint: 'https://push.example.com/r', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+    body: { slug: 'ret.x', sub: { endpoint: 'https://fcm.googleapis.com/r', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
   });
   assert.equal(r.status, 404);
 });
@@ -671,7 +671,7 @@ test('POST /api/push/atelier with a bad body returns 400', async () => {
 test('dropping a pen notifies a subscribed atelier phone', async () => {
   await req('POST', '/api/push/atelier', {
     headers: studio(),
-    body: { sub: { endpoint: 'https://push.example.com/atelier2', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
+    body: { sub: { endpoint: 'https://fcm.googleapis.com/atelier2', keys: { p256dh: 'pk', auth: 'au' } }, due: [] },
   });
   const r = await req('POST', '/api/added/active.a', { body: { dropped: ['ghk'] } });
   assert.equal(r.status, 200);

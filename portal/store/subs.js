@@ -34,6 +34,7 @@
 
 const crypto = require('node:crypto');
 const { fileJson } = require('./file-json');
+const { allowedPushEndpoint } = require('../lib/push-endpoint');
 
 const COLLECTION = process.env.SUB_COLLECTION || 'reminders';
 const MAX_DUE = 200;   // roughly four months of daily dosing
@@ -61,7 +62,7 @@ function cleanDue(input, now) {
 
 function sanitizeSub(input, slug) {
   const sub = input && input.sub;
-  if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint)) return null;
+  if (!sub || typeof sub.endpoint !== 'string' || !allowedPushEndpoint(sub.endpoint)) return null;
   if (!sub.keys || !sub.keys.p256dh || !sub.keys.auth) return null;
 
   return {

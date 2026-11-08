@@ -18,12 +18,12 @@ test('idFor is a stable 32-char sha256 of the endpoint', () => {
 
 test('sanitizeSub keeps a well-formed subscription', () => {
   const out = subs.sanitizeSub({
-    sub: { endpoint: 'https://e.com/x', keys: { p256dh: 'pk', auth: 'au' } },
+    sub: { endpoint: 'https://fcm.googleapis.com/x', keys: { p256dh: 'pk', auth: 'au' } },
     due: [], tz: 'America/New_York',
   }, 'phil.h');
-  assert.equal(out.id, '94ef2cbbf778601d3b154c719cf078ee');
+  assert.equal(out.id, 'ff1fb28f3bb00e75861a9578e8f138fa');
   assert.equal(out.slug, 'phil.h');
-  assert.deepEqual(out.sub, { endpoint: 'https://e.com/x', keys: { p256dh: 'pk', auth: 'au' } });
+  assert.deepEqual(out.sub, { endpoint: 'https://fcm.googleapis.com/x', keys: { p256dh: 'pk', auth: 'au' } });
   assert.deepEqual(out.due, []);
   assert.equal(out.sentUpTo, '');
   assert.equal(out.tz, 'America/New_York');
@@ -33,7 +33,7 @@ test('sanitizeSub rejects a non-https endpoint and missing keys', () => {
   assert.equal(subs.sanitizeSub({
     sub: { endpoint: 'http://e.com/x', keys: { p256dh: 'pk', auth: 'au' } },
   }, 'phil.h'), null);
-  assert.equal(subs.sanitizeSub({ sub: { endpoint: 'https://e.com/x' } }, 'phil.h'), null);
+  assert.equal(subs.sanitizeSub({ sub: { endpoint: 'https://fcm.googleapis.com/x' } }, 'phil.h'), null);
 });
 
 test('dueNow skips what is already sent', () => {
@@ -71,7 +71,7 @@ test('sanitizeSub cleans, dedups and sorts the due list', () => {
   const future = new Date(Date.now() + 3600000).toISOString();
   const stale = new Date(Date.now() - 48 * 3600000).toISOString();
   const out = subs.sanitizeSub({
-    sub: { endpoint: 'https://e/x', keys: { p256dh: 'pk', auth: 'au' } },
+    sub: { endpoint: 'https://fcm.googleapis.com/x', keys: { p256dh: 'pk', auth: 'au' } },
     due: [future, 'bad', future, stale],
   }, 'x.y');
   assert.deepEqual(out.due, [future]);
@@ -84,7 +84,7 @@ test('a resubscribe keeps createdAt and sentUpTo', async () => {
   const store = subs.openSubs();
   const base = {
     id: 's1', slug: 'x.y',
-    sub: { endpoint: 'https://e/x', keys: { p256dh: 'p', auth: 'a' } },
+    sub: { endpoint: 'https://fcm.googleapis.com/x', keys: { p256dh: 'p', auth: 'a' } },
     due: [], sentUpTo: '2026-01-01T00:00:00.000Z', tz: '',
     createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
   };
@@ -101,7 +101,7 @@ test('subs default the collection name', () => {
 });
 
 test('sanitizeSub stamps ISO created and updated times', () => {
-  const out = subs.sanitizeSub({ sub: { endpoint: 'https://e/x', keys: { p256dh: 'p', auth: 'a' } }, due: [] }, 'x');
+  const out = subs.sanitizeSub({ sub: { endpoint: 'https://fcm.googleapis.com/x', keys: { p256dh: 'p', auth: 'a' } }, due: [] }, 'x');
   assert.match(out.createdAt, ISO);
   assert.match(out.updatedAt, ISO);
 });
@@ -130,7 +130,7 @@ test('the file subs store pings, filters and marks sent', async () => {
   const store = subs.openSubs();
   await store.ping();
   assert.ok(fs.existsSync(path.join(tmp, 'subs.json')));
-  const base = (id, slug) => ({ id, slug, sub: { endpoint: 'https://e/x', keys: { p256dh: 'p', auth: 'a' } }, due: [], sentUpTo: '', tz: '', createdAt: 't', updatedAt: 't' });
+  const base = (id, slug) => ({ id, slug, sub: { endpoint: 'https://fcm.googleapis.com/x', keys: { p256dh: 'p', auth: 'a' } }, due: [], sentUpTo: '', tz: '', createdAt: 't', updatedAt: 't' });
   await store.put(base('a', 'x'));
   await store.put(base('b', 'y'));
   assert.equal((await store.forSlug('x')).length, 1);

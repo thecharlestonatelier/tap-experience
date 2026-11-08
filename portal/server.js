@@ -29,6 +29,7 @@ const crypto = require('node:crypto');
 const { openStore, sanitize, publicView, assertSlug, sanitizeState } = require('./store');
 const { openDoses, sanitizeDose } = require('./store/doses');
 const { openFeeds, sanitizeFeed } = require('./store/feeds');
+const { openTombstones } = require('./store/tombstones');
 const { supplyFor, effectiveStart } = require('./lib/supply');
 const { catalogue: serviceCatalogue, servicesFor } = require('./lib/services');
 const { openSubs, sanitizeSub, idFor: subIdFor, dueNow } = require('./store/subs');
@@ -83,6 +84,7 @@ const store = openStore();
 const doses = openDoses();
 const subs = openSubs();
 const feeds = openFeeds();
+const tombstones = openTombstones();
 const STARTED_AT = new Date().toISOString();
 
 /* Firebase Admin, for verifying the Google ID token a card posts. Loaded
@@ -588,6 +590,11 @@ async function handleIcsWrite(req, res, url, p) {
 
 async function handleIcsRead(req, res, url, p) {
   const slug = assertSlug(p.slice('/ics/'.length).replace(/\.ics$/i, ''));
+  // A feed belongs to a live card. Once the card is gone, the feed is not
+  // a public artefact of a deleted patient.
+  if (!await store.get(slug)) {
+    return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
+  }
   const feed = await feeds.get(slug);
   if (!feed) return send(res, 404, 'Not found', { 'Content-Type': 'text/plain; charset=utf-8' });
   // Calendar clients poll this; let them, but never let a proxy hold a
@@ -766,7 +773,11 @@ async function handleCardsPost(req, res) {
         : blankSlug());
 
   if (!isValidSlug(slug)) return json(res, 400, { error: 'invalid_slug', slug });
-  if (await store.get(slug)) return json(res, 409, { error: 'slug_taken', slug });
+  // A deleted address is never reissued: the old holder would keep the
+  // authority that travels with the slug.
+  if (await store.get(slug) || await tombstones.has(slug)) {
+    return json(res, 409, { error: 'slug_taken', slug });
+  }
 
   const rec = sanitize(Object.assign({}, body, { slug }));
   await store.put(rec);
@@ -798,6 +809,10 @@ async function writeCard(res, req, slug, existing) {
 }
 
 async function removeCard(res, slug) {
+  // Order matters: tombstone first so a failure cannot leave a deleted
+  // address mintable again, then the PHI copies, then the card.
+  await tombstones.mark(slug);
+  await feeds.remove(slug);
   await store.remove(slug);
   return json(res, 204, '');
 }

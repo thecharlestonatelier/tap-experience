@@ -243,9 +243,10 @@ function place(pen) {
   document.getElementById('blocks').innerHTML = out.join('');
   document.getElementById('wrong').innerHTML = li(H.wrong || []);
 
-  document.getElementById('msg').href = smsHref
-    ? smsHref()
-    : `sms:${(CFG.protocol.concierge && CFG.protocol.concierge.phone) || '843-377-3713'}`;
+  const msgLink = smsHref();
+  const msg = document.getElementById('msg');
+  if (msgLink) msg.href = msgLink;
+  else msg.hidden = true;
 
   applyCardLinks(document);
 })();
@@ -253,8 +254,9 @@ function place(pen) {
 /* The same message link the rest of the portal uses. */
 function smsHref() {
   const c = (CFG && CFG.protocol && CFG.protocol.concierge) || {};
-  const phone = (c.phone || '843-377-3713').replace(/[^\d+]/g, '');
-  const opener = encodeURIComponent(c.messageOpener || 'Hi Dr. Phelps-Polirer — ');
+  const phone = String(c.phone || '').replace(/[^\d+]/g, '');
+  if (!phone) return null;
+  const opener = encodeURIComponent(c.messageOpener || 'Hi — ');
   return `sms:${phone}${/iP(hone|ad|od)/.test(navigator.userAgent) ? '&' : '?'}body=${opener}`;
 }
 </script>

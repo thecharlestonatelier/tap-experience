@@ -67,7 +67,7 @@ const dueNowIso = () => new Date(Date.now() - 60000).toISOString();
 async function withPush(status, fn) {
   const real = globalThis.fetch;
   globalThis.fetch = async (url, opts) => {
-    if (String(url).startsWith('https://push.example.com/')) {
+    if (String(url).startsWith('https://fcm.googleapis.com/')) {
       if (status === 'throw') throw new Error('push unreachable');
       return { ok: status >= 200 && status < 300, status };
     }
@@ -88,14 +88,14 @@ async function signIn() {
 }
 
 test('runReminders sends to a due phone', async () => {
-  await subscribe('rem.c', 'https://push.example.com/a');
+  await subscribe('rem.c', 'https://fcm.googleapis.com/a');
   const r = await withPush(201, run);
   assert.equal(r.status, 200);
   assert.ok(r.body.sent >= 1);
 });
 
 test('runReminders drops a phone the push service says is gone', async () => {
-  await subscribe('rem.c', 'https://push.example.com/gone');
+  await subscribe('rem.c', 'https://fcm.googleapis.com/gone');
   const r = await withPush(410, run);
   assert.equal(r.status, 200);
   assert.ok(r.body.dropped >= 1);
@@ -104,7 +104,7 @@ test('runReminders drops a phone the push service says is gone', async () => {
 test('runReminders drops a retired card phone', async () => {
   await signIn();
   await req('POST', '/api/cards', { headers: { Cookie: studioCookie }, body: { slug: 'late.c', name: 'Late' } });
-  await subscribe('late.c', 'https://push.example.com/late');
+  await subscribe('late.c', 'https://fcm.googleapis.com/late');
   await req('PUT', '/api/cards/late.c', { headers: { Cookie: studioCookie }, body: { status: 'retired' } });
   const r = await run();
   assert.equal(r.status, 200);
@@ -112,7 +112,7 @@ test('runReminders drops a retired card phone', async () => {
 });
 
 test('runReminders counts a failed send', async () => {
-  await subscribe('rem.c', 'https://push.example.com/fail');
+  await subscribe('rem.c', 'https://fcm.googleapis.com/fail');
   const r = await withPush('throw', run);
   assert.equal(r.status, 200);
   assert.ok(r.body.failed >= 1);
@@ -122,7 +122,7 @@ test('notifyAtelier sends to a subscribed atelier phone', async () => {
   await signIn();
   await req('POST', '/api/push/atelier', {
     headers: { Cookie: studioCookie },
-    body: { sub: subscription('https://push.example.com/atelier'), due: [] },
+    body: { sub: subscription('https://fcm.googleapis.com/atelier'), due: [] },
   });
   const r = await withPush(201, () => req('POST', '/api/added/rem.c', { body: { dropped: ['ghk'] } }));
   assert.equal(r.status, 200);

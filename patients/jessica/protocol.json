@@ -5,7 +5,7 @@
     "id": "jessica"
   },
   "protocol": {
-    "name": "Jessica's Protocol",
+    "name": "Your Protocol",
     "startDate": "2026-07-13",
     "delivery": "pen",
     "_tracking": "Set true to turn injection logging back on: adds the Log button, the adherence strip and the NFC tap-to-log flow.",
@@ -23,8 +23,7 @@
     ],
     "_concierge": "messageOpener is pre-typed into the Messages compose box. iOS gives no way to show italic placeholder text that clears when you type, so this is written as an opening line she continues from — nothing to delete.",
     "concierge": {
-      "phone": "843-377-3713",
-      "messageOpener": "Hi Dr. Phelps-Polirer — "
+      "messageOpener": "Hi — "
     },
     "pens": [
       {
