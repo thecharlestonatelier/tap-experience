@@ -676,3 +676,17 @@ test('dropping a pen notifies a subscribed atelier phone', async () => {
   const r = await req('POST', '/api/added/active.a', { body: { dropped: ['ghk'] } });
   assert.equal(r.status, 200);
 });
+
+/* ---------- overview fills empty fields ---------- */
+
+test('GET /api/overview fills empty card fields', async () => {
+  await req('POST', '/api/cards', { headers: studio(), body: { slug: 'bare.r', status: 'retired' } });
+  const r = await req('GET', '/api/overview', { headers: { Authorization: 'Bearer test-agent-token' } });
+  assert.equal(r.status, 200);
+  const bare = r.body.patients.find(p => p.slug === 'bare.r');
+  assert.equal(bare.name, '');
+  assert.equal(bare.lastSeen, null);
+  assert.deepEqual(bare.pens, []);
+  assert.deepEqual(bare.stopped, []);
+  assert.deepEqual(bare.addedHerself, []);
+});

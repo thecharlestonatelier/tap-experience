@@ -17,22 +17,6 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/lib/wallet.js::configured": {
-      "accepted": "2026-11-07",
-      "cc": 4,
-      "coverage": 25.0,
-      "crap": 10.8,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/lib/wallet.js::zip": {
-      "accepted": "2026-11-07",
-      "cc": 3,
-      "coverage": 0.0,
-      "crap": 12.0,
-      "measure": "line",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/scripts/seed.js::card": {
       "accepted": "2026-11-07",
       "cc": 3,
@@ -57,27 +41,11 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/server.js::anonymous@719": {
-      "accepted": "2026-11-07",
-      "cc": 6,
-      "coverage": 50.0,
-      "crap": 10.5,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/server.js::handleHealth": {
       "accepted": "2026-11-07",
       "cc": 8,
       "coverage": 50.0,
       "crap": 16.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/server.js::linkFromToken": {
-      "accepted": "2026-11-07",
-      "cc": 5,
-      "coverage": 25.0,
-      "crap": 15.5,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },

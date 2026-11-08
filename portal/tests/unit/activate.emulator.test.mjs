@@ -29,6 +29,8 @@ if (!reachable) {
   fs.writeFileSync(process.env.CARD_FILE, JSON.stringify({
     'act.a': { slug: 'act.a', name: 'Act', status: 'active', startDate: null, note: '',
                pens: [], added: [], dropped: [], createdAt: now, updatedAt: now },
+    'noname.a': { slug: 'noname.a', name: 'NoName', status: 'active', startDate: null, note: '',
+                  pens: [], added: [], dropped: [], createdAt: now, updatedAt: now },
   }, null, 2));
 
   const { server } = await import('../../server.js');
@@ -44,7 +46,9 @@ if (!reachable) {
 
   async function mint(name) {
     const uid = `t${Math.random().toString(36).slice(2, 10)}`;
-    await admin.auth().createUser({ uid, email: `${uid}@example.com`, displayName: name });
+    const profile = { uid, email: `${uid}@example.com` };
+    if (name) profile.displayName = name;
+    await admin.auth().createUser(profile);
     const custom = await admin.auth().createCustomToken(uid);
     const r = await fetch(
       `http://${HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=any`,
@@ -56,6 +60,12 @@ if (!reachable) {
   }
   const post = (p, body) => fetch(base + p, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  async function signIn() {
+    const r = await fetch(base + '/api/session', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passphrase: 'testpassphrase' }) });
+    return (r.headers.getSetCookie().find(c => c.startsWith('ca_studio=')) || '').split(';')[0];
+  }
 
   test('activate refuses a missing token', async () => {
     const r = await post('/api/activate/act.a', {});
@@ -87,5 +97,15 @@ if (!reachable) {
 
     r = await post('/api/activate/act.a', { idToken: bob.idToken });
     assert.equal(r.status, 409);
+  });
+
+  test('activate links a token with no display name', async () => {
+    const user = await mint();
+    const r = await post('/api/activate/noname.a', { idToken: user.idToken });
+    assert.equal(r.status, 200);
+    const cookie = await signIn();
+    const card = await (await fetch(base + '/api/cards/noname.a', { headers: { Cookie: cookie } })).json();
+    assert.equal(card.activatedBy.uid, user.uid);
+    assert.equal(card.activatedBy.name, '');
   });
 }

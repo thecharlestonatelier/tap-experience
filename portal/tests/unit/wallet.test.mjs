@@ -55,3 +55,23 @@ test('buildPassJson shows the dose of the day when given one', () => {
   assert.deepEqual(pass.storeCard.secondaryFields,
     [{ key: 'pen', label: 'Today', value: 'Glow' }]);
 });
+
+test('configured is false without credentials or certificates', () => {
+  assert.equal(wallet.configured(), false);
+});
+
+test('zip builds a stored archive with a local header and central directory', () => {
+  const z = wallet.zip({ 'a.txt': Buffer.from('hello') });
+  assert.equal(z.subarray(0, 4).toString('latin1'), 'PK\x03\x04');
+  assert.ok(z.includes(Buffer.from('PK\x01\x02')));
+  assert.ok(z.includes(Buffer.from('a.txt')));
+  assert.ok(z.includes(Buffer.from('hello')));
+  const eocd = z.subarray(z.length - 22);
+  assert.equal(eocd.subarray(0, 4).toString('latin1'), 'PK\x05\x06');
+  assert.equal(eocd.readUInt16LE(8), 1); // one entry
+});
+
+test('zip counts every file in the end record', () => {
+  const z = wallet.zip({ 'a.txt': Buffer.from('a'), 'b.txt': Buffer.from('bb') });
+  assert.equal(z.subarray(z.length - 22).readUInt16LE(8), 2);
+});
