@@ -201,7 +201,7 @@ test('POST /api/activate/<missing> returns 404', async () => {
 test('GET /api/logged/<slug> returns the green days', async () => {
   const r = await req('GET', '/api/logged/active.a');
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { days: { '2026-03-01': ['ghk'] } });
+  assert.deepEqual(r.body, { days: { '2026-03-01': ['ghk'] }, firstAt: { ghk: '2026-03-01T20:00:00Z' } });
 });
 
 /* ---------- dashboard session ---------- */
@@ -540,7 +540,7 @@ test('GET /api/logged/<missing> returns 404', async () => {
 test('GET /api/logged/<slug> with no doses is empty', async () => {
   const r = await req('GET', '/api/logged/blank.b');
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { days: {} });
+  assert.deepEqual(r.body, { days: {}, firstAt: {} });
 });
 
 test('POST /api/blanks without a session returns 401', async () => {
@@ -557,6 +557,11 @@ test('GET /api/logged groups doses by day and names each pen', async () => {
   assert.equal(r.status, 200);
   assert.deepEqual(r.body.days['2026-04-01'].sort(), ['ghk', 'pen']);
   assert.deepEqual(r.body.days['2026-04-02'], ['b12']);
+  assert.deepEqual(r.body.firstAt, {
+    ghk: '2026-04-01T09:00:00Z',
+    pen: '2026-04-01T21:00:00Z',
+    b12: '2026-04-02T09:00:00Z',
+  });
 });
 
 test('POST /api/blanks with count 0 falls back to the default batch', async () => {
