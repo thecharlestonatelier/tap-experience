@@ -103,6 +103,11 @@
     font-size:11px; cursor:pointer;
   }
   .pen-timechip.locked { color:var(--muted); border-color:var(--line); border-style:dashed; cursor:default; }
+  .pen-row.archived { border-style:dashed; opacity:.78; }
+  .pen-archived {
+    font-size:10px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 7px;
+  }
   .pen-dialog {
     border:0; border-radius:16px; padding:0; width:min(92vw,380px);
     background:var(--paper, #F7F1E7); color:var(--ink); box-shadow:0 22px 70px #0004;
@@ -1591,7 +1596,10 @@ function addedByHer() {
     <div class="pen-head"><span class="pen-name">Added on her own card</span></div>
     <p class="setup-note">${list.map(a => {
       const t = TEMPLATES.templates.find(x => x.id === a.template) || {};
-      return `${esc(t.name || a.template)}${a.startDate ? ` — since ${esc(a.startDate)}` : ''}`;
+      const archived = !!(editing.archived && editing.archived[a.id]);
+      return `${esc(t.name || a.template)}${a.startDate ? ` — since ${esc(a.startDate)}` : ''}` +
+        (archived ? ` <span class="pen-archived">Archived</span>
+          <button type="button" class="ghost sm" data-unarchive="${a.id}">Restore</button>` : '');
     }).join('<br>')}</p>
     <p class="setup-note" style="margin-top:8px">She chose these from the library
     and can remove them herself. They are not part of what you prescribed.</p>
@@ -1796,6 +1804,7 @@ function renderPens() {
     const phases = pen.phases || t.phases || [];
     const key = pen.template;
     const timeId = penTimeId(editing.pens, pi);
+    const archived = !!(editing.archived && editing.archived[timeId]);
     const penTime = (editing.settings && editing.settings.penTimes && editing.settings.penTimes[timeId]) || '';
     const cardStart = (editing.settings && editing.settings.startDate) || '';
     const start = pen.startDate || cardStart;
@@ -1818,13 +1827,15 @@ function renderPens() {
       </div>`;
     }
 
-    return `<div class="pen-row">
+    return `<div class="pen-row${archived ? ' archived' : ''}">
       <div class="pen-head">
         <span class="pen-name">${t.name || pen.template}</span>
         <button type="button" class="pen-timechip${locked ? ' locked' : ''}" data-pentime="${pi}"
           title="${locked ? 'Locked — first dose logged. Use Force to override.' : 'Change start day and time for this pen'}">
           ${locked ? '🔒 ' : ''}${startText} · ${timeText}
         </button>
+        ${archived ? `<span class="pen-archived">Archived</span>
+          <button type="button" class="ghost sm" data-unarchive="${timeId}">Restore</button>` : ''}
         <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
       </div>
       ${phases.length ? `<div class="phase phase-head">
@@ -1864,6 +1875,21 @@ function renderPens() {
 
   list.querySelectorAll('[data-pentime]').forEach(b =>
     b.addEventListener('click', () => openPenTimeEditor(Number(b.dataset.pentime))));
+
+  list.querySelectorAll('[data-unarchive]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const id = b.dataset.unarchive;
+      try {
+        await api(`/api/archive/${editing.slug}`, { method: 'DELETE', body: JSON.stringify({ id }) });
+      } catch {
+        return toast('Could not restore — check the connection and try again.');
+      }
+      if (editing.archived) delete editing.archived[id];
+      renderPens();
+      toast((editing.dropped || []).includes(id)
+        ? 'Restored from archive — she has still stopped it.'
+        : 'Restored to her schedule.');
+    }));
 
   list.querySelectorAll('[data-undrop]').forEach(b =>
     b.addEventListener('click', () => {

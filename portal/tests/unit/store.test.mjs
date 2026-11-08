@@ -146,7 +146,7 @@ test('publicView hides the note, visits and the link', () => {
   };
   assert.deepEqual(store.publicView(rec), {
     slug: 'x.y', name: 'X', status: 'active', startDate: '2026-01-01',
-    pens: [{ template: 'ghk' }], added: [], dropped: [], settings: { rev: 1 },
+    pens: [{ template: 'ghk' }], added: [], dropped: [], archived: {}, settings: { rev: 1 },
   });
 });
 
@@ -157,7 +157,7 @@ test('publicView of null is null', () => {
 test('publicView fills empty fields for a bare record', () => {
   assert.deepEqual(store.publicView({ slug: 'x.y', status: 'blank' }), {
     slug: 'x.y', name: '', status: 'blank', startDate: null,
-    pens: [], added: [], dropped: [], settings: null,
+    pens: [], added: [], dropped: [], archived: {}, settings: null,
   });
 });
 
@@ -242,4 +242,17 @@ test('sanitize stores per-pen times and bumps rev when one changes', () => {
   }, first);
   assert.equal(next.settings.rev, 2);
   assert.deepEqual(next.settings.penTimes, { ghk: '09:30' });
+});
+
+test('sanitize keeps archived pens and publicView returns them', () => {
+  const at = '2026-01-01T00:00:00.000Z';
+  const rec = store.sanitize({ slug: 'x.y', archived: { glow: at, 'bad id': at } });
+  assert.deepEqual(rec.archived, { glow: at });
+  assert.deepEqual(store.publicView(rec).archived, { glow: at });
+});
+
+
+test('sanitize does not archive a pen on an empty timestamp', () => {
+  const rec = store.sanitize({ slug: 'x.y', archived: { glow: '', 'ghk#0': null } });
+  assert.deepEqual(rec.archived, {});
 });

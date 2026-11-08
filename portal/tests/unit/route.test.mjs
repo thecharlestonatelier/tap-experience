@@ -307,6 +307,62 @@ test('GET /api/doses/<slug> with a session reads the log', async () => {
   assert.ok(Array.isArray(r.body.doses));
 });
 
+/* ---------- archive ---------- */
+
+test('POST /api/archive/<slug> archives a pen and keeps the dose history', async () => {
+  const before = await req('GET', '/api/doses/active.a', { headers: studio() });
+  const r = await req('POST', '/api/archive/active.a', { body: { id: 'ghk' } });
+  assert.equal(r.status, 200);
+  assert.match(r.body.archived.ghk, /^\d{4}-\d{2}-\d{2}T/);
+
+  const pub = await req('GET', '/api/card/active.a');
+  assert.match(pub.body.archived.ghk, /^\d{4}-\d{2}-\d{2}T/);
+
+  const after = await req('GET', '/api/doses/active.a', { headers: studio() });
+  assert.equal(after.body.doses.length, before.body.doses.length);
+});
+
+test('DELETE /api/archive/<slug> restores; unknown card and bad id are refused', async () => {
+  const r = await req('DELETE', '/api/archive/active.a', { headers: studio(), body: { id: 'ghk' } });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.archived.ghk, undefined);
+  assert.equal((await req('POST', '/api/archive/missing.x', { body: { id: 'ghk' } })).status, 404);
+  assert.equal((await req('POST', '/api/archive/active.a', { body: { id: 'bad id!' } })).status, 400);
+});
+
+test('a card PUT without archived preserves the archive', async () => {
+  await req('POST', '/api/archive/active.a', { body: { id: 'ghk' } });
+  const r = await req('PUT', '/api/cards/active.a', { headers: studio(), body: { note: 'archive kept' } });
+  assert.equal(r.status, 200);
+  assert.ok(r.body.archived && r.body.archived.ghk);
+  await req('DELETE', '/api/archive/active.a', { headers: studio(), body: { id: 'ghk' } });
+});
+
+test('an added pen can be archived', async () => {
+  await req('POST', '/api/cards', {
+    headers: studio(),
+    body: { slug: 'add.a', name: 'Added', added: [{ id: 'bpc+abc', template: 'bpc' }] },
+  });
+  const r = await req('POST', '/api/archive/add.a', { body: { id: 'bpc+abc' } });
+  assert.equal(r.status, 200);
+  assert.match(r.body.archived['bpc+abc'], /^\d{4}-/);
+});
+
+test('a well-formed id not on the card is refused', async () => {
+  const r = await req('POST', '/api/archive/active.a', { body: { id: 'nope' } });
+  assert.equal(r.status, 400);
+});
+
+test('anonymous DELETE /api/cards/<slug> is refused', async () => {
+  const r = await req('DELETE', '/api/cards/active.a');
+  assert.equal(r.status, 401);
+});
+
+test('anonymous DELETE /api/archive/<slug> is refused', async () => {
+  const r = await req('DELETE', '/api/archive/active.a', { body: { id: 'ghk' } });
+  assert.equal(r.status, 401);
+});
+
 /* ---------- wallet / push ---------- */
 
 test('GET /api/wallet/status reports unconfigured', async () => {
