@@ -8,18 +8,20 @@
 ## 1. Overview
 
 This spec lets a patient change the start date and the dosing time-of-day of
-each pen from the dose card. The two values render as pill chips in the card
-header. The patient taps a chip to edit the value in place. The change locks
-when she logs the pen's first dose. The atelier can still override the value
-from Card Studio. The time-of-day drives the due instants, the reminders, and
-the calendar times.
+each pen from the dose card. The two values render as one combined chip in the
+card header. The patient taps the chip to open a compact modal and edit both
+values. Save applies the values; Cancel discards them. The change locks when
+she logs the pen's first dose. The atelier can still override the values from
+Card Studio. The time-of-day drives the due instants, the reminders, and the
+calendar times.
 
 ## 2. Goals and Non-Goals
 
 ### Goals
 
-- Show each pen's start date and time-of-day as two chips on its dose card.
-- Let the patient edit each value in place, per pen.
+- Show each pen's start date and time-of-day as one combined chip on its dose
+  card.
+- Let the patient edit both values through a compact modal, per pen.
 - Lock each pen's date and time after its first logged dose.
 - Keep the atelier override above the lock.
 - Keep the reminders and the calendar in step with the edited time.
@@ -84,32 +86,31 @@ These are excluded from this spec:
 
 ## 5. User Flows
 
-### 5.1 Edit a date
+### 5.1 Open the modal
 
 The patient opens Today's Ritual. A pen is due. Its card header shows the
-name, a date chip, a time chip, and the remove button. The patient taps the
-date chip. The chip becomes a native date input. The patient picks a day. The
-change saves when the field changes or loses focus. The card, the calendar,
-and the reminders follow the new day.
+name, one combined chip, and the remove button. The chip shows the short date
+and the time, for example `Jan 7 · 8:00 pm`. The patient taps the chip. A
+compact modal opens with a date input and a time input.
 
-### 5.2 Edit a time
+### 5.2 Save or cancel
 
-The patient taps the time chip. The chip becomes a native time input. The
-patient picks a time. The change saves when the field changes or loses focus.
-The next due instant, the calendar event, and the reminder move to the new
-clock time.
+The modal opens with the pen's current start day and time filled in. The
+patient changes one value, the other, or both. Save applies both values.
+Cancel discards them. The card, the calendar, and the reminders follow the
+saved values.
 
 ### 5.3 First dose locks the pen
 
-The patient logs the pen's first dose. Both chips grey out. Each chip carries
-a small lock. Tapping a chip shows the toast "Locked — your first logged
-dose." The patient can no longer change the date or the time.
+The patient logs the pen's first dose. The chip greys out and carries a small
+lock. Tapping the chip shows the toast "Locked — your first logged dose." The
+patient can no longer change the date or the time.
 
 ### 5.4 The atelier overrides
 
 The atelier sets a date or time for the pen in Card Studio. The card adopts
-the new value on the next open, even though the pen is locked. The patient's
-own later edit still loses to the atelier's value.
+the new values on the next open, even though the pen is locked. The patient's
+own later edit still loses to the atelier's values.
 
 ### 5.5 Change from the calendar
 
@@ -147,38 +148,38 @@ sheet still edits per-pen dates and band times.
 - **FR-8.** Never write a floating time or a `TZID`/`VTIMEZONE` block to the
   calendar file.
 
-### 6.3 The chips
+### 6.3 The chip and the modal
 
-- **FR-9.** Render two pill chips in the dose-card header, on one row,
-  between the pen name and the remove button. Order them: name, date chip,
-  time chip, remove button.
-- **FR-10.** Show the date chip as a short date. Show the time chip with
-  `prettyTime()`, for example `7:30 pm`.
-- **FR-11.** Turn an editable chip into a native input on tap: a date input
-  for the date chip, a time input for the time chip. A locked or
-  atelier-pinned chip stays a real button (no `aria-disabled`) and never opens
-  an input.
-- **FR-12.** Save the change on `change` and on `blur` — the iOS picker fires
-  `change`, and keyboard entry ends in `blur`. Do not add a save button on the
-  card.
+- **FR-9.** Render one combined pill chip in the dose-card header, between the
+  pen name and the remove button.
+- **FR-10.** Show the chip as the short date, then `prettyTime()`, separated
+  by a middle dot. For example `Jan 7 · 8:00 pm`.
+- **FR-11.** Open a compact modal on a chip tap. The modal holds a date input
+  and a time input. A locked or atelier-pinned chip never opens the modal; it
+  shows a toast instead.
+- **FR-12.** Put a Save button and a Cancel button in the modal. Save applies
+  both values; Cancel discards them. Do not save on `change` or on `blur`.
 
 ### 6.4 Lock at first dose
 
 - **FR-13.** Lock a pen's date and time once `firstDoseDay(pen)` exists.
-- **FR-14.** Grey out both chips after the lock. Put a small lock (🔒) inside
-  each. A chip whose value the atelier set shows a ★ instead, with a dashed
+- **FR-14.** Grey out the chip after the lock. Put a small lock (🔒) inside
+  it. A chip whose value the atelier set shows a ★ instead, with a dashed
   border, while the pen is not yet locked.
 - **FR-15.** Tapping a locked chip shows the toast "Locked — your first logged
   dose." Tapping an atelier-pinned chip shows the toast "Set by the atelier."
-  Neither opens an input.
+  Neither opens the modal.
 - **FR-16.** Keep the atelier override above the lock through
   `settings.rev` and `settings.force`.
+- **FR-16a.** Reject a start or per-pen time change on a logged pen at the
+  server. Return `409` with `pen_start_locked` or `pen_time_locked` unless
+  `settings.force` is true. A stale tab or a direct API call cannot move the
+  timestamp.
 
   Note. The lock keys on `firstDoseDay(pen)` and the first-dose clock time on
-  `firstDoseTime(pen)`; both read the log by `penKeyOf(pen)`
-  (`pen.template`). Two same-template pens (ids `ghk#0`/`ghk#1`) therefore
-  share one template-keyed dose log and one first-dose time: the first dose of
-  either locks both.
+  `firstDoseTime(pen)`. Twin pens use the phone's `template#index` key, for
+  example `ghk#0` and `ghk#1`, in both the lock and the Studio chip. Their
+  dose log keys by template, so the first dose of either twin locks both.
 
 ### 6.5 The `#btnStart` removal
 
@@ -201,8 +202,8 @@ sheet still edits per-pen dates and band times.
 
 ### 6.7 Tests
 
-- **FR-23.** Extend the portal test suite with a spec for the chips, the
-  inline edit, the lock, and the precedence. Keep the existing
+- **FR-23.** Extend the portal test suite with a spec for the chip, the
+  modal, the lock, and the precedence. Keep the existing
   "no times or settings travel" assertion in `portal/tests/overview.mjs`.
 
 ## 7. Data Model
@@ -210,7 +211,7 @@ sheet still edits per-pen dates and band times.
 ### 7.1 Patient per-pen time (device only)
 
 The value lives in `localStorage`, mirroring the per-pen start day. The map
-is keyed by pen id and holds an `HH:MM` string.
+is keyed by the phone's `template#index` key and holds an `HH:MM` string.
 
 ```text
 Pinned: `tca.penstart.` prefix in `patients/jessica/assets/protocol.js`
@@ -218,10 +219,10 @@ Pinned: `tca.penstart.` prefix in `patients/jessica/assets/protocol.js`
 
 Field rules:
 
-- One entry per pen, keyed by pen id.
+- One entry per pen, keyed by the phone's `template#index` key.
 - The value matches the real-clock-time pattern `/^([01]\d|2[0-3]):[0-5]\d$/`.
-- Clearing the time chip (an empty value) removes the entry, so the pen falls
-  back to the chain.
+- Clearing the time in the modal (an empty value) removes the entry, so the
+  pen falls back to the chain.
 - The value never enters `dayIndex`, `supply`, `occurrences`, or `dosesLeft`.
 - The value is reported to the atelier, the same as the per-pen start day.
 
@@ -242,12 +243,13 @@ The value lives on the card record, inside `settings`, next to `times`.
 
 Field rules:
 
-- `penTimes` is keyed by pen id and holds a clock-time string.
+- `penTimes` is keyed by the phone's `template#index` key and holds a
+  clock-time string.
 - `sanitizeSettings()` keeps only values matching the real-clock-time pattern
   `/^([01]\d|2[0-3]):[0-5]\d$/`.
-- Studio renders one row per pen, keyed by the phone's own pen id — twins get
-  `#0`/`#1`, matching `hydrateRecord()` — so a Studio value lands on the same
-  key `timeFor(pen)` reads.
+- Studio renders one row per pen, keyed by the phone's `template#index` key.
+  Twins get `ghk#0`/`ghk#1`, matching `hydrateRecord()`. A Studio value lands
+  on the same key `timeFor(pen)` reads.
 - An empty per-pen row clears the key, so the pen falls back to the chain.
   Removing a pen from the card clears its key the same way.
 - `applySettings()` adopts the value only when `settings.rev` increases.
@@ -256,31 +258,31 @@ Field rules:
 
 ## 8. Non-Functional Requirements
 
-- **NFR-1 (No build).** The portal stays plain scripts. The chips use native
+- **NFR-1 (No build).** The portal stays plain scripts. The modal uses native
   date and time inputs. No bundler enters the project.
 - **NFR-2 (Privacy).** No new clinical field transits a host without a BAA.
   The per-pen time is a clock time, not PHI. It travels the same two paths as
   the start day.
-- **NFR-3 (Compatibility).** The chips work on iOS Safari, Android, and
-  desktop. The native inputs must work in the iOS home-screen case.
+- **NFR-3 (Compatibility).** The chip and the modal work on iOS Safari,
+  Android, and desktop. The native inputs must work in the iOS home-screen
+  case.
 - **NFR-4 (Failure tolerance).** A card that cannot reach the service still
-  shows and edits the chips. The save is local first.
+  shows the chip and opens the modal. The save is local first.
 - **NFR-5 (Determinism).** The time never changes the day, the phase, the
   supply, or the streak. Two runs with the same day give the same day math.
 
 ## 9. Acceptance Criteria
 
-- **AC-1.** A due pen's card shows a date chip and a time chip between the pen
-  name and the remove button.
-- **AC-2.** Tapping the date chip shows a native date input with the pen's
-  current start date.
-- **AC-3.** Tapping the time chip shows a native time input with the pen's
-  current effective time.
-- **AC-4.** Leaving either field saves the change. The card, the calendar
-  signature, and the reminder list reflect the new value.
-- **AC-5.** Editing one pen's date or time does not change another pen's
-  date or time.
-- **AC-6.** After the pen's first logged dose, both chips grey out and each
+- **AC-1.** A due pen's card shows one combined chip between the pen name and
+  the remove button.
+- **AC-2.** Tapping the combined chip opens a compact modal. The date input
+  shows the pen's current start date.
+- **AC-3.** The modal's time input shows the pen's current effective time.
+- **AC-4.** Saving the modal updates the card, the calendar signature, and the
+  reminder list.
+- **AC-5.** Saving the modal for one pen does not change another pen's date or
+  time.
+- **AC-6.** After the pen's first logged dose, the combined chip greys out and
   shows a lock. Tapping a locked chip shows "Locked — your first logged dose."
 - **AC-7.** A locked pen still adopts an atelier override when
   `settings.rev` increases.
@@ -298,6 +300,10 @@ Field rules:
   `overview.mjs` assertion passes.
 - **AC-14.** The new time never changes the day, the phase, the supply, the
   doses left, or the streak.
+- **AC-15.** A `PUT` or `PATCH` that moves a logged pen's start date or time
+  returns `409` with `pen_start_locked` or `pen_time_locked`.
+- **AC-16.** The same request with `settings.force` true succeeds and applies
+  the change.
 
 ## 10. Research and Best Practices
 
@@ -336,6 +342,13 @@ that chain.
   - Verdict: Adopt. Rationale: the lock and the override reuse existing
     signals.
 
+- **Server-side lock.** Enforce the lock on the write path too. A `PUT` or
+  `PATCH` that changes a logged pen's start or per-pen time returns `409`
+  with `pen_start_locked` or `pen_time_locked`, unless `settings.force` is
+  true (`portal/server.js`, `writeCard`).
+  - Verdict: Adopt. Rationale: the UI lock alone does not stop a stale tab or
+    a direct API call.
+
 - **Dose logging stays day-granular.** The dose id stays
   `slug.template.day`. The lock keys on `firstDoseDay`, not a timestamp
   (`portal/store/doses.js`, `doseId`).
@@ -350,7 +363,8 @@ that chain.
 
 When this feature lands, update these sections of `specs/000-system.md`:
 
-- `§3.3` (Dose logging): add the lock at first dose.
+- `§3.3` (Dose logging): add the lock at first dose and the server-side
+  `409`.
 - `§3.4` (Reminders): note that the per-pen time changes only which instants
   `upcomingDoses()` emits.
 - `§3.5` (Calendar export): note that the calendar times come from the
@@ -359,8 +373,8 @@ When this feature lands, update these sections of `specs/000-system.md`:
 
 ## 12. Risks
 
-- **R1 — Native input on iOS home screen.** A native date or time input can
-  behave differently in a standalone web app. Mitigate: test the
+- **R1 — Native inputs on iOS home screen.** The modal's native date and time
+  inputs can behave differently in a standalone web app. Mitigate: test the
   `isHomeScreenApp()` case.
 - **R2 — Lock message confusion.** A pen locked by a back-filled dose shows
   "first logged dose" even though the patient typed the dose later.
@@ -386,18 +400,20 @@ When this feature lands, update these sections of `specs/000-system.md`:
 - Each pen keeps its own start date and its own time-of-day.
 - The date and time lock at the pen's first logged dose. The atelier can still
   override.
-- The chips render on one row between the pen name and the remove button,
-  ordered name, date chip, time chip, remove button. A tap opens an inline
-  native input. The save happens on `change` and on `blur`.
-- Locked chips grey out with a lock. The message is "Locked — your first
+- One combined chip renders between the pen name and the remove button. It
+  shows the short date and the time. A tap opens a compact modal with a date
+  input and a time input. Save applies both; Cancel discards them.
+- The locked chip greys out with a lock. The message is "Locked — your first
   logged dose." An atelier-pinned chip shows a ★ and says "Set by the
-  atelier." Both stay real buttons that explain themselves on tap.
+  atelier." Each stays a real button that explains itself on tap.
 - The `#btnStart` button is removed. The `?change=1` sheet stays, and shows
   the `#chipNote` that a chip wins over its band times.
-- The atelier field is `settings.penTimes`, keyed by the phone's pen ids
-  (`ghk#0`/`ghk#1` for twins). `sanitizeSettings()` keeps only real clock
-  times. `/api/logged` returns `{ days, firstAt }`; the card derives the first
-  dose's clock time from `firstAt`.
+- The atelier field is `settings.penTimes`, keyed by the phone's
+  `template#index` key (`ghk#0`/`ghk#1` for twins). `sanitizeSettings()` keeps
+  only real clock times. `/api/logged` returns `{ days, firstAt }`; the card
+  derives the first dose's clock time from `firstAt`.
+- The server enforces the lock too. A `PUT` or `PATCH` that changes a logged
+  pen's start or time returns `409`, unless `settings.force` is true.
 - Two same-template pens share one template-keyed dose log and one first-dose
   time.
 
@@ -414,11 +430,11 @@ When this feature lands, update these sections of `specs/000-system.md`:
 - **band.** The template's named time slot, for example `Morning` or
   `Evening`.
 - **time-of-day.** The clock time a pen is dosed, in `HH:MM`.
-- **chip.** The small pill in the dose-card header that shows a date or a
+- **chip.** The small pill in the dose-card header that shows a date and a
   time.
 - **first dose.** The earliest logged dose for a pen, found by
-  `firstDoseDay()`. Keyed by `penKeyOf()` (`pen.template`), so two
-  same-template pens share one first dose.
+  `firstDoseDay()`. Twin pens use the `template#index` key; their dose log
+  keys by template, so the first dose of either twin locks both.
 - **`firstDoseTime(pen)`.** The clock time of a pen's first logged dose, read
   from the `firstAt` map.
 - **lock.** The state after a pen's first dose, where the patient cannot edit
