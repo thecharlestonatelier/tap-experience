@@ -274,6 +274,27 @@
   }
   .pen-x:active { transform: scale(.92); }
 
+  /* The overflow menu on a rhythm sheet: Archive a finished vial, or stop
+     an active one. Works the same with a mouse and a thumb. */
+  .pen-menu-wrap { position: relative; flex: none; }
+  .pen-menu-btn {
+    font: inherit; font-size: 18px; line-height: 1; color: var(--muted);
+    background: transparent; border: 1px solid var(--hairline); border-radius: 8px;
+    padding: 2px 8px 4px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .pen-menu {
+    position: absolute; right: 0; top: 100%; z-index: 20; margin-top: 4px;
+    background: #fff; border: 1px solid var(--hairline); border-radius: 10px;
+    box-shadow: 0 10px 30px #0002; min-width: 164px; overflow: hidden;
+  }
+  .pen-menu[hidden] { display: none; }
+  .pen-menu button {
+    display: block; width: 100%; text-align: left; font: inherit; font-size: 13px;
+    color: var(--espresso); background: none; border: 0; padding: 10px 12px; cursor: pointer;
+  }
+  .pen-menu button + button { border-top: 1px solid #EFE8DC; }
+  .pen-menu [data-archive] { color: var(--alert, #9B4A3C); }
+
   /* The per-pen date and time chips: one row with the treatment name,
      between it and the remove button. Tapping an editable chip swaps it
      for a native input; after the pen's first logged dose both lock, and
@@ -1582,13 +1603,19 @@ function renderRhythm() {
         <div class="supply-head">
           <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
           <div style="flex:1"><div style="color:var(--espresso);font-size:16px">${pen.name}</div>
-          <div class="dose-meta">${freqShort(pen)} · ${pen.time} · from ${fmtShort(penStart(pen))}</div></div>
+          <div class="dose-meta">${freqShort(pen)} · ${pen.time} · from ${fmtShort(penStart(pen))}${supply.spent ? ' · empty' : ''}</div></div>
           <!-- Every pen appears here, due today or not, which is why the
                way to take one off lives here as well as on the dose card.
                A rest day used to leave her with no control at all. -->
-          <button type="button" class="pen-x" data-drop="${pen.id}"
-            title="Take ${pen.name} off my schedule"
-            aria-label="Take ${pen.name} off my schedule">&times;</button>
+          <div class="pen-menu-wrap">
+            <button type="button" class="pen-menu-btn" data-penmenu="${pen.id}"
+              aria-haspopup="true" aria-expanded="false"
+              aria-label="More actions for ${pen.name}">⋯</button>
+            <div class="pen-menu" data-penmenu-for="${pen.id}" hidden>
+              ${supply.spent ? `<button type="button" data-archive="${pen.id}">Archive this vial</button>` : ''}
+              <button type="button" data-stop="${pen.id}">Stop taking it</button>
+            </div>
+          </div>
         </div>
         <div class="rhythm">${cells.join('')}</div>
         ${/* The ring on a circle has to mean something, and it only appears
@@ -1604,6 +1631,7 @@ function renderRhythm() {
   }).join('');
   wireLogDays(document.getElementById('rhythmList'));
   wireDrops(document.getElementById('rhythmList'));
+  wireMenus(document.getElementById('rhythmList'));
 }
 
 /* Any pen can come off her own schedule, from the dose card or from the
@@ -1612,24 +1640,66 @@ function renderRhythm() {
 
    A prescribed pen says so, and says the atelier will see it: stopping a
    prescription without telling anyone is the thing worth one more line. */
+function stopPen(pen) {
+  if (!pen) return;
+  if (!confirm(
+    `Take ${pen.name} off your schedule?\n\n` +
+    (pen.addedByPatient ? ''
+      : 'This was prescribed for you. The atelier will see that you have ' +
+        'stopped it, and you can put it back here whenever you like.\n\n') +
+    'Doses you have already logged are kept.')) return;
+  removePen(pen);
+  renderAll();
+  showToast(`${pen.name} taken off your schedule.`);
+}
+
 function wireDrops(root) {
   if (!root) return;
   root.querySelectorAll('[data-drop]').forEach(b =>
     b.addEventListener('click', e => {
       e.stopPropagation();
-      const pen = PENS.find(p => p.id === b.dataset.drop);
-      if (!pen) return;
-      if (!confirm(
-        `Take ${pen.name} off your schedule?\n\n` +
-        (pen.addedByPatient ? ''
-          : 'This was prescribed for you. The atelier will see that you have ' +
-            'stopped it, and you can put it back here whenever you like.\n\n') +
-        'Doses you have already logged are kept.')) return;
-      removePen(pen);
-      renderAll();
-      showToast(`${pen.name} taken off your schedule.`);
+      stopPen(PENS.find(p => p.id === b.dataset.drop));
     }));
 }
+
+function wireMenus(root) {
+  if (!root) return;
+  const closeAll = () => {
+    root.querySelectorAll('[data-penmenu-for]').forEach(m => { m.hidden = true; });
+    root.querySelectorAll('[data-penmenu]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  };
+  root.querySelectorAll('[data-penmenu]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const menu = root.querySelector(`[data-penmenu-for="${b.dataset.penmenu}"]`);
+      const open = menu && !menu.hidden;
+      closeAll();
+      if (menu && !open) {
+        menu.hidden = false;
+        b.setAttribute('aria-expanded', 'true');
+      }
+    }));
+  root.querySelectorAll('[data-archive]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      closeAll();
+      const pen = PENS.find(p => p.id === b.dataset.archive);
+      if (!pen) return;
+      if (!confirm(`Archive ${pen.name}?\n\nDoses you already logged are kept. The studio can restore it.`)) return;
+      archivePen(pen);
+    }));
+  root.querySelectorAll('[data-stop]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      closeAll();
+      stopPen(PENS.find(p => p.id === b.dataset.stop));
+    }));
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('[data-penmenu-for]').forEach(m => { m.hidden = true; });
+  document.querySelectorAll('[data-penmenu]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+});
 
 /* Every circle and every "Log it" that names a pen and a day goes through
    the same sheet, so the confirmation, the record and the mark are the

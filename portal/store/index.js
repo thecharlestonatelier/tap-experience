@@ -36,7 +36,7 @@ function nowIso() { return new Date().toISOString(); }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_BAND = /^([01]\d|2[0-3]):[0-5]\d$/;
-const DROPPED_ID = /^[A-Za-z0-9#._-]{1,48}$/;
+const DROPPED_ID = /^[A-Za-z0-9#._+-]{1,48}$/;
 const CARD_STATUSES = ['active', 'blank', 'retired'];
 
 /* A valid ISO day, or empty. */
@@ -220,6 +220,24 @@ function sanitizeDropped(list, existing) {
   return list.slice(0, 8).map(id => String(id || '')).filter(id => DROPPED_ID.test(id));
 }
 
+/* Pens she has archived. A map of pen id -> ISO instant, kept apart from
+   `dropped` (still prescribed, stopped) and from the pens themselves: the
+   dose log and the prescription stay, only the active schedule loses it. */
+function sanitizeArchived(input, existing) {
+  const prev = (existing && existing.archived) || {};
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return prev;
+  const out = {};
+  Object.keys(input).slice(0, 32).forEach(id => {
+    if (!DROPPED_ID.test(id)) return;
+    const at = String(input[id] || '');
+    // A malformed or empty timestamp is not an archive. The server stamps
+    // the real value; a stray empty map entry must not hide a pen.
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(at)) return;
+    out[id] = at;
+  });
+  return out;
+}
+
 function sanitizeVisitsList(list, existing) {
   if (Array.isArray(list)) return sanitizeVisits(list);
   return existing ? (existing.visits || []) : [];
@@ -242,6 +260,9 @@ function sanitize(input, existing = null) {
     // what was prescribed stays legible and the atelier can see what she
     // stopped and put it back.
     dropped: sanitizeDropped(input.dropped, existing),
+    // Finished or expired pens she has archived. Kept on the record so the
+    // studio can restore one, while the patient app filters it out.
+    archived: sanitizeArchived(input.archived, existing),
     // Aesthetic treatments given in the room. The atelier's record, not
     // the patient's — a tapped card cannot reach this.
     visits: sanitizeVisitsList(input.visits, existing),
@@ -314,6 +335,7 @@ function publicView(rec) {
     pens: rec.pens || [],
     added: rec.added || [],
     dropped: rec.dropped || [],
+    archived: rec.archived || {},
     // Her own settings, so the card can adopt anything the atelier
     // changed for her. Not the state report — that came from her phone
     // and it has no use for it back.

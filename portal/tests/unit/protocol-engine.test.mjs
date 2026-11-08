@@ -145,3 +145,63 @@ test('the first logged dose supplies a pen time after atelier and patient overri
   engine.LOGGED_FIRST_AT = {};
   assert.equal(engine.timeFor(glow), '20:00');
 });
+
+test('archiving a pen removes it from the active schedule and the report', () => {
+  const originalPens = engine.PENS;
+  const realGet = engine.localStorage.getItem;
+  engine.PENS = cfg.protocol.pens.map(p => Object.assign({}, p));
+  engine.localStorage.getItem = key =>
+    key === `tca.archived.${cfg.patient.id}` ? JSON.stringify({ glow: '2026-07-20T00:00:00.000Z' }) : null;
+  try {
+    engine.applyArchived();
+    assert.ok(!engine.PENS.some(p => p.id === 'glow'));
+    const report = engine.stateReport();
+    assert.ok(!report.today.some(t => t.pen === 'Glow Blend'));
+    assert.ok(!report.supply.some(s => s.template === 'glow'));
+  } finally {
+    engine.PENS = originalPens;
+    engine.localStorage.getItem = realGet;
+  }
+});
+
+test('the card signature notices an archive change', () => {
+  const base = { name: 'X', startDate: '2026-01-01', status: 'active', pens: [], added: [], settings: { rev: 1 } };
+  assert.notEqual(engine.cardSignature(base),
+    engine.cardSignature({ ...base, archived: { glow: '2026-01-01T00:00:00.000Z' } }));
+});
+
+test('adoptArchived replaces the local map, including a clear from the studio', () => {
+  const realSet = engine.localStorage.setItem;
+  const realGet = engine.localStorage.getItem;
+  let saved = null;
+  engine.localStorage.setItem = (k, v) => { if (k === `tca.archived.${cfg.patient.id}`) saved = v; };
+  engine.localStorage.getItem = () => saved;
+  try {
+    engine.adoptArchived({ archived: { glow: '2026-01-01T00:00:00.000Z' } });
+    assert.deepEqual(JSON.parse(saved), { glow: '2026-01-01T00:00:00.000Z' });
+    engine.adoptArchived({ archived: {} });
+    assert.deepEqual(JSON.parse(saved), {});
+  } finally {
+    engine.localStorage.setItem = realSet;
+    engine.localStorage.getItem = realGet;
+  }
+});
+
+test('upcomingDoses omits an archived pen', () => {
+  const originalPens = engine.PENS;
+  const realGet = engine.localStorage.getItem;
+  engine.PENS = cfg.protocol.pens.map(p => Object.assign({}, p));
+  engine.localStorage.getItem = () => null;
+  try {
+    const before = engine.upcomingDoses().length;
+    engine.localStorage.getItem = key =>
+      key === `tca.archived.${cfg.patient.id}` ? JSON.stringify({ glow: '2026-07-20T00:00:00.000Z' }) : null;
+    engine.applyArchived();
+    const after = engine.upcomingDoses().length;
+    assert.ok(before > 0, 'the unarchived card has upcoming doses');
+    assert.ok(after < before, 'the archived pen contributes no future doses');
+  } finally {
+    engine.PENS = originalPens;
+    engine.localStorage.getItem = realGet;
+  }
+});

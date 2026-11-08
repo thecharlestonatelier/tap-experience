@@ -1069,6 +1069,57 @@ function applyDropped() {
   }
 }
 
+/* Finished or expired pens she has archived from the rhythm sheet. The
+   server keeps the map, the phone adopts it on every load, and the active
+   list filters it out. The dose log and the prescription are untouched. */
+function archivedKey() { return `tca.archived.${CFG.patient.id}`; }
+function loadArchived() {
+  try { return JSON.parse(localStorage.getItem(archivedKey())) || {}; } catch { return {}; }
+}
+function saveArchived(map) {
+  try { localStorage.setItem(archivedKey(), JSON.stringify(map || {})); } catch {}
+}
+function adoptArchived(rec) {
+  if (!rec || !rec.archived || typeof rec.archived !== 'object' || Array.isArray(rec.archived)) return;
+  saveArchived(rec.archived);
+}
+function applyArchived() {
+  const map = loadArchived();
+  for (let i = PENS.length - 1; i >= 0; i--) {
+    if (map[PENS[i].id]) PENS.splice(i, 1);
+  }
+}
+function archivePen(pen) {
+  if (!pen) return;
+  const slug = CARD_SLUG || readSlug();
+  const map = loadArchived();
+  map[pen.id] = new Date().toISOString();
+  saveArchived(map);
+  applyArchived();
+  scheduleChanged();
+  renderAll();
+  if (!slug) {
+    showToast(`${pen.name} archived. Doses you logged are kept.`);
+    return;
+  }
+  net.request(`/api/archive/${encodeURIComponent(slug)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: pen.id })
+  }).then(res => {
+    if (!res.ok) throw new Error('archive failed');
+    showToast(`${pen.name} archived. Doses you logged are kept.`);
+  }).catch(() => {
+    const undo = loadArchived();
+    delete undo[pen.id];
+    saveArchived(undo);
+    loadProtocol().then(() => {
+      renderAll();
+      showToast('Could not archive — check the connection and try again.');
+    }).catch(() => {});
+  });
+}
+
 function penFromTemplate(tpl, id, startDate) {
   const pen = JSON.parse(JSON.stringify(tpl));
   pen.id = id;
@@ -1384,6 +1435,7 @@ async function loadProtocol() {
     _cardSig = cardSignature(rec);
     adoptAdded(rec);
     adoptDropped(rec);
+    adoptArchived(rec);
     // Anything the atelier set for her, before the start day is read.
     _tookSettings = applySettings(rec.settings);
     noteTap(CARD_SLUG);
@@ -1424,6 +1476,7 @@ async function loadProtocol() {
   START = parse(loadStart() || CFG.protocol.startDate);
   applyAdded(templates);
   applyDropped();
+  applyArchived();
   applyPenStarts();
   applySetups();
   _supplyCache.clear();
@@ -1464,7 +1517,8 @@ var _recheckBusy = false;
 function cardSignature(rec) {
   return JSON.stringify([
     rec.name || '', rec.startDate || '', rec.status || '',
-    rec.pens || [], rec.added || [], (rec.settings && rec.settings.rev) || 0
+    rec.pens || [], rec.added || [], rec.archived || {},
+    (rec.settings && rec.settings.rev) || 0
   ]);
 }
 
@@ -1486,11 +1540,13 @@ async function recheckCard() {
     CFG = hydrateRecord(rec, templates);
     adoptAdded(rec);
     adoptDropped(rec);
+    adoptArchived(rec);
     const took = applySettings(rec.settings);
     PENS = CFG.protocol.pens || [];
     START = parse(loadStart() || CFG.protocol.startDate);
     applyAdded(templates);
     applyDropped();
+  applyArchived();
     applyPenStarts();
     applySetups();
     _supplyCache.clear();

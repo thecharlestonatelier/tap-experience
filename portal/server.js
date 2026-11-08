@@ -576,6 +576,31 @@ async function handleAdded(req, res, url, p) {
   return json(res, 200, savedLists(saved));
 }
 
+/* --- a finished vial leaves the active schedule ---
+   The patient archives from the rhythm sheet's overflow menu. The pen and
+   its whole dose history stay on the record; only the active schedule,
+   reminders and calendar lose it. The studio restores it. */
+async function handleArchive(req, res, url, p) {
+  // The patient archives from her card (the slug is the credential); the
+  // studio's restore is a clinician write, like every other dashboard edit.
+  if (req.method === 'DELETE' && !requireClinician(req, res)) return;
+  const slug = assertSlug(p.slice('/api/archive/'.length));
+  const rec = await store.get(slug);
+  if (!rec) return json(res, 404, { error: 'not_found' });
+  const body = await readBody(req);
+  const id = String(body.id || '');
+  if (!/^[A-Za-z0-9#._+-]{1,48}$/.test(id)) return json(res, 400, { error: 'bad_request' });
+  // Only a pen that is actually on the card can be archived or restored.
+  const valid = new Set([...penIds(rec.pens || []), ...(rec.added || []).map(a => a.id)]);
+  if (!valid.has(id)) return json(res, 400, { error: 'bad_request' });
+  const archived = Object.assign({}, rec.archived || {});
+  if (req.method === 'POST') archived[id] = new Date().toISOString();
+  else delete archived[id];
+  const next = sanitize(Object.assign({}, rec, { archived }), rec);
+  await store.put(next);
+  return json(res, 200, { ok: true, archived: next.archived || {} });
+}
+
 /* --- the calendar she can subscribe to --- */
 async function handleIcsWrite(req, res, url, p) {
   const slug = assertSlug(p.slice('/api/ics/'.length));
@@ -1129,6 +1154,8 @@ const ROUTES = [
   { match: p => p.startsWith('/v/'), handler: handleVial },
   { match: p => p === '/api/dose', method: 'POST', handler: handleDose },
   { match: p => p.startsWith('/api/added/'), method: 'POST', handler: handleAdded },
+  { match: p => p.startsWith('/api/archive/'), method: 'POST', handler: handleArchive },
+  { match: p => p.startsWith('/api/archive/'), method: 'DELETE', handler: handleArchive },
   { match: p => p.startsWith('/api/ics/'), method: 'POST', handler: handleIcsWrite },
   { match: p => p.startsWith('/ics/'), handler: handleIcsRead },
   { match: p => p.startsWith('/api/state/'), method: 'POST', handler: handleState },
