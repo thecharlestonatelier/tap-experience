@@ -169,6 +169,28 @@ what remains needs one of two things:
 - **Image files** — `wallet.artwork` (and the `buildPass` path) read
   icon/logo PNGs.
 
+## Clean architecture
+
+The `sketch architecture` pass inferred the layers and recorded a baseline
+(`docs/architecture-baseline.json`): **12 `adapter->infrastructure`
+violations, debt 71, no cycles**. 94% of it was the static pages loading the
+shared dosing engine, which the tool tags infrastructure because that file
+contained `fetch(`.
+
+**One boundary moved:** `protocol.js` no longer does I/O — it calls a
+page-injected `net.request`, and each page defines `window.net` inline, so
+the adapter owns the network. The engine is now classified **domain**, all
+nine `html -> protocol.js` edges are gone, and the debt fell **71 → 4** with
+no cycle and no new gate violation.
+
+The **browser harness** (`portal/tests/browser/`) and the `vm` engine pin
+(`protocol-engine.test.mjs`) were the nets for the move: 6 browser tests +
+10 engine tests green, all 14 fetch call sites still exercised (~72.5% of
+`protocol.js` lines).
+
+Remaining: three portal edges (`server.js -> push.js`, `server.js ->
+wallet.js`, `scripts/push-keys.js -> push.js`), debt 4.
+
 ## Clean-code notes
 
 `tools/clean-code` runs the generic (heuristic) adapter for JavaScript, so
