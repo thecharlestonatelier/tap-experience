@@ -14,9 +14,28 @@ chromium`.
 
 ## What it pins
 
-- the ritual page loads `protocol.json` and renders a pen,
-- the engine resolves a dose in the browser (`doseOn`),
-- opening a card records a tap through the page's own `fetch`.
+- the ritual page loads the protocol and renders a pen, and the engine
+  resolves a dose in the browser (`doseOn`),
+- opening a card records a tap through the page's own `fetch`,
+- a peptide the patient adds reaches the record (`/api/added`),
+- the reminder switch subscribes (`/api/push/key`, `/api/push/subscribe`),
+  survives a reload (refreshes the schedule) and unsubscribes
+  (`/api/push/unsubscribe`).
+
+## Coverage
+
+`coverage.mjs` runs the scenarios with V8 coverage and reports line coverage
+and the engine endpoints hit:
+
+```sh
+cd portal && firebase emulators:exec --only auth --project atelier-tap \
+  --config ../firebase.json "node tests/browser/coverage.mjs"
+```
+
+Current: `protocol.js` ~68% of executable lines, `ritual.html` inline ~53%,
+and 13 of the engine's 14 fetch call sites (the one miss is the legacy static
+`protocol.json` load, which the card-driven pages do not use).
+
 
 `harness.mjs` runs the real portal on a file store and seeds cards through
 the clinician API; `auth-session.mjs` signs the page in as a fake Google

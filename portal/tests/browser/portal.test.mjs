@@ -3,8 +3,10 @@
    (started by `firebase emulators:exec`) provides the sign-in gate. */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import { chromium } from 'playwright';
-import { startPortal, seedCard } from './harness.mjs';
+import { startPortal, seedCard, stubPush } from './harness.mjs';
 import { signInGoogle } from '../auth-session.mjs';
 
 let portal;
@@ -68,5 +70,61 @@ test('opening the card records a tap through the page fetch', async () => {
   await page.waitForTimeout(800);
   const afterCard = await cardOf(slug, cookie);
   assert.ok((Number(afterCard.taps) || 0) > (Number(beforeCard.taps) || 0), 'the tap counter advanced');
+  await ctx.close();
+});
+
+test('a peptide the patient adds reaches the record', async () => {
+  const slug = `add${Date.now().toString(36)}.t`;
+  const { cookie } = await seedCard(portal.base, {
+    slug, name: 'Add', status: 'active', pens: [{ template: 'ghk' }],
+    settings: { startDate: '2026-07-13', times: {}, rev: 1 },
+  });
+  const { ctx, page, errors } = await signedInPage();
+  await page.goto(`${portal.base}/ritual.html?c=${slug}`);
+  await page.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length > 0, null, { timeout: 20000 });
+  await page.evaluate(async () => {
+    const t = await loadTemplates();
+    addPen(t.templates.find(x => x.id === 'bpc'));
+    renderAll();
+  });
+  await page.waitForTimeout(900);
+  const card = await cardOf(slug, cookie);
+  assert.ok((card.added || []).some(a => a.template === 'bpc'), 'the added peptide reaches the record');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('the reminder switch subscribes, survives reload and unsubscribes', async () => {
+  const slug = `rem${Date.now().toString(36)}.t`;
+  await seedCard(portal.base, {
+    slug, name: 'Rem', status: 'active', pens: [{ template: 'glow' }],
+    settings: { startDate: '2026-07-13', times: {}, rev: 1 },
+  });
+  const ctx = await browser.newContext({ permissions: ['notifications'], viewport: { width: 420, height: 900 } });
+  const page = await ctx.newPage();
+  await stubPush(page);
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto(`${portal.base}/`);
+  await signInGoogle(page);
+  await page.goto(`${portal.base}/${slug}`);
+  await page.waitForSelector('body.resolved', { timeout: 15000 });
+  await page.waitForSelector('#remind.on', { timeout: 10000 }).catch(() => {});
+
+  const subs = () => {
+    try { return Object.values(JSON.parse(fs.readFileSync(path.join(portal.dir, 'subs.json'), 'utf8'))); }
+    catch { return []; }
+  };
+  await page.waitForSelector('#remindBtn', { timeout: 10000 });
+  await page.click('#remindBtn');
+  await page.waitForFunction(() => document.getElementById('remindBtn')?.dataset.state === 'on', null, { timeout: 10000 });
+  assert.equal(subs().filter(s => s.slug === slug).length, 1, 'subscription stored');
+
+  await page.reload();
+  await page.waitForFunction(() => document.getElementById('remindBtn')?.dataset.state === 'on', null, { timeout: 10000 });
+  await page.click('#remindBtn');
+  await page.waitForFunction(() => document.getElementById('remindBtn')?.dataset.state === 'off', null, { timeout: 10000 });
+  assert.equal(subs().filter(s => s.slug === slug).length, 0, 'subscription removed');
+  assert.deepEqual(errors, []);
   await ctx.close();
 });
