@@ -1,0 +1,29 @@
+{
+  "agents": {
+    "architect": {
+      "hash": "5dd40d7df8800a7c2fc076f3b1b9202eae56806fe2492d5c0a7e4a66a3e08a1d",
+      "source": "agents/architect.md"
+    },
+    "builder": {
+      "hash": "6845b96a3aef7029c74c58b53b4a0d6cf6924586fa026de2b790219269f2cd10",
+      "source": "agents/builder.md"
+    },
+    "design": {
+      "hash": "75fa4d5cf82668931e0be6407e5959bbe55c5017e1c6a601943f049e920f9d35",
+      "source": "agents/design.md"
+    },
+    "lead": {
+      "hash": "1b45186ba3d7a6479cbba9faeb1b0be1546eeb8afa7e819cb3231c8a9fc7b20c",
+      "source": "agents/lead.md"
+    },
+    "qa": {
+      "hash": "84c5b4e8f4627e071c9424666387bcbd78de64f9353facdae2cf3b6be07578aa",
+      "source": "agents/qa.md"
+    },
+    "reviewer": {
+      "hash": "cb3271031264070989c6c700c355604c056093ecbfb243b63ac1dd72f44eba59",
+      "source": "agents/reviewer.md"
+    }
+  },
+  "version": 1
+}
