@@ -1,8 +1,13 @@
 node_modules/
 portal/.data/
 portal/.data-*/
+coverage.json
 
 .superpowers/
 .agents/
 .firebase/
 graphify-out/
+
+firebase-debug.log
+firestore-debug.log
+.stryker-tmp/

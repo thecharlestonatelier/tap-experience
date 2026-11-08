@@ -10,8 +10,12 @@
     "dev": "http-server . -p 8080 -c-1",
     "build": "echo 'Static site - no build needed'",
     "serve": "http-server .",
+    "start": "node portal/server.js",
     "test": "echo 'No tests configured'",
     "lint": "echo 'Linting disabled for static site'"
+  },
+  "bin": {
+    "atelier-push-keys": "portal/scripts/push-keys.js"
   },
   "keywords": [
     "peptide",

@@ -1,0 +1,47 @@
+{
+  "created": "2026-11-07",
+  "functions": {
+    "portal/lib/wallet.js::artwork": {
+      "accepted": "2026-11-07",
+      "cc": 4,
+      "coverage": 0.0,
+      "crap": 20.0,
+      "measure": "line",
+      "reason": "legacy debt accepted at cleanup"
+    },
+    "portal/server.js::anonymous@424": {
+      "accepted": "2026-11-07",
+      "cc": 4,
+      "coverage": 0.0,
+      "crap": 20.0,
+      "measure": "line",
+      "reason": "legacy debt accepted at cleanup"
+    },
+    "portal/server.js::anonymous@433": {
+      "accepted": "2026-11-07",
+      "cc": 3,
+      "coverage": 0.0,
+      "crap": 12.0,
+      "measure": "line",
+      "reason": "legacy debt accepted at cleanup"
+    },
+    "portal/server.js::handleHealth": {
+      "accepted": "2026-11-07",
+      "cc": 8,
+      "coverage": 50.0,
+      "crap": 16.0,
+      "measure": "branch",
+      "reason": "legacy debt accepted at cleanup"
+    },
+    "portal/server.js::proxyAuthHelper": {
+      "accepted": "2026-11-07",
+      "cc": 4,
+      "coverage": 0.0,
+      "crap": 20.0,
+      "measure": "line",
+      "reason": "legacy debt accepted at cleanup"
+    }
+  },
+  "measure": "branch",
+  "version": 1
+}

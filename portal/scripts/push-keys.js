@@ -9,7 +9,7 @@
  * Regenerating them invalidates every subscription that exists — every
  * patient would have to turn reminders on again — so keep the pair.
  */
-const { generateKeys } = require('../lib/push');
+const { generateKeys } = require('../lib/push-crypto');
 
 const { publicKey, privateKey } = generateKeys();
 

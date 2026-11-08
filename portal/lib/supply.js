@@ -68,17 +68,31 @@ function templates(webRoot) {
    fit in what is left of the vial. */
 /* `upTo` stops the walk after that many days, which is how many doses a
    patient is through rather than how many the pen holds. */
-function penLife(t, phases, upTo) {
-  const vol = t.volumeMl || 3;
+/* The cycle length and how many of its days are "on". A weekly schedule is
+   one day in seven; an on/off schedule is on with the rest off. */
+function scheduleOf(t) {
   const sc = t.schedule || { on: 7, off: 0 };
-  const cyc = sc.weekly ? 7 : (sc.on + sc.off);
-  const on = sc.weekly ? 1 : sc.on;
+  return sc.weekly ? { cyc: 7, on: 1 } : { cyc: sc.on + sc.off, on: sc.on };
+}
+
+/* Where each phase ends, and how many days the walk covers. A phase with no
+   day count runs to the pen's own end; `upTo` stops the walk early. */
+function phaseEnds(phases, upTo) {
   let bound = 0;
   const ends = (phases || []).map(ph => (bound += (ph.days == null ? 3650 : ph.days)));
+  return { ends, bound: upTo == null ? bound : Math.min(bound, upTo) };
+}
+
+/* Whether the schedule draws on day `i`. */
+function drawsOn(i, cyc, on) { return i % cyc < on; }
+
+function penLife(t, phases, upTo) {
+  const vol = t.volumeMl || 3;
+  const { cyc, on } = scheduleOf(t);
+  const { ends, bound } = phaseEnds(phases, upTo);
   let ml = vol, doses = 0, last = 0;
-  if (upTo != null) bound = Math.min(bound, upTo);
   for (let i = 0; i < bound; i++) {
-    if (i % cyc >= on) continue;
+    if (!drawsOn(i, cyc, on)) continue;
     const pi = ends.findIndex(e => i < e);
     if (pi === -1) break;
     const u = Number(phases[pi].units) || 0;
@@ -103,60 +117,109 @@ function effectiveStart(rec) {
 
 function supplyFor(rec, webRoot, now = Date.now()) {
   const list = templates(webRoot);
-  const nameOf = id => { const t = list.find(x => x.id === id); return t ? t.name : id; };
-  const out = [], low = [], pens = [], seen = new Set();
-
+  const seen = new Set();
   const midnight = new Date(now); midnight.setHours(0, 0, 0, 0);
-  const dateIn = days => {
-    const d = new Date(midnight); d.setDate(d.getDate() + days);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-  /* Every pen lands in `pens` with its own numbers, whether or not it is
-     short — the dashboard shows the run-out date for all of them, and a
-     column that only fills in once something is wrong is a column nobody
-     learns to read. */
-  const place = (name, days, dosesLeft, runsOut) => {
+  const tally = supplyTally(midnight);
+
+  addStateSupply(rec.state, list, seen, tally, midnight);
+
+  const startDate = effectiveStart(rec);
+  const elapsed = elapsedDays(startDate, midnight);
+  addProjectedPens(rec, { list, seen, startDate, elapsed, tally });
+
+  return { out: tally.out, low: tally.low, pens: tally.pens, unknown: unknownOf(rec, list, seen) };
+}
+
+/* Days from today's midnight to `isoDay`; negative when `isoDay` is past.
+   This is the run-out direction: a pen whose last dose was a fortnight ago
+   reports -14 and lands in `out`. */
+function daysUntil(isoDay, midnight) {
+  return Math.round((new Date(isoDay + 'T00:00:00') - midnight) / 86400000);
+}
+
+/* Days from `isoDay` to today's midnight; positive when `isoDay` is past.
+   This is the elapsed direction: a start day a fortnight ago reports 14. */
+function daysSince(isoDay, midnight) {
+  return -daysUntil(isoDay, midnight);
+}
+
+/* The ISO day `days` after `midnight`. */
+function isoDayAfter(midnight, days) {
+  const d = new Date(midnight); d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function templateName(list, id) {
+  const t = list.find(x => x.id === id);
+  return t ? t.name : id;
+}
+
+/* Every pen lands in `pens` with its own numbers, whether or not it is
+   short — the dashboard shows the run-out date for all of them, and a
+   column that only fills in once something is wrong is a column nobody
+   learns to read. */
+function supplyTally(midnight) {
+  const out = [], low = [], pens = [];
+  const add = (name, days, dosesLeft, runsOut) => {
     pens.push({ name, days, dosesLeft: dosesLeft == null ? null : dosesLeft,
-                runsOut: runsOut || (days == null ? null : dateIn(days)) });
+                runsOut: runsOut || (days == null ? null : isoDayAfter(midnight, days)) });
     if (days == null) return;
     if (days <= 0) out.push(name);
     else if (days <= LOW_DAYS) low.push({ name, days });
   };
+  return { out, low, pens, add };
+}
 
-  for (const s of (rec.state && rec.state.supply) || []) {
+/* What her phone last reported. Her own report wins where it exists: it
+   knows the vials she sizes herself, which this end cannot project. */
+function addStateSupply(state, list, seen, tally, midnight) {
+  for (const s of (state && state.supply) || []) {
     seen.add(s.template);
-    const name = nameOf(s.template);
+    const name = templateName(list, s.template);
     if (s.lastDose) {
-      place(name, Math.round((new Date(s.lastDose + 'T00:00:00') - midnight) / 86400000),
-            s.dosesLeft, s.lastDose);
+      tally.add(name, daysUntil(s.lastDose, midnight), s.dosesLeft, s.lastDose);
     } else if (!s.dosesLeft) {
-      place(name, 0, 0, null);
+      tally.add(name, 0, 0, null);
     } else {
-      place(name, null, s.dosesLeft, null);
+      tally.add(name, null, s.dosesLeft, null);
     }
   }
+}
 
-  const startDate = effectiveStart(rec);
-  const elapsed = startDate
-    ? Math.round((midnight - new Date(startDate + 'T00:00:00')) / 86400000)
-    : null;
+/* A vial she sizes herself cannot be projected from here, and saying
+   nothing is better than saying a number that is not hers. */
+function projectableTemplate(list, pen) {
+  const t = list.find(x => x.id === pen.template);
+  return (!t || t.setup) ? null : t;
+}
 
+function elapsedDays(startDate, midnight) {
+  if (!startDate) return null;
+  return daysSince(startDate, midnight);
+}
+
+/* How a pen stands once `elapsed` days have passed: the whole life, the
+   days still to come, and the doses she has not reached yet. */
+function movementFor(pen, t, elapsed) {
+  const phases = pen.phases || t.phases || [];
+  const L = penLife(t, phases);
+  if (!L.days) return null;
+  const taken = penLife(t, phases, Math.max(0, elapsed)).doses;
+  return { totalDays: L.days, days: L.days - elapsed, dosesLeft: Math.max(0, L.doses - taken) };
+}
+
+function addProjectedPens(rec, options) {
+  const { list, seen, startDate, elapsed, tally } = options;
   for (const pen of rec.pens || []) {
     if (seen.has(pen.template)) continue;
-    const t = list.find(x => x.id === pen.template);
-    // A vial she sizes herself cannot be projected from here, and saying
-    // nothing is better than saying a number that is not hers.
-    if (!t || t.setup) continue;
+    const t = projectableTemplate(list, pen);
+    if (!t) continue;
     if (elapsed == null || elapsed < 0) continue;
-    const phases = pen.phases || t.phases || [];
-    const L = penLife(t, phases);
-    if (!L.days) continue;
-    // Doses still to come: the whole pen, less the ones already scheduled.
-    const taken = penLife(t, phases, Math.max(0, elapsed)).doses;
-    place(t.name, L.days - elapsed, Math.max(0, L.doses - taken),
-          startDate ? addDaysIso(startDate, L.days) : null);
+    const m = movementFor(pen, t, elapsed);
+    if (!m) continue;
+    tally.add(t.name, m.days, m.dosesLeft,
+              startDate ? addDaysIso(startDate, m.totalDays) : null);
   }
-  return { out, low, pens, unknown: unknownOf(rec, list, seen) };
 }
 
 function addDaysIso(isoDate, days) {

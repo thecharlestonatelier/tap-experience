@@ -26,12 +26,49 @@
 
 const { isValidSlug, normalizeSlug } = require('../lib/slug');
 const { sanitizeVisits } = require('../lib/services');
+const { fileJson } = require('./file-json');
 
 const COLLECTION = process.env.CARD_COLLECTION || 'cards';
 
 /* ---------- shared shaping ---------- */
 
 function nowIso() { return new Date().toISOString(); }
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_BAND = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DROPPED_ID = /^[A-Za-z0-9#._-]{1,48}$/;
+const CARD_STATUSES = ['active', 'blank', 'retired'];
+
+/* A valid ISO day, or empty. */
+function validDateOrEmpty(value) {
+  return ISO_DATE.test(value || '') ? value : '';
+}
+
+/* The per-pen hour she takes it: "morning" -> "08:00". Keys are capped and
+   only a valid HH:MM survives. Shared by the card's settings and its state. */
+function parseTimeBands(input) {
+  const times = {};
+  const src = (input.times && typeof input.times === 'object' && !Array.isArray(input.times)) ? input.times : {};
+  Object.keys(src).slice(0, 6).forEach(band => {
+    const v = String(src[band] || '');
+    if (TIME_BAND.test(v)) times[String(band).slice(0, 16)] = v;
+  });
+  return times;
+}
+
+/* A save changes nothing when the start day and the times both match what
+   the card already holds. */
+function settingsUnchanged(next, prev) {
+  return next.startDate === (prev.startDate || '') &&
+         JSON.stringify(next.times) === JSON.stringify(prev.times || {}) &&
+         JSON.stringify(next.penTimes) === JSON.stringify(prev.penTimes || {});
+}
+
+function emptySettings(settings) {
+  return !settings.rev && !settings.startDate &&
+         !Object.keys(settings.times).length &&
+         !Object.keys(settings.penTimes || {}).length;
+}
 
 /* Whatever the dashboard posts, only these fields are ever stored. */
 /* Counters live on the record but are not editable from the dashboard, so
@@ -62,33 +99,27 @@ function carryCounters(out, existing) {
    it safe: the phone remembers the last rev it applied, so a value set
    here lands once and her own later choice is not stamped on again at
    every open. Leave a field empty and the phone keeps deciding. */
+/* The settings the card already holds, or an empty object. */
+function settingsOf(existing) { return (existing && existing.settings) || {}; }
+
 function sanitizeSettings(input, existing) {
-  const prev = (existing && existing.settings) || {};
+  const prev = settingsOf(existing);
   if (!input || typeof input !== 'object') return prev.rev ? prev : undefined;
 
-  const times = {};
-  const src = (input.times && typeof input.times === 'object' && !Array.isArray(input.times)) ? input.times : {};
-  Object.keys(src).slice(0, 6).forEach(band => {
-    const v = String(src[band] || '');
-    // A real clock time everywhere: hours 00-23, minutes 00-59 — the same
-    // rule the state report applies, so no value survives one surface and
-    // blanks on the other.
-    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) times[String(band).slice(0, 16)] = v;
-  });
+  const times = parseTimeBands(input);
+  const baseRev = Number(prev.rev) || 0;
 
   const penTimes = {};
   const penSrc = (input.penTimes && typeof input.penTimes === 'object' && !Array.isArray(input.penTimes)) ? input.penTimes : {};
   Object.keys(penSrc).slice(0, 12).forEach(penId => {
     const v = String(penSrc[penId] || '');
-    // A real clock time: hours 00-23, minutes 00-59.
     if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) penTimes[String(penId).slice(0, 16)] = v;
   });
-
   const out = {
-    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '') ? input.startDate : '',
+    startDate: validDateOrEmpty(input.startDate),
     times,
     penTimes,
-    rev: Number(prev.rev) || 0
+    rev: baseRev
   };
 
   // A new rev only when something actually changed, so opening the editor
@@ -99,11 +130,8 @@ function sanitizeSettings(input, existing) {
   // wants the card's own values put back. Nothing has "changed" in the
   // form — it already reads what it should — so without this there would
   // be no way to send it.
-  const same = out.startDate === (prev.startDate || '') &&
-               JSON.stringify(out.times) === JSON.stringify(prev.times || {}) &&
-               JSON.stringify(out.penTimes) === JSON.stringify(prev.penTimes || {});
-  if (!same || input.force) out.rev = (Number(prev.rev) || 0) + 1;
-  if (!out.rev && !out.startDate && !Object.keys(times).length && !Object.keys(penTimes).length) return undefined;
+  if (!settingsUnchanged(out, prev) || input.force) out.rev = baseRev + 1;
+  if (emptySettings(out)) return undefined;
   return out;
 }
 
@@ -114,16 +142,10 @@ function sanitizeSettings(input, existing) {
 function sanitizeState(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
   const str = (v, n) => String(v == null ? '' : v).slice(0, n);
-  const times = {};
-  const src = (input.times && typeof input.times === 'object' && !Array.isArray(input.times)) ? input.times : {};
-  Object.keys(src).slice(0, 6).forEach(b => {
-    const v = String(src[b] || '');
-    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) times[String(b).slice(0, 16)] = v;
-  });
 
   return {
-    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '') ? input.startDate : '',
-    times,
+    startDate: validDateOrEmpty(input.startDate),
+    times: parseTimeBands(input),
     tz: str(input.tz, 60),
     rev: Number(input.rev) || 0,
     reminders: !!input.reminders,
@@ -149,52 +171,80 @@ function sanitizeState(input) {
   };
 }
 
-function sanitize(input, existing = null) {
-  // The display name in order of authority: what was typed, then the
-  // first and last names the dashboard mints cards from, then the name
-  // the record already had. An explicitly empty or whitespace-only name
-  // counts as "not typed" — otherwise clearing the name would silently
-  // leave a prescribed card nameless.
-  const typedName = String(input.name ?? '').trim();
-  const derivedName = (input.firstName || input.lastName)
+/* The display name in order of authority: what was typed, then the first
+   and last names the dashboard mints cards from, then the name the record
+   already had. An explicitly empty or whitespace-only name counts as "not
+   typed" — otherwise clearing the name would silently leave a prescribed
+   card nameless. */
+function deriveName(input, existing) {
+  const typed = String(input.name ?? '').trim();
+  const derived = (input.firstName || input.lastName)
     ? [input.firstName, input.lastName]
         .map(x => String(x ?? '').trim())
         .filter(Boolean)
         .join(' ')
     : '';
+  return String(typed || derived || (existing ? existing.name : '')).trim().slice(0, 60);
+}
+
+function resolveStartDate(input, existing) {
+  if (ISO_DATE.test(input.startDate || '')) return input.startDate;
+  return existing ? existing.startDate : null;
+}
+
+/* The status before name/pens are known. A retired card is the atelier's
+   word and is never second-guessed; otherwise the status is settled after
+   the record is built. */
+function pickStatus(input, existing) {
+  if (CARD_STATUSES.includes(input.status)) return input.status;
+  return existing ? existing.status : null;
+}
+
+function settleStatus(status, rec) {
+  if (status === 'retired') return 'retired';
+  return (rec.name || rec.pens.length || rec.added.length) ? 'active' : 'blank';
+}
+
+function sanitizePens(list, existing) {
+  if (Array.isArray(list)) return list.slice(0, 8).map(sanitizePen).filter(Boolean);
+  return existing ? existing.pens : [];
+}
+
+function sanitizeAddedList(list, existing) {
+  if (Array.isArray(list)) return list.slice(0, 8).map(sanitizeAdded).filter(Boolean);
+  return existing ? (existing.added || []) : [];
+}
+
+function sanitizeDropped(list, existing) {
+  if (!Array.isArray(list)) return existing ? (existing.dropped || []) : [];
+  return list.slice(0, 8).map(id => String(id || '')).filter(id => DROPPED_ID.test(id));
+}
+
+function sanitizeVisitsList(list, existing) {
+  if (Array.isArray(list)) return sanitizeVisits(list);
+  return existing ? (existing.visits || []) : [];
+}
+
+function sanitize(input, existing = null) {
   const rec = {
     slug: normalizeSlug(input.slug || (existing && existing.slug)),
-    name: String(typedName || derivedName || (existing ? existing.name : ''))
-      .trim().slice(0, 60),
-    startDate: /^\d{4}-\d{2}-\d{2}$/.test(input.startDate || '')
-      ? input.startDate
-      : (existing ? existing.startDate : null),
-    status: ['active', 'blank', 'retired'].includes(input.status)
-      ? input.status
-      : (existing ? existing.status : null),   // settled below once name/pens are known
+    name: deriveName(input, existing),
+    startDate: resolveStartDate(input, existing),
+    status: pickStatus(input, existing),
     note: String(input.note ?? (existing ? existing.note : '')).slice(0, 500),
-    pens: Array.isArray(input.pens)
-      ? input.pens.slice(0, 8).map(sanitizePen).filter(Boolean)
-      : (existing ? existing.pens : []),
+    pens: sanitizePens(input.pens, existing),
     // What the patient put on her own card. Kept apart from `pens` on
     // purpose: `pens` is what the atelier prescribed, and a tapped card
     // must never be able to rewrite that. This list she owns.
-    added: Array.isArray(input.added)
-      ? input.added.slice(0, 8).map(sanitizeAdded).filter(Boolean)
-      : (existing ? (existing.added || []) : []),
+    added: sanitizeAddedList(input.added, existing),
     // Prescribed pens the patient has taken off her own schedule. Her
     // removal is recorded here rather than by deleting from `pens`, so
     // what was prescribed stays legible and the atelier can see what she
     // stopped and put it back.
-    dropped: Array.isArray(input.dropped)
-      ? input.dropped.slice(0, 8)
-          .map(id => String(id || '')).filter(id => /^[A-Za-z0-9#._-]{1,48}$/.test(id))
-      : (existing ? (existing.dropped || []) : []),
+    dropped: sanitizeDropped(input.dropped, existing),
     // Aesthetic treatments given in the room. The atelier's record, not
     // the patient's — a tapped card cannot reach this.
-    visits: Array.isArray(input.visits)
-      ? sanitizeVisits(input.visits)
-      : (existing ? (existing.visits || []) : []),
+    visits: sanitizeVisitsList(input.visits, existing),
     createdAt: existing ? existing.createdAt : nowIso(),
     updatedAt: nowIso()
   };
@@ -204,10 +254,8 @@ function sanitize(input, existing = null) {
   // pen she added herself — and only then. Saying so here means the
   // dashboard never has to remember to set it, and a patient who starts
   // using an unassigned tag becomes visible exactly the way a prescribed
-  // card is. Retired is the atelier's word and is never second-guessed.
-  if (rec.status !== 'retired') {
-    rec.status = (rec.name || rec.pens.length || rec.added.length) ? 'active' : 'blank';
-  }
+  // card is.
+  rec.status = settleStatus(rec.status, rec);
   return carryCounters(rec, existing);
 }
 
@@ -223,25 +271,33 @@ function sanitizeAdded(rec) {
   return out;
 }
 
+function sanitizePhases(phases) {
+  return phases.slice(0, 12).map(ph => ({
+    name: String(ph.name || '').slice(0, 40),
+    units: Number(ph.units) || 0,
+    days: ph.days == null ? null : (Number(ph.days) || null)
+  })).filter(ph => ph.units > 0);
+}
+
+function sanitizeSchedule(schedule) {
+  if (schedule.weekly) {
+    return { weekly: true, day: Math.min(7, Math.max(1, Number(schedule.day) || 1)) };
+  }
+  return { on: Number(schedule.on) || 5, off: Number(schedule.off) || 2 };
+}
+
 function sanitizePen(pen) {
   if (!pen || typeof pen.template !== 'string') return null;
   const out = { template: pen.template.slice(0, 24) };
 
   // Phases are optional — without them the template's own titration stands.
   if (Array.isArray(pen.phases) && pen.phases.length) {
-    out.phases = pen.phases.slice(0, 12).map(ph => ({
-      name: String(ph.name || '').slice(0, 40),
-      units: Number(ph.units) || 0,
-      days: ph.days == null ? null : (Number(ph.days) || null)
-    })).filter(ph => ph.units > 0);
+    out.phases = sanitizePhases(pen.phases);
   }
   if (pen.schedule && typeof pen.schedule === 'object') {
-    const s = pen.schedule;
-    out.schedule = s.weekly
-      ? { weekly: true, day: Math.min(7, Math.max(1, Number(s.day) || 1)) }
-      : { on: Number(s.on) || 5, off: Number(s.off) || 2 };
+    out.schedule = sanitizeSchedule(pen.schedule);
   }
-  if (pen.startDate && /^\d{4}-\d{2}-\d{2}$/.test(pen.startDate)) out.startDate = pen.startDate;
+  if (pen.startDate && ISO_DATE.test(pen.startDate)) out.startDate = pen.startDate;
   return out;
 }
 
@@ -343,17 +399,9 @@ function firestoreStore() {
 /* ---------- JSON file (local) ---------- */
 
 function fileStore(file) {
-  const fs = require('node:fs');
   const path = require('node:path');
   const target = file || path.join(__dirname, '..', '.data', 'cards.json');
-
-  function readAll() {
-    try { return JSON.parse(fs.readFileSync(target, 'utf8')); } catch { return {}; }
-  }
-  function writeAll(all) {
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, JSON.stringify(all, null, 2));
-  }
+  const { readAll, writeAll } = fileJson(target);
 
   return {
     kind: 'file',

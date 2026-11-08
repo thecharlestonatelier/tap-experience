@@ -33,23 +33,57 @@ function addDaysIso(isoDate, days) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/* Only what a visit is allowed to carry. The tag is public and a POST is
-   a POST, so anything beyond these is dropped rather than stored. */
-function sanitizeVisit(v) {
-  if (!v || typeof v.service !== 'string') return null;
-  if (!serviceById(v.service)) return null;          // not on the menu
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.date || '')) return null;
-  const out = { service: v.service, date: v.date };
+/* The optional fields a visit may carry, and only those. */
+function visitDetails(v) {
+  const out = {};
   if (v.area) out.area = String(v.area).slice(0, 60);
   if (v.note) out.note = String(v.note).slice(0, 200);
   if (v.units != null && Number.isFinite(Number(v.units))) out.units = Number(v.units);
   return out;
 }
 
+/* Only what a visit is allowed to carry. The tag is public and a POST is
+   a POST, so anything beyond these is dropped rather than stored. */
+function sanitizeVisit(v) {
+  if (!v || typeof v.service !== 'string') return null;
+  if (!serviceById(v.service)) return null;          // not on the menu
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.date || '')) return null;
+  return Object.assign({ service: v.service, date: v.date }, visitDetails(v));
+}
+
 function sanitizeVisits(list) {
   return (Array.isArray(list) ? list : [])
     .slice(0, 200).map(sanitizeVisit).filter(Boolean)
     .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/* The visits for one treatment, oldest first. */
+function visitsFor(serviceId, visits) {
+  return (visits || []).filter(v => v.service === serviceId)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/* The gap after the nth visit: the opening gaps of a course first, then the
+   steady cadence, or none when the treatment has no cadence by design. */
+function gapFor(service, n) {
+  const gaps = service.firstGaps || [];
+  return n <= gaps.length ? gaps[n - 1] : service.everyDays;
+}
+
+function dueResult(service, last, gap, now, n) {
+  const due = addDaysIso(last, gap);
+  const midnight = new Date(now); midnight.setHours(0, 0, 0, 0);
+  const days = Math.round((new Date(due + 'T00:00:00') - midnight) / 86400000);
+  return {
+    due, days, last,
+    overdue: days < 0,
+    soon: days >= 0 && days <= 7,
+    // A range where one exists, so the reminder lands at the start of the
+    // window rather than at the end of it.
+    window: service.windowDays ? [addDaysIso(last, service.windowDays[0]), addDaysIso(last, service.windowDays[1])] : null,
+    course: service.courseOf ? `${n} of ${service.courseOf}` : null,
+    session: n
+  };
 }
 
 /* When the next one is due, from the visits already on the record.
@@ -67,8 +101,7 @@ function nextDue(serviceId, visits, now = Date.now()) {
   const s = serviceById(serviceId);
   if (!s) return null;
 
-  const mine = (visits || []).filter(v => v.service === serviceId)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const mine = visitsFor(serviceId, visits);
   if (!mine.length) return null;                      // never had one
 
   const n = mine.length;
@@ -78,24 +111,10 @@ function nextDue(serviceId, visits, now = Date.now()) {
     return { done: true, course: `${n} of ${s.courseOf}`, last };
   }
 
-  const gaps = s.firstGaps || [];
-  const gap = n <= gaps.length ? gaps[n - 1] : s.everyDays;
+  const gap = gapFor(s, n);
   if (!gap) return { none: true, last };              // no cadence by design
 
-  const due = addDaysIso(last, gap);
-  const midnight = new Date(now); midnight.setHours(0, 0, 0, 0);
-  const days = Math.round((new Date(due + 'T00:00:00') - midnight) / 86400000);
-
-  return {
-    due, days, last,
-    overdue: days < 0,
-    soon: days >= 0 && days <= 7,
-    // A range where one exists, so the reminder lands at the start of the
-    // window rather than at the end of it.
-    window: s.windowDays ? [addDaysIso(last, s.windowDays[0]), addDaysIso(last, s.windowDays[1])] : null,
-    course: s.courseOf ? `${n} of ${s.courseOf}` : null,
-    session: n
-  };
+  return dueResult(s, last, gap, now, n);
 }
 
 /* Every service this card has ever had, with where it stands. */

@@ -33,6 +33,7 @@
    ================================================================== */
 
 const crypto = require('node:crypto');
+const { fileJson } = require('./file-json');
 
 const COLLECTION = process.env.SUB_COLLECTION || 'reminders';
 const MAX_DUE = 200;   // roughly four months of daily dosing
@@ -44,22 +45,24 @@ function idFor(endpoint) {
 function nowIso() { return new Date().toISOString(); }
 
 /* Only these fields are ever stored, whatever a device posts. */
+/* Future instants only, sorted, deduplicated, capped. A device sending a
+   year of history cannot make the scheduler chew through it. */
+function cleanDue(input, now) {
+  const horizon = now - 24 * 60 * 60 * 1000;
+  const list = Array.isArray(input.due) ? input.due : [];
+  const iso = list
+    .map(t => {
+      const d = new Date(t);
+      return isNaN(d) ? null : d.toISOString();
+    })
+    .filter(t => t && Date.parse(t) > horizon);
+  return Array.from(new Set(iso)).sort().slice(0, MAX_DUE);
+}
+
 function sanitizeSub(input, slug) {
   const sub = input && input.sub;
   if (!sub || typeof sub.endpoint !== 'string' || !/^https:\/\//.test(sub.endpoint)) return null;
   if (!sub.keys || !sub.keys.p256dh || !sub.keys.auth) return null;
-
-  // Future instants only, sorted, deduplicated, capped. A device sending a
-  // year of history cannot make the scheduler chew through it.
-  const horizon = Date.now() - 24 * 60 * 60 * 1000;
-  const due = Array.from(new Set(
-    (Array.isArray(input.due) ? input.due : [])
-      .map(t => {
-        const d = new Date(t);
-        return isNaN(d) ? null : d.toISOString();
-      })
-      .filter(t => t && Date.parse(t) > horizon)
-  )).sort().slice(0, MAX_DUE);
 
   return {
     id: idFor(sub.endpoint),
@@ -71,7 +74,7 @@ function sanitizeSub(input, slug) {
         auth: String(sub.keys.auth).slice(0, 100)
       }
     },
-    due,
+    due: cleanDue(input, Date.now()),
     sentUpTo: '',
     tz: String(input.tz || '').slice(0, 60),
     createdAt: nowIso(),
@@ -124,17 +127,9 @@ function firestoreSubs() {
 /* ---------- JSON file ---------- */
 
 function fileSubs(file) {
-  const fs = require('node:fs');
   const path = require('node:path');
   const target = file || path.join(__dirname, '..', '.data', 'reminders.json');
-
-  const readAll = () => {
-    try { return JSON.parse(fs.readFileSync(target, 'utf8')); } catch { return {}; }
-  };
-  const writeAll = all => {
-    fs.mkdirSync(path.dirname(target), { recursive: true });
-    fs.writeFileSync(target, JSON.stringify(all, null, 2));
-  };
+  const { readAll, writeAll } = fileJson(target);
 
   return {
     kind: 'file',
@@ -168,16 +163,30 @@ function openSubs() {
    delivered — a scheduler that was down since breakfast should not fire
    breakfast's reminder at four in the afternoon. And anything at or
    before `sentUpTo` has already been handled. */
+/* Whether one due instant should fire now: past, not already sent, and not
+   too stale to be useful. */
+function shouldFire(t, now, sent, graceMs) {
+  if (t <= sent) return false;                 // already nudged
+  if (now - t > graceMs) return false;         // too stale to be useful
+  return true;
+}
+
+/* The most recent qualifying instant, or null. The list is sorted, so the
+   first future instant ends the walk. */
+function latestDue(times, now, sent, graceMs) {
+  let pick = null;
+  for (const t of times) {
+    if (isNaN(t) || t > now) break;
+    if (!shouldFire(t, now, sent, graceMs)) continue;
+    if (pick === null || t > pick) pick = t;
+  }
+  return pick;
+}
+
 function dueNow(rec, now = Date.now(), graceMs = 2 * 60 * 60 * 1000) {
   const sent = rec.sentUpTo ? Date.parse(rec.sentUpTo) : 0;
-  let pick = null;
-  for (const iso of rec.due || []) {
-    const t = Date.parse(iso);
-    if (isNaN(t) || t > now) break;              // sorted, so the rest are future
-    if (t <= sent) continue;                     // already nudged
-    if (now - t > graceMs) continue;             // too stale to be useful
-    if (pick === null || t > pick) pick = t;     // the most recent one that qualifies
-  }
+  const times = (rec.due || []).map(iso => Date.parse(iso));
+  const pick = latestDue(times, now, sent, graceMs);
   return pick === null ? null : new Date(pick).toISOString();
 }
 

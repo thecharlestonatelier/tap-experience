@@ -1,0 +1,3 @@
+# Mutation waivers: file::function::operator reason
+# A survivor is waived only when the mutant is equivalent to the original.
+portal/lib/slug.js::randomSuffix::boolean-swap globalThis.crypto exists on every supported Node (>=20), so `globalThis.crypto || require('node:crypto').webcrypto` and its boolean-swap resolve to the same WebCrypto object; the fallback is unreachable on the supported runtime.
