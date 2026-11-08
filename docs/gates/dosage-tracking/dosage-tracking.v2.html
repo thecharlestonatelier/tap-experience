@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design — Per-pen start day and time (TAP-EXPERIENCE-1)</title>
+<style>
+  :root { --bg:#F3EBE1; --card:#F8F2EA; --espresso:#3B2E20; --espresso-soft:#4A3B2C; --muted:#8A7C6A; --brass:#8A7350; --hairline:rgba(138,115,80,.22); --alert:#A4553F; --done:#4C7150; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--espresso-soft); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; line-height:1.55; }
+  .wrap { max-width:760px; margin:0 auto; padding:40px 22px 80px; }
+  .mono { color:var(--brass); font-size:13px; letter-spacing:.22em; text-transform:uppercase; margin-bottom:6px; }
+  h1 { font-family:Georgia,"Times New Roman",serif; font-weight:500; font-size:38px; color:var(--espresso); line-height:1.1; }
+  .sub { font-size:14px; color:var(--muted); margin:10px 0 30px; }
+  h2 { font-family:Georgia,"Times New Roman",serif; font-weight:500; font-size:24px; color:var(--espresso); margin:38px 0 10px; }
+  p, li { font-size:15px; }
+  .card { background:var(--card); border-radius:14px; box-shadow:0 1px 2px rgba(59,46,32,.06), 0 8px 20px rgba(59,46,32,.05); padding:22px; margin-top:14px; }
+  ol { padding-left:22px; } li { margin:6px 0; }
+  code { font-family:ui-monospace,Menlo,monospace; font-size:13px; background:rgba(138,115,80,.12); padding:1px 5px; border-radius:4px; color:var(--espresso); }
+  pre { background:#2E251B; color:#F0E6D8; border-radius:12px; padding:18px; margin:12px 0; font-family:ui-monospace,Menlo,monospace; font-size:12.5px; line-height:1.5; overflow-x:auto; }
+  pre .c { color:#9a8a72; }
+  .open { border-left:3px solid var(--alert); background:rgba(164,85,63,.06); border-radius:0 12px 12px 0; padding:16px 18px; margin-top:14px; }
+  .open b { color:var(--espresso); }
+  .mock { background:var(--card); border-radius:16px; border-left:4px solid var(--brass); padding:18px; margin-top:14px; }
+  .mock .top { display:flex; align-items:flex-start; gap:12px; }
+  .chip { width:42px; height:42px; border-radius:12px; background:var(--brass); color:#FBF6F0; display:flex; align-items:center; justify-content:center; font-size:12px; flex:none; }
+  .mock .name { font-family:Georgia,serif; font-size:22px; color:var(--espresso); }
+  .mock .meta { font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .mock .started { margin-top:8px; font-size:13.5px; }
+  .mock .started button, .mock .time { border:1px solid var(--hairline); background:#fff; color:var(--brass); border-radius:8px; padding:4px 10px; font-size:13px; margin-left:6px; cursor:pointer; }
+  .mock .x { flex:none; width:26px; height:26px; border-radius:50%; border:1px solid var(--hairline); background:transparent; color:var(--muted); font-size:16px; cursor:pointer; }
+  .mock .lock { margin-top:10px; font-size:12px; color:var(--done); }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td { text-align:left; padding:8px 10px; border-top:1px solid var(--hairline); font-size:13.5px; vertical-align:top; }
+  th { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); font-weight:500; }
+  .foot { margin-top:50px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="mono">The Charleston Atelier</p>
+  <h1>Per-pen start day and time</h1>
+  <p class="sub">Design gate v2 &middot; mission <code>dosage-tracking</code> &middot; issue <code>TAP-EXPERIENCE-1</code></p>
+
+  <div class="card">
+    <p><b>The goal.</b> The patient sets one start day and one clock time per pen. Today one start day covers the whole protocol, and pens in the same band share one clock time. This design splits both. The patient edits them from each pen&rsquo;s own card. The first logged dose locks them.</p>
+  </div>
+
+  <h2>What changes</h2>
+  <ol>
+    <li><b>Start day on the card.</b> Each pen card shows <code>started [date]</code> at the top, between the pen name and the remove control. The date is a button.</li>
+    <li><b>Calendar modal.</b> Tapping the date opens a month calendar for that pen. Picking a day sets that pen&rsquo;s start day and nothing else.</li>
+    <li><b>Time per pen.</b> Each pen gets its own clock time. Two pens in the Evening band no longer share one.</li>
+    <li><b>Lock after logging.</b> After the first logged dose for a pen, its start day and time freeze. The atelier can still correct the start day.</li>
+    <li><b>Remove the global schedule editor.</b> The top-level start-day control and its &ldquo;Set my schedule&rdquo; sheet go away. The read-only Schedule tab stays as the month view.</li>
+  </ol>
+
+  <h2>Protocol card layout</h2>
+  <div class="mock">
+    <div class="top">
+      <div class="chip">glo</div>
+      <div style="flex:1">
+        <div class="name">Glow Blend</div>
+        <div class="meta">BPC-157 10 / TB-500 10 / GHK-Cu 50 mg &middot; 3 mL</div>
+        <div class="started">started <button>Jul 13, 2026</button> &middot; <button class="time">8:00 PM</button></div>
+      </div>
+      <button class="x" title="Take off my schedule">&times;</button>
+    </div>
+    <div class="lock">Unlocked &mdash; tap the date to open the calendar, or the time to change it.</div>
+  </div>
+
+  <div class="mock" style="margin-top:12px; border-left-color:var(--done)">
+    <div class="top">
+      <div class="chip" style="background:var(--done)">glo</div>
+      <div style="flex:1">
+        <div class="name">Glow Blend</div>
+        <div class="meta">BPC-157 10 / TB-500 10 / GHK-Cu 50 mg &middot; 3 mL</div>
+        <div class="started">started <span style="color:var(--espresso)">Jul 13, 2026</span> &middot; <span style="color:var(--espresso)">8:00 PM</span></div>
+      </div>
+      <button class="x">&times;</button>
+    </div>
+    <div class="lock">Locked &mdash; the first logged dose pinned the day and time. They no longer open.</div>
+  </div>
+
+  <h2>Data model</h2>
+  <table>
+    <tr><th>Field</th><th>Where</th><th>Meaning</th></tr>
+    <tr><td><code>pen.startDate</code></td><td><code>protocol.js</code> <code>applyPenStarts()</code></td><td>The pen&rsquo;s start day. Precedence: atelier day, then first logged dose, then the typed day, then the protocol day.</td></tr>
+    <tr><td><code>tca.penstart.&lt;patient&gt;</code></td><td>localStorage</td><td>The patient&rsquo;s typed start day per pen, keyed by <code>pen.id</code>.</td></tr>
+    <tr><td><code>tca.times.&lt;patient&gt;</code></td><td>localStorage</td><td>Clock times. Band keys for the atelier default; <code>pen.id</code> keys for the per-pen override.</td></tr>
+    <tr><td><code>LOGGED</code></td><td>server log via <code>loadLogged()</code></td><td>Doses by day and pen id (amended from template). <code>firstDoseDay()</code> reads it to lock the pen.</td></tr>
+  </table>
+
+  <h2>Code example</h2>
+  <p>The two reads that change:</p>
+  <pre><span class="c">// timeFor(pen) — a pen's own value first, then the band, then the default.</span>
+function timeFor(pen) {
+  const mine = loadTimes();
+  return mine[pen.id] || mine[pen.time] || TIME_AT[pen.time] || '09:00';
+}
+
+<span class="c">// applyPenStarts(pen) — new order. The first logged dose now beats a typed day.</span>
+if (p.atelierStart) { p.startDate = p.atelierStart; return; }
+const first = firstDoseDay(p);
+if (first) { p.startDate = first; snapshotTime(p); return; }   <span class="c">// locked</span>
+if (mine[p.id]) { p.startDate = mine[p.id]; }</pre>
+
+  <h2>Open decisions for the human</h2>
+  <div class="open">
+    <p><b>1. The lock reverses a tested rule.</b> The current code says a patient who typed the 12th but logged from the 14th is telling us about two unlogged doses, and she is right. The new lock makes the first logged dose win, which overrides that memory. <code>portal/tests/first-dose-start.mjs</code> asserts the old rule on line 101. The issue asks for the lock to protect dose tracking, so this design follows it and flags the reversal here.</p>
+  </div>
+  <div class="open">
+    <p><b>2. The issue says &ldquo;schedule tab&rdquo;.</b> This design reads that as the top-level editor sheet, not the read-only calendar tab. Confirm the reading.</p>
+  </div>
+  <div class="open" style="border-left-color:var(--done)">
+    <p><b>3. Amended — the dose log keys by pen id.</b> The human chose Option A: key the dose log by pen id, not template. Two same-template pens now log independently, and no dose drops as a duplicate. SPEC-003 &sect;4 and NFR-2 reopen; the architect amends both and the builder migrates existing template-keyed doses.</p>
+  </div>
+
+  <div class="foot">Design seat &middot; team thecharlestonatiler &middot; this page is inert and self-contained</div>
+</div>
+</body>
+</html>
