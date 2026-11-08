@@ -97,6 +97,24 @@
               padding-top:18px; border-top:1px solid var(--line); }
 
   .pen-row { border:1px solid var(--line); border-radius:13px; padding:14px; margin-bottom:11px; }
+  .pen-timechip {
+    border:1px solid var(--brass, #A98844); background:var(--paper, #F7F1E7);
+    color:var(--ink); border-radius:999px; padding:4px 10px; font:inherit;
+    font-size:11px; cursor:pointer;
+  }
+  .pen-timechip.locked { color:var(--muted); border-color:var(--line); border-style:dashed; cursor:default; }
+  .pen-dialog {
+    border:0; border-radius:16px; padding:0; width:min(92vw,380px);
+    background:var(--paper, #F7F1E7); color:var(--ink); box-shadow:0 22px 70px #0004;
+  }
+  .pen-dialog::backdrop { background:#1f171066; }
+  .pen-dialog form { padding:18px; }
+  .pen-dialog h2 { margin:0; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:500; }
+  .pen-dialog .pt-row { display:flex; gap:8px; margin-top:12px; }
+  .pen-dialog label { flex:1; display:flex; flex-direction:column; gap:5px; font-size:11px; color:var(--muted); }
+  .pen-dialog input { font:inherit; font-size:14px; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:9px; padding:8px 10px; }
+  .pen-dialog .pt-summary { margin:11px 0 0; font-size:12px; color:var(--muted); }
+  .pen-dialog .pt-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:15px; }
   .pen-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
   .pen-name { font-weight:600; color:var(--ink); flex:1; }
   .phase { display:grid; grid-template-columns:1fr 90px 90px 34px; gap:8px; margin-bottom:7px; align-items:center; }
@@ -1608,6 +1626,80 @@ function stoppedByHer() {
    A visit is a date and a service, and the cadence does the rest. The due
    date is never stored: the moment a visit is corrected a stored one would
    be wrong, and nothing would say so. */
+let penTimeIndex = null;
+
+function ensureStudioPenDialog() {
+  let d = $('penTimeDialog');
+  if (d) return d;
+  d = document.createElement('dialog');
+  d.id = 'penTimeDialog';
+  d.className = 'pen-dialog';
+  d.innerHTML = `
+    <form method="dialog">
+      <h2 id="ptTitle">Start day &amp; time</h2>
+      <div class="pt-row">
+        <label>Start day<input type="date" id="ptDate"></label>
+        <label>Time<input type="time" id="ptTime"></label>
+      </div>
+      <p class="pt-summary" id="ptSummary"></p>
+      <div class="pt-actions">
+        <button type="submit" class="ghost" value="cancel" style="width:auto">Cancel</button>
+        <button type="submit" class="act" value="save" style="width:auto">Save</button>
+      </div>
+    </form>`;
+  document.body.appendChild(d);
+  const summary = () => {
+    const date = d.querySelector('#ptDate').value;
+    const time = d.querySelector('#ptTime').value;
+    const pen = editing && editing.pens[penTimeIndex];
+    const t = pen ? (TEMPLATES.templates.find(x => x.id === pen.template) || {}) : {};
+    const band = t.time && editing && editing.settings && editing.settings.times
+      ? (editing.settings.times[t.time] || '') : '';
+    const start = date || (editing && editing.settings && editing.settings.startDate) || '';
+    d.querySelector('#ptSummary').textContent =
+      `${start ? prettyDate(start) : 'Card start'} at ${time ? prettyTime(time) : (band ? prettyTime(band) : 'band time')} · this pen only`;
+  };
+  d.querySelector('#ptDate').addEventListener('input', summary);
+  d.querySelector('#ptTime').addEventListener('input', summary);
+  d.addEventListener('close', () => {
+    const pi = penTimeIndex;
+    penTimeIndex = null;
+    if (pi === null || d.returnValue !== 'save' || !editing || !editing.pens[pi]) return;
+    const pen = editing.pens[pi];
+    const timeId = penTimeId(editing.pens, pi);
+    const date = d.querySelector('#ptDate').value;
+    const time = d.querySelector('#ptTime').value;
+    if (date) pen.startDate = date; else delete pen.startDate;
+    editing.settings = editing.settings || {};
+    editing.settings.penTimes = editing.settings.penTimes || {};
+    if (time) editing.settings.penTimes[timeId] = time; else delete editing.settings.penTimes[timeId];
+    renderPens();
+    renderTimes();
+  });
+  return d;
+}
+
+function openPenTimeEditor(pi) {
+  if (!editing || !editing.pens || !editing.pens[pi]) return;
+  const pen = editing.pens[pi];
+  const key = pen.template;
+  const timeId = penTimeId(editing.pens, pi);
+  const stateSupply = (editing.state && Array.isArray(editing.state.supply)) ? editing.state.supply : [];
+  const locked = !editing._force && stateSupply.some(s => s.template === key && s.lastDose);
+  if (locked) return toast('Locked — first dose logged. Use Force to override.', 8000);
+  const d = ensureStudioPenDialog();
+  penTimeIndex = pi;
+  const t = TEMPLATES.templates.find(x => x.id === key) || {};
+  const bandTime = t.time && editing.settings && editing.settings.times
+    ? (editing.settings.times[t.time] || '') : '';
+  $('ptTitle').textContent = `${t.name || key} · start day & time`;
+  $('ptDate').value = pen.startDate || (editing.settings && editing.settings.startDate) || '';
+  $('ptTime').value = (editing.settings && editing.settings.penTimes && editing.settings.penTimes[timeId]) || bandTime || '';
+  $('ptDate').dispatchEvent(new Event('input'));
+  d.returnValue = '';
+  d.showModal();
+}
+
 function renderVisits() {
   const list = $('visitList');
   if (!list) return;
@@ -1684,6 +1776,13 @@ function addDays(isoDate, days) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function penTimeId(pens, i) {
+  const p = (pens || [])[i];
+  if (!p) return '';
+  return (pens || []).filter(x => x.template === p.template).length > 1
+    ? `${p.template}#${i}` : p.template;
+}
+
 function renderPens() {
   const list = $('penList');
   const hers = stoppedByHer() + addedByHer();
@@ -1695,6 +1794,17 @@ function renderPens() {
   list.innerHTML = hers + editing.pens.map((pen, pi) => {
     const t = TEMPLATES.templates.find(x => x.id === pen.template) || {};
     const phases = pen.phases || t.phases || [];
+    const key = pen.template;
+    const timeId = penTimeId(editing.pens, pi);
+    const penTime = (editing.settings && editing.settings.penTimes && editing.settings.penTimes[timeId]) || '';
+    const cardStart = (editing.settings && editing.settings.startDate) || '';
+    const start = pen.startDate || cardStart;
+    const band = t.time;
+    const bandTime = band ? ((editing.settings && editing.settings.times && editing.settings.times[band]) || '') : '';
+    const stateSupply = (editing.state && Array.isArray(editing.state.supply)) ? editing.state.supply : [];
+    const locked = !editing._force && stateSupply.some(s => s.template === key && s.lastDose);
+    const startText = start ? prettyDate(start) : 'Card start';
+    const timeText = penTime ? prettyTime(penTime) : 'Band time';
 
     // A pen the patient sets up herself has no phases to show here.
     if (t.setup) {
@@ -1711,17 +1821,12 @@ function renderPens() {
     return `<div class="pen-row">
       <div class="pen-head">
         <span class="pen-name">${t.name || pen.template}</span>
+        <button type="button" class="pen-timechip${locked ? ' locked' : ''}" data-pentime="${pi}"
+          title="${locked ? 'Locked — first dose logged. Use Force to override.' : 'Change start day and time for this pen'}">
+          ${locked ? '🔒 ' : ''}${startText} · ${timeText}
+        </button>
         <button type="button" class="drop" data-drop="${pi}">Remove pen</button>
       </div>
-      <!-- Its own start day. Blank means it follows the card's start day,
-           which is what every pen did before any of them could differ —
-           so an existing card reads exactly as it always has until a date
-           is actually typed here. -->
-      <label class="setup-note" style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span>Started</span>
-        <input type="date" data-penstart="${pi}" value="${pen.startDate || ''}">
-        <span style="color:var(--muted)">${pen.startDate ? '' : 'follows the card'}</span>
-      </label>
       ${phases.length ? `<div class="phase phase-head">
         <span>Phase</span><span>Units</span><span>Days</span><span></span>
       </div>` : ''}
@@ -1757,13 +1862,8 @@ function renderPens() {
       if (lifeEl) lifeEl.innerHTML = lifeLine(t, pen.phases);
     }));
 
-  list.querySelectorAll('[data-penstart]').forEach(inp =>
-    inp.addEventListener('change', () => {
-      const pen = editing.pens[inp.dataset.penstart];
-      if (!pen) return;
-      if (inp.value) pen.startDate = inp.value; else delete pen.startDate;
-      renderPens();
-    }));
+  list.querySelectorAll('[data-pentime]').forEach(b =>
+    b.addEventListener('click', () => openPenTimeEditor(Number(b.dataset.pentime))));
 
   list.querySelectorAll('[data-undrop]').forEach(b =>
     b.addEventListener('click', () => {
@@ -1880,7 +1980,18 @@ $('saveCard').addEventListener('click', async () => {
 
   const before = (editing.settings && editing.settings.rev) || 0;
   const sent = JSON.parse(JSON.stringify(editing));
-  const saved = await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
+  let saved;
+  try {
+    saved = await api(`/api/cards/${editing.slug}`, { method: 'PUT', body: JSON.stringify(editing) });
+  } catch (err) {
+    const code = err && err.body && err.body.error;
+    if (code === 'pen_start_locked' || code === 'pen_time_locked') {
+      const key = err.body.pen;
+      const name = (TEMPLATES.templates.find(t => t.id === key) || {}).name || key;
+      return toast(`Locked — ${name}'s first dose is logged. Use Force to override.`, 8000);
+    }
+    throw err;
+  }
 
   // Did the record actually take what was typed? A phase with no dial
   // number is dropped on the way in, and a protocol that quietly lost a

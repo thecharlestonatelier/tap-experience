@@ -819,11 +819,61 @@ function readCard(res, existing) {
   return existing ? json(res, 200, existing) : json(res, 404, { error: 'not_found' });
 }
 
+/* The phone's per-pen key: the template alone when it is prescribed once,
+   template#index when two pens share it. The Studio rows and the card's
+   hydrateRecord use the same rule. */
+function penIds(pens) {
+  const counts = {};
+  (pens || []).forEach(p => { counts[p.template] = (counts[p.template] || 0) + 1; });
+  return (pens || []).map((p, i) => counts[p.template] > 1 ? `${p.template}#${i}` : p.template);
+}
+
 async function writeCard(res, req, slug, existing) {
   if (!existing) return json(res, 404, { error: 'not_found' });
-  const rec = sanitize(Object.assign({}, await readBody(req), { slug }), existing);
-  await store.put(rec);
-  return json(res, 200, rec);
+  const body = await readBody(req);
+  const next = sanitize(Object.assign({}, body, { slug }), existing);
+
+  // A pen's start day and time are historical once its first dose is logged.
+  // The patient's chips lock in the UI; this is the server half, so a stale
+  // tab or a direct API call cannot move the timestamp. The atelier keeps
+  // its explicit force override (settings.force), as before.
+  const force = !!(body.settings && body.settings.force);
+  if (!force) {
+    const logged = new Set((await doses.forSlug(slug, 1000)).map(d => d.template || 'pen'));
+    const existingPens = existing.pens || [];
+    const nextPens = next.pens || [];
+    const beforeIds = penIds(existingPens);
+    const nextIds = penIds(nextPens);
+    const beforePens = new Map(existingPens.map((p, i) => [beforeIds[i], p]));
+    const beforeTimes = (existing.settings && existing.settings.penTimes) || {};
+    const nextTimes = (next.settings && next.settings.penTimes) || {};
+    for (let i = 0; i < nextPens.length; i++) {
+      const pen = nextPens[i];
+      const template = pen.template;
+      if (!logged.has(template)) continue;
+      const id = nextIds[i];
+      const was = beforePens.get(id) || {};
+      if (String(was.startDate || '') !== String(pen.startDate || '')) {
+        return json(res, 409, { error: 'pen_start_locked', pen: template, penId: id });
+      }
+      // Twin pens share one template-keyed dose log, so one twin's first
+      // dose locks both. Compare every key that belongs to the template,
+      // including a stale bare key from an older Studio chip.
+      const timeKeys = new Set([
+        template,
+        ...Object.keys(beforeTimes).filter(k => k === template || k.startsWith(template + '#')),
+        ...Object.keys(nextTimes).filter(k => k === template || k.startsWith(template + '#')),
+      ]);
+      for (const key of timeKeys) {
+        if (String(beforeTimes[key] || '') !== String(nextTimes[key] || '')) {
+          return json(res, 409, { error: 'pen_time_locked', pen: template, penId: key });
+        }
+      }
+    }
+  }
+
+  await store.put(next);
+  return json(res, 200, next);
 }
 
 async function removeCard(res, slug) {

@@ -294,6 +294,21 @@
     border-radius: 999px; padding: 3px 10px; max-width: 130px;
   }
 
+  /* The compact date-and-time modal, created on first chip tap. */
+  .pen-dialog {
+    border: 0; border-radius: 16px; padding: 0; width: min(92vw, 380px);
+    background: var(--paper, #F3EBE1); color: var(--espresso);
+    box-shadow: 0 22px 70px #0004;
+  }
+  .pen-dialog::backdrop { background: #1f171066; }
+  .pen-dialog form { padding: 18px; }
+  .pen-dialog h2 { margin: 0; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .pen-dialog .pt-row { display: flex; gap: 8px; margin-top: 12px; }
+  .pen-dialog label { flex: 1; display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--muted); }
+  .pen-dialog input { font: inherit; font-size: 14px; color: var(--espresso); background: #fff; border: 1px solid var(--line, #E4DCCB); border-radius: 9px; padding: 8px 10px; }
+  .pen-dialog .pt-summary { margin: 11px 0 0; font-size: 12px; color: var(--muted); }
+  .pen-dialog .pt-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+
   .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
   .logged svg { width: 16px; height: 16px; flex: none; }
 
@@ -1172,93 +1187,74 @@ function renderStopped() {
     }));
 }
 
-/* A chip becomes a native input on tap and saves on blur (or change, for
-   the iOS picker). Locked and atelier-pinned chips never open an input:
-   they explain themselves instead.
+/* One combined date-and-time chip opens a compact modal. Locked and
+   atelier-pinned pens never open it: they explain themselves instead. */
+let penDialogPen = null;
 
-   Two chips can only ever have one input open. The first tap on another
-   chip commits and removes the open input in the same gesture — the
-   `chipTap` flag tells the blur handler to hold its re-render so the
-   click that follows still lands on a live element. */
-let openChipInput = null;
-let chipTap = false;
+function ensurePenDialog() {
+  let d = document.getElementById('penTimeDialog');
+  if (d) return d;
+  d = document.createElement('dialog');
+  d.id = 'penTimeDialog';
+  d.className = 'pen-dialog';
+  d.setAttribute('aria-labelledby', 'ptTitle');
+  d.innerHTML = `
+    <form method="dialog">
+      <h2 id="ptTitle">Start day &amp; time</h2>
+      <div class="pt-row">
+        <label>Start day<input type="date" id="ptDate"></label>
+        <label>Time<input type="time" id="ptTime"></label>
+      </div>
+      <p class="pt-summary" id="ptSummary"></p>
+      <div class="pt-actions">
+        <button type="submit" class="ghost" value="cancel" style="width:auto">Cancel</button>
+        <button type="submit" class="act" value="save" style="width:auto">Save</button>
+      </div>
+    </form>`;
+  document.body.appendChild(d);
 
-function commitOpenChipInput() {
-  if (!openChipInput) return;
-  openChipInput.commit();
-  openChipInput.remove();
-  openChipInput = null;
-}
-
-function attachChipInput(chip, pen, kind) {
-  commitOpenChipInput();
-  const input = document.createElement('input');
-  input.type = kind === 'date' ? 'date' : 'time';
-  input.value = kind === 'date' ? penStartIso(pen) : timeFor(pen);
-  input.className = 'dose-chip-input';
-  input.setAttribute('aria-label', `${kind === 'date' ? 'Start day' : 'Time'} for ${pen.name}`);
-  let done = false;
-  input.commit = () => {
-    if (done) return; done = true;
-    if (kind === 'date') {
-      if (input.value) setPenStart(pen, input.value);
-      // The sheet path fires scheduleChanged itself; the chip must too,
-      // or a date edit leaves the reminders, calendar and report stale.
-      scheduleChanged();
-    } else setPenTime(pen, input.value);
+  const summary = () => {
+    const date = d.querySelector('#ptDate').value;
+    const time = d.querySelector('#ptTime').value;
+    d.querySelector('#ptSummary').textContent =
+      date && time ? `Starts ${fmtLong(parse(date))} at ${prettyTime(time)} · this pen only`
+                   : 'Pick a day and a time.';
   };
-  input.addEventListener('blur', () => {
-    input.commit();
-    // A tap on another chip commits first and re-renders through the
-    // click that follows; leaving to empty space re-renders here.
-    if (chipTap) { chipTap = false; return; }
+  d.querySelector('#ptDate').addEventListener('input', summary);
+  d.querySelector('#ptTime').addEventListener('input', summary);
+  d.addEventListener('close', () => {
+    const pen = penDialogPen;
+    penDialogPen = null;
+    if (!pen || d.returnValue !== 'save') return;
+    const date = d.querySelector('#ptDate').value;
+    const time = d.querySelector('#ptTime').value;
+    if (date && date !== penStartIso(pen)) setPenStart(pen, date);
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(time) && time !== timeFor(pen)) setPenTime(pen, time);
+    scheduleChanged();
     renderAll();
   });
-  input.addEventListener('change', () => { input.commit(); renderAll(); });
-  chip.replaceWith(input);
-  openChipInput = input;
-  input.focus();
+  return d;
 }
 
-function openDateChip(chip) {
-  chipTap = false;   // the tap's blur-hold is over; the click owns the rest
-  const pen = PENS.find(p => p.id === chip.dataset.datechip);
-  if (!pen) return;
-  if (firstDoseDay(pen)) {
-    commitOpenChipInput(); renderAll();
-    return showToast('Locked — your first logged dose.');
-  }
-  if (pen.atelierStart) {
-    commitOpenChipInput(); renderAll();
-    return showToast('Set by the atelier.');
-  }
-  attachChipInput(chip, pen, 'date');
-}
-
-function openTimeChip(chip) {
-  chipTap = false;   // the tap's blur-hold is over; the click owns the rest
-  const pen = PENS.find(p => p.id === chip.dataset.timechip);
-  if (!pen) return;
-  if (firstDoseDay(pen)) {
-    commitOpenChipInput(); renderAll();
-    return showToast('Locked — your first logged dose.');
-  }
-  if (loadAtelierPenTimes()[pen.id]) {
-    commitOpenChipInput(); renderAll();
-    return showToast('Set by the atelier.');
-  }
-  attachChipInput(chip, pen, 'time');
+function openPenTime(pen) {
+  if (firstDoseDay(pen)) return showToast('Locked — your first logged dose.');
+  if (pen.atelierStart || loadAtelierPenTimes()[pen.id]) return showToast('Set by the atelier.');
+  const d = ensurePenDialog();
+  penDialogPen = pen;
+  d.querySelector('#ptTitle').textContent = `${pen.name} · start day & time`;
+  d.querySelector('#ptDate').value = penStartIso(pen);
+  d.querySelector('#ptTime').value = timeFor(pen);
+  d.querySelector('#ptDate').dispatchEvent(new Event('input'));
+  d.returnValue = '';
+  d.showModal();
 }
 
 function wireChips(stack) {
-  stack.querySelectorAll('[data-datechip]').forEach(chip => {
-    chip.addEventListener('mousedown', () => { chipTap = true; });
-    chip.addEventListener('click', () => openDateChip(chip));
-  });
-  stack.querySelectorAll('[data-timechip]').forEach(chip => {
-    chip.addEventListener('mousedown', () => { chipTap = true; });
-    chip.addEventListener('click', () => openTimeChip(chip));
-  });
+  stack.querySelectorAll('[data-pentimechip]').forEach(chip =>
+    chip.addEventListener('click', () => {
+      const pen = PENS.find(p => p.id === chip.dataset.pentimechip);
+      if (pen) openPenTime(pen);
+    }));
 }
 
 function renderToday() {
@@ -1318,8 +1314,7 @@ function renderToday() {
     // pinned values (a date the atelier typed, a per-pen time it set)
     // show but stay hers to read, not to edit.
     const locked = !!firstDoseDay(pen);
-    const atelierDate = !!pen.atelierStart;
-    const atelierTime = !!(loadAtelierPenTimes()[pen.id]);
+    const atelier = !!(pen.atelierStart || loadAtelierPenTimes()[pen.id]);
 
     const card = document.createElement('div');
     card.className = `dose-card c-${pen.color || 'brass'}`;
@@ -1329,15 +1324,10 @@ function renderToday() {
         <div style="flex:1">
           <div class="dose-name-row">
             <div class="dose-name">${pen.name}</div>
-            <button type="button" class="dose-chip date-chip${locked ? ' locked' : atelierDate ? ' atelier' : ''}"
-              data-datechip="${pen.id}"
-              title="${locked ? 'Locked — your first logged dose.' : atelierDate ? 'Set by the atelier.' : 'Change start day'}">
-              ${locked ? '<span class="lock">\u{1F512}</span>' : atelierDate ? '<span class="lock">&#9733;</span>' : ''}${fmtShort(penStart(pen))}
-            </button>
-            <button type="button" class="dose-chip time-chip${locked ? ' locked' : atelierTime ? ' atelier' : ''}"
-              data-timechip="${pen.id}"
-              title="${locked ? 'Locked — your first logged dose.' : atelierTime ? 'Set by the atelier.' : 'Change time'}">
-              ${locked ? '<span class="lock">\u{1F512}</span>' : atelierTime ? '<span class="lock">&#9733;</span>' : ''}${prettyTime(timeFor(pen))}
+            <button type="button" class="dose-chip pentime-chip${locked ? ' locked' : atelier ? ' atelier' : ''}"
+              data-pentimechip="${pen.id}"
+              title="${locked ? 'Locked — your first logged dose.' : atelier ? 'Set by the atelier.' : 'Change start day and time'}">
+              ${locked ? '<span class="lock">\u{1F512}</span>' : atelier ? '<span class="lock">&#9733;</span>' : ''}${fmtShort(penStart(pen))} · ${prettyTime(timeFor(pen))}
             </button>
           </div>
           <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
