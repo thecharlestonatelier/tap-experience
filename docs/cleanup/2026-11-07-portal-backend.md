@@ -20,7 +20,7 @@ characterization pin written before the code moved:
 - `activate.emulator.test.mjs` — the first-tap token path, against the Auth
   emulator (skipped when it is not running).
 
-The suite grew from 0 to **261 tests** (all pass). The Auth and Firestore
+The suite grew from 0 to **271 unit tests + 6 browser tests** (all pass). The Auth and Firestore
 pins run under `firebase emulators:exec`, which starts the emulators, runs
 the suite and tears them down — the harness owns their lifecycle, so a human
 never starts one by hand. Branch coverage over the whole tree rose from 0%
@@ -231,3 +231,20 @@ store shaping and the router handlers.
   mutants in `.standards-mutation-waivers`.
 - The harness CRAP engine was extended with JavaScript support during the
   first run so `tools/crap` ranks `.js` functions.
+
+## Final verification (fresh run)
+
+| Gate | Result |
+|---|---|
+| Unit suite (`npm test`, emulators auto) | **271 pass, 0 fail, 0 skip** |
+| Browser suite (`npm run test:browser`) | **6 pass, 0 fail** |
+| Architecture (`sketch architecture --gate`) | **0 violations, 0 cycles, no new violation** |
+| CRAP gate over the changed backend | **quiet** |
+| Clean-code blocking rules (`duplication`, `error-handling`) | **clean** |
+| Tree branch coverage | **77%** |
+| Mutation (slug / supply) | **97.6% / 86%** |
+
+Baselines were re-recorded at their honest floors: architecture baseline is
+**0** (no stale exemptions), CRAP baseline is **5** external-fixture
+functions (`wallet.artwork`, `proxyAuthHelper` + its two callbacks,
+`handleHealth`). Working tree clean; branch pushed to PR #4.
