@@ -20,7 +20,10 @@ chromium`.
 - a peptide the patient adds reaches the record (`/api/added`),
 - the reminder switch subscribes (`/api/push/key`, `/api/push/subscribe`),
   survives a reload (refreshes the schedule) and unsubscribes
-  (`/api/push/unsubscribe`).
+  (`/api/push/unsubscribe`),
+- every portal page (`calendar`, `cards`, `expect`, `storage`, `tutorial`,
+  `library`) renders with a card and no errors,
+- a legacy fragment card (`?card=legacy`) loads the static `protocol.json`.
 
 ## Coverage
 
@@ -32,9 +35,9 @@ cd portal && firebase emulators:exec --only auth --project atelier-tap \
   --config ../firebase.json "node tests/browser/coverage.mjs"
 ```
 
-Current: `protocol.js` ~68% of executable lines, `ritual.html` inline ~53%,
-and 13 of the engine's 14 fetch call sites (the one miss is the legacy static
-`protocol.json` load, which the card-driven pages do not use).
+Current: `protocol.js` ~72% of executable lines, and **all 11 engine
+endpoints — all 14 `fetch` call sites** — are exercised.
+
 
 
 `harness.mjs` runs the real portal on a file store and seeds cards through

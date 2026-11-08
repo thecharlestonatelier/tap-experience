@@ -93,6 +93,18 @@ await scenario(true, async p => {
   await p.waitForTimeout(500);
 });
 
+for (const pg of ['calendar.html', 'cards.html', 'expect.html', 'storage.html', 'tutorial.html', 'library.html']) {
+  await scenario(false, async p => {
+    await p.goto(`${portal.base}/${pg}?c=c${stamp}.t`);
+    await p.waitForTimeout(1200);
+  });
+}
+
+await scenario(false, async p => {
+  await p.goto(`${portal.base}/ritual.html?card=legacy`);
+  await p.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length > 0, null, { timeout: 20000 });
+});
+
 for (const [url, info] of union) {
   if (url.endsWith('/assets/protocol.js')) {
     const s = lineStats(info.source, info.covered);

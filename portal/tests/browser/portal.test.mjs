@@ -128,3 +128,33 @@ test('the reminder switch subscribes, survives reload and unsubscribes', async (
   assert.deepEqual(errors, []);
   await ctx.close();
 });
+
+test('every portal page renders with a card and no errors', async () => {
+  const slug = `pg${Date.now().toString(36)}.t`;
+  await seedCard(portal.base, {
+    slug, name: 'Pages', status: 'active', pens: [{ template: 'glow' }],
+    settings: { startDate: '2026-07-13', times: {}, rev: 1 },
+  });
+  const { ctx, page, errors } = await signedInPage();
+  for (const pg of ['calendar.html', 'cards.html', 'expect.html', 'storage.html', 'tutorial.html']) {
+    await page.goto(`${portal.base}/${pg}?c=${slug}`);
+    await page.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length > 0, null, { timeout: 20000 });
+    const info = await page.evaluate(() => ({ pens: PENS.length, text: document.body.innerText.length }));
+    assert.ok(info.pens >= 1, `${pg} renders a pen`);
+    assert.ok(info.text > 0, `${pg} renders text`);
+  }
+  await page.goto(`${portal.base}/library.html?c=${slug}`);
+  await page.waitForTimeout(500);
+  assert.ok((await page.evaluate(() => document.body.innerText.length)) > 0, 'library renders');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
+
+test('a legacy fragment card still loads the static protocol', async () => {
+  const { ctx, page, errors } = await signedInPage();
+  await page.goto(`${portal.base}/ritual.html?card=legacy`);
+  await page.waitForFunction(() => typeof PENS !== 'undefined' && PENS.length > 0, null, { timeout: 20000 });
+  assert.ok((await page.evaluate(() => PENS.length)) >= 1, 'the legacy card renders its protocol');
+  assert.deepEqual(errors, []);
+  await ctx.close();
+});
