@@ -273,6 +273,26 @@
   }
   .pen-x:active { transform: scale(.92); }
 
+  /* The per-pen date and time chips: one row with the treatment name,
+     between it and the remove button. Tapping an editable chip swaps it
+     for a native input; after the pen's first logged dose both lock, and
+     an atelier-pinned value reads as such. */
+  .dose-name-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .dose-chip {
+    flex: none; font-size: 12px; letter-spacing: .03em; color: var(--espresso);
+    background: var(--sunk, #F4F0E7); border: 1px solid var(--line, #E4DCCB);
+    border-radius: 999px; padding: 3px 10px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dose-chip .lock { margin-right: 4px; font-size: 10px; }
+  .dose-chip.locked { color: var(--muted); background: #F4F0E7; border-color: var(--hairline); cursor: default; }
+  .dose-chip.atelier { color: var(--muted); border-style: dashed; }
+  .dose-chip-input {
+    flex: none; font-size: 12.5px; font-family: inherit; color: var(--espresso);
+    background: var(--sunk, #F4F0E7); border: 1px solid var(--brass);
+    border-radius: 999px; padding: 3px 10px; max-width: 130px;
+  }
+
   .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
   .logged svg { width: 16px; height: 16px; flex: none; }
 
@@ -554,14 +574,7 @@
   .footnote { margin-top: 26px; font-size: 11.5px; line-height: 1.6; color: var(--muted); text-align: center; }
   .footnote a { color: var(--brass); text-decoration: none; border-bottom: 1px solid var(--hairline); }
 
-  /* Start-day control */
-  .linky {
-    background: none; border: none; padding: 0;
-    font-family: 'Jost', sans-serif; font-size: 12.5px;
-    color: var(--brass); cursor: pointer;
-    border-bottom: 1px solid var(--hairline);
-    margin-bottom: 22px;
-  }
+  /* (the old Started-change button and its .linky style left with it) */
   .date-field {
     width: 100%; padding: 14px 15px; margin-bottom: 16px;
     border: 1px solid var(--hairline); border-radius: 13px;
@@ -596,7 +609,6 @@
   <p class="eyebrow" id="todayDate">—</p>
   <h1>Today's Ritual</h1>
   <p class="subhead" id="todaySummary">Loading your protocol…</p>
-  <button class="linky" id="btnStart" hidden></button>
 
   <div id="refills"></div>
 
@@ -685,6 +697,7 @@
     <p class="modal-eyebrow">Your schedule</p>
     <h2 class="modal-title" id="startTitle">Which day did you start?</h2>
     <p class="modal-body" id="startLede"></p>
+    <p class="modal-body" id="chipNote" hidden style="color:var(--muted); font-size:12.5px">A chip on each card carries that pen's own time — a chip wins over the band times set here.</p>
     <input class="date-field" type="date" id="startInput">
     <div id="startPens" hidden></div>
     <p class="modal-body" id="startQuickLabel" hidden
@@ -746,6 +759,10 @@ function openStartPicker() {
       'from this day — and your reminders are set for the times you choose.'
     : 'Each one is counted from its own day, so changing one does not move ' +
       'the others. Your reminders are set for the times you choose.';
+  // The chips on each card carry a per-pen time that overrides this
+  // sheet's band time — say so, so the two never seem to disagree.
+  const chipNote = document.getElementById('chipNote');
+  if (chipNote) chipNote.hidden = false;
   document.getElementById('startInput').hidden = !single;
   if (single) document.getElementById('startInput').value = iso(START);
 
@@ -850,13 +867,6 @@ function commitStart() {
 }
 
 function renderAll() {
-  const btn = document.getElementById('btnStart');
-  btn.hidden = false;
-  // With pens on different days there is no single "started" to print, and
-  // printing one of them would be a quiet lie about the others.
-  btn.textContent = (PENS.length > 1 && new Set(PENS.map(penStartIso)).size > 1)
-    ? 'Start days — change'
-    : `Started ${fmtShort(START)} — change`;
   renderCalNotice();
   renderToday(); renderStopped(); renderRefills(); renderAdherence();
   renderCalendar(); renderDayDetail(); renderRhythm(); renderSupply();
@@ -1161,6 +1171,95 @@ function renderStopped() {
     }));
 }
 
+/* A chip becomes a native input on tap and saves on blur (or change, for
+   the iOS picker). Locked and atelier-pinned chips never open an input:
+   they explain themselves instead.
+
+   Two chips can only ever have one input open. The first tap on another
+   chip commits and removes the open input in the same gesture — the
+   `chipTap` flag tells the blur handler to hold its re-render so the
+   click that follows still lands on a live element. */
+let openChipInput = null;
+let chipTap = false;
+
+function commitOpenChipInput() {
+  if (!openChipInput) return;
+  openChipInput.commit();
+  openChipInput.remove();
+  openChipInput = null;
+}
+
+function attachChipInput(chip, pen, kind) {
+  commitOpenChipInput();
+  const input = document.createElement('input');
+  input.type = kind === 'date' ? 'date' : 'time';
+  input.value = kind === 'date' ? penStartIso(pen) : timeFor(pen);
+  input.className = 'dose-chip-input';
+  input.setAttribute('aria-label', `${kind === 'date' ? 'Start day' : 'Time'} for ${pen.name}`);
+  let done = false;
+  input.commit = () => {
+    if (done) return; done = true;
+    if (kind === 'date') {
+      if (input.value) setPenStart(pen, input.value);
+      // The sheet path fires scheduleChanged itself; the chip must too,
+      // or a date edit leaves the reminders, calendar and report stale.
+      scheduleChanged();
+    } else setPenTime(pen, input.value);
+  };
+  input.addEventListener('blur', () => {
+    input.commit();
+    // A tap on another chip commits first and re-renders through the
+    // click that follows; leaving to empty space re-renders here.
+    if (chipTap) { chipTap = false; return; }
+    renderAll();
+  });
+  input.addEventListener('change', () => { input.commit(); renderAll(); });
+  chip.replaceWith(input);
+  openChipInput = input;
+  input.focus();
+}
+
+function openDateChip(chip) {
+  chipTap = false;   // the tap's blur-hold is over; the click owns the rest
+  const pen = PENS.find(p => p.id === chip.dataset.datechip);
+  if (!pen) return;
+  if (firstDoseDay(pen)) {
+    commitOpenChipInput(); renderAll();
+    return showToast('Locked — your first logged dose.');
+  }
+  if (pen.atelierStart) {
+    commitOpenChipInput(); renderAll();
+    return showToast('Set by the atelier.');
+  }
+  attachChipInput(chip, pen, 'date');
+}
+
+function openTimeChip(chip) {
+  chipTap = false;   // the tap's blur-hold is over; the click owns the rest
+  const pen = PENS.find(p => p.id === chip.dataset.timechip);
+  if (!pen) return;
+  if (firstDoseDay(pen)) {
+    commitOpenChipInput(); renderAll();
+    return showToast('Locked — your first logged dose.');
+  }
+  if (loadAtelierPenTimes()[pen.id]) {
+    commitOpenChipInput(); renderAll();
+    return showToast('Set by the atelier.');
+  }
+  attachChipInput(chip, pen, 'time');
+}
+
+function wireChips(stack) {
+  stack.querySelectorAll('[data-datechip]').forEach(chip => {
+    chip.addEventListener('mousedown', () => { chipTap = true; });
+    chip.addEventListener('click', () => openDateChip(chip));
+  });
+  stack.querySelectorAll('[data-timechip]').forEach(chip => {
+    chip.addEventListener('mousedown', () => { chipTap = true; });
+    chip.addEventListener('click', () => openTimeChip(chip));
+  });
+}
+
 function renderToday() {
   const t = today();
   document.getElementById('todayDate').textContent = fmtLong(t);
@@ -1172,7 +1271,7 @@ function renderToday() {
     document.getElementById('todaySummary').textContent = 'Your protocol hasn\'t started yet.';
     stack.innerHTML = `<div class="rest">
       <div class="rest-title">Begins ${fmtLong(START)}</div>
-      <div class="rest-sub">If that isn't right, change your start day above.</div></div>`;
+      <div class="rest-sub">If that isn't right, change it with the date chip on the card — or the calendar's change link.</div></div>`;
     return;
   }
 
@@ -1214,6 +1313,12 @@ function renderToday() {
     const supply = supplyView(pen);
     const done = isLogged(pen.id, t);
     const comp = pen.components.map(c => `${c.name} ${c.mg}`).join(' / ');
+    // Chip states: locked once the pen has a first logged dose; atelier-
+    // pinned values (a date the atelier typed, a per-pen time it set)
+    // show but stay hers to read, not to edit.
+    const locked = !!firstDoseDay(pen);
+    const atelierDate = !!pen.atelierStart;
+    const atelierTime = !!(loadAtelierPenTimes()[pen.id]);
 
     const card = document.createElement('div');
     card.className = `dose-card c-${pen.color || 'brass'}`;
@@ -1221,9 +1326,21 @@ function renderToday() {
       <div class="dose-top">
         <div class="chip">${pen.short || pen.name.slice(0,3)}</div>
         <div style="flex:1">
-          <div class="dose-name">${pen.name}</div>
+          <div class="dose-name-row">
+            <div class="dose-name">${pen.name}</div>
+            <button type="button" class="dose-chip date-chip${locked ? ' locked' : atelierDate ? ' atelier' : ''}"
+              data-datechip="${pen.id}"
+              title="${locked ? 'Locked — your first logged dose.' : atelierDate ? 'Set by the atelier.' : 'Change start day'}">
+              ${locked ? '<span class="lock">\u{1F512}</span>' : atelierDate ? '<span class="lock">&#9733;</span>' : ''}${fmtShort(penStart(pen))}
+            </button>
+            <button type="button" class="dose-chip time-chip${locked ? ' locked' : atelierTime ? ' atelier' : ''}"
+              data-timechip="${pen.id}"
+              title="${locked ? 'Locked — your first logged dose.' : atelierTime ? 'Set by the atelier.' : 'Change time'}">
+              ${locked ? '<span class="lock">\u{1F512}</span>' : atelierTime ? '<span class="lock">&#9733;</span>' : ''}${prettyTime(timeFor(pen))}
+            </button>
+          </div>
           <div class="dose-meta">${comp} mg · ${pen.volumeMl} mL${pen.ratioNote ? ` · ${pen.ratioNote}` : ''}</div>
-          <div class="dose-meta">${pen.time} · ${prettyTime(timeFor(pen))} · ${pen.route}</div>
+          <div class="dose-meta">${pen.route}</div>
           <span class="phase-pill">${dose.phase.name}</span>
         </div>
         <button type="button" class="pen-x" data-drop="${pen.id}"
@@ -1300,6 +1417,7 @@ function renderToday() {
   });
 
   wireDrops(stack);
+  wireChips(stack);
 
   stack.querySelectorAll('[data-log]').forEach(b =>
     b.addEventListener('click', () => openLog(b.dataset.log)));
@@ -1713,6 +1831,8 @@ async function confirmLog() {
    stays an eight-in-the-evening dose — the same reasoning that keeps the
    calendar off floating times. */
 function scheduledInstant(pen, d) {
+  // The resolved per-pen time (Phase-1 chain), on the dose day's local
+  // clock, so a back-filled dose carries the hour the card scheduled.
   const hm = String(timeFor(pen) || '09:00').split(':');
   const at = new Date(d.getFullYear(), d.getMonth(), d.getDate(),
                       Number(hm[0]) || 0, Number(hm[1]) || 0, 0, 0);
@@ -1908,7 +2028,6 @@ function wireSubscribe() {
 document.getElementById('modalCancel').addEventListener('click', closeLog);
 document.getElementById('modalConfirm').addEventListener('click', confirmLog);
 document.getElementById('scrim').addEventListener('click', e => { if (e.target.id === 'scrim') closeLog(); });
-document.getElementById('btnStart').addEventListener('click', openStartPicker);
 document.getElementById('startSave').addEventListener('click', commitStart);
 document.getElementById('startCancel').addEventListener('click', closeStartPicker);
 document.getElementById('startScrim').addEventListener('click', e => { if (e.target.id === 'startScrim') closeStartPicker(); });

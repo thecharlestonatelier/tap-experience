@@ -1046,7 +1046,7 @@ function openEditor(slug) {
   // What the fields held when the editor opened. Only what she actually
   // changes is pushed to the phone — otherwise opening a card and pressing
   // Save would stamp the atelier's start day over one the patient chose.
-  editing._was = { startDate: $('editStart').value, times: readTimeInputs() };
+  editing._was = { startDate: $('editStart').value, times: readTimeInputs(), penTimes: readPenTimeInputs() };
   editing._force = false;
   $('testPush').hidden = true;
   // Only offer it where there is a phone to send to.
@@ -1156,7 +1156,7 @@ function renderTimes() {
   const bands = bandsOf(editing);
   const set = (editing.settings && editing.settings.times) || {};
   const hers = (editing.state && editing.state.times) || {};
-  $('timeRows').innerHTML = bands.length
+  const bandRows = bands.length
     ? bands.map(b => {
         const value = set[b] || hers[b] || BAND_AT[b] || '09:00';
         const note = hers[b] && hers[b] !== value ? `her phone: ${prettyTime(hers[b])}`
@@ -1168,12 +1168,43 @@ function renderTimes() {
         </div>`;
       }).join('')
     : '<div class="empty" style="padding:4px 0">No pens on this card yet.</div>';
+
+  /* One row per pen on top of the band rows: a per-pen time overrides
+     its band, the way the chips on her card work. An empty row means
+     "follow the chain" — her own time, her first dose, or the band.
+     Keys mirror the phone's own pen ids exactly (hydrateRecord gives two
+     same-template pens ids like ghk#0/ghk#1), so a studio-set time lands
+     on the same key timeFor(pen) reads. */
+  const pens = editing.pens || [];
+  const counts = {};
+  pens.forEach(p => { counts[p.template] = (counts[p.template] || 0) + 1; });
+  const setP = (editing.settings && editing.settings.penTimes) || {};
+  const penRows = pens.map((p, i) => {
+    const t = (TEMPLATES.templates || []).find(x => x.id === p.template);
+    const name = t ? (t.short || t.id) : p.template;
+    const id = counts[p.template] > 1 ? `${p.template}#${i}` : p.template;
+    return `<div class="time-row">
+      <span class="band">${name} <small style="color:var(--muted)">(pen)</small></span>
+      <input type="time" data-pentime="${id}" value="${setP[id] || ''}">
+      <span class="was">${setP[id] ? 'overrides its band' : 'follows the chain'}</span>
+    </div>`;
+  }).join('');
+
+  $('timeRows').innerHTML = bandRows + penRows;
 }
 
 function readTimeInputs() {
   const out = {};
   $('timeRows').querySelectorAll('input[data-band]').forEach(i => {
-    if (/^\d{2}:\d{2}$/.test(i.value)) out[i.dataset.band] = i.value;
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(i.value)) out[i.dataset.band] = i.value;
+  });
+  return out;
+}
+
+function readPenTimeInputs() {
+  const out = {};
+  $('timeRows').querySelectorAll('input[data-pentime]').forEach(i => {
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(i.value)) out[i.dataset.pentime] = i.value;
   });
   return out;
 }
@@ -1186,21 +1217,30 @@ function readTimeInputs() {
    it stands, changed or not. That is the call where her phone has drifted
    and the card was right all along. */
 function settingsFromEditor() {
-  const was = editing._was || { startDate: '', times: {} };
-  const out = Object.assign({ startDate: '', times: {} },
+  const was = editing._was || { startDate: '', times: {}, penTimes: {} };
+  const out = Object.assign({ startDate: '', times: {}, penTimes: {} },
     JSON.parse(JSON.stringify(editing.settings || {})));
   out.times = out.times || {};
+  out.penTimes = out.penTimes || {};
   const now = readTimeInputs();
+  const nowPens = readPenTimeInputs();
 
   if (editing._force) {
     out.startDate = $('editStart').value || '';
     Object.assign(out.times, now);
+    out.penTimes = nowPens;
     out.force = true;
     return out;
   }
 
   if ($('editStart').value !== was.startDate) out.startDate = $('editStart').value || '';
   Object.keys(now).forEach(b => { if (now[b] !== was.times[b]) out.times[b] = now[b]; });
+  // A band row emptied is a band un-set, the same as a cleared pen row.
+  Object.keys(was.times || {}).forEach(b => { if (!(b in now)) delete out.times[b]; });
+  // A per-pen row that changed carries its new value; one that was
+  // emptied clears the key so the phone falls back to the chain.
+  Object.keys(nowPens).forEach(b => { if (nowPens[b] !== was.penTimes[b]) out.penTimes[b] = nowPens[b]; });
+  Object.keys(was.penTimes || {}).forEach(b => { if (!(b in nowPens)) delete out.penTimes[b]; });
   return out;
 }
 
@@ -1733,6 +1773,7 @@ function renderPens() {
                    `Nothing is saved until you press Save.`)) return;
       editing.pens.splice(b.dataset.drop, 1);
       renderPens();
+      renderTimes();   // the removed pen's row goes with it, so its penTimes key clears on save
     }));
 
   list.querySelectorAll('[data-dropphase]').forEach(b =>
@@ -1763,6 +1804,7 @@ $('addPen').addEventListener('click', () => {
   editing.pens.push({ template: id });
   $('penPick').value = '';
   renderPens();
+  renderTimes();   // the new pen needs its per-pen time row
 });
 
 /* Liquid lipo is priced and given by area, and toxin by the unit, so

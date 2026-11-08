@@ -3,6 +3,24 @@
 The suites fall into two groups: Node suites that talk HTTP only, and
 Playwright suites that open the patient pages in a real browser.
 
+## Per-pen time of day (SPEC-003)
+
+- `/api/logged/<slug>` returns `{ days, firstAt }` — `firstAt` maps each
+  pen key (template id) to the earliest logged dose instant, which the
+  card reads as the pen's first-dose clock time.
+- Device storage keys: `tca.pentime.<patientId>` (the patient's own
+  per-pen times) and `tca.pentime.atelier.<patientId>` (the atelier's
+  `settings.penTimes`, applied through `applySettings`).
+- Suites that pin this: `pen-time-settings`, `pen-time-settings-edge`,
+  `pen-time-resolve`, `pen-time-resolve-edge`, `pen-time-instants`,
+  `pen-time-instants-edge`, `pen-time-state-edge`, `pen-time-remind-refresh`,
+  `pen-time-cold-wipe`, `pen-time-cold-reminder`, `logged-firstat`,
+  `pen-time-band-at-asymmetry`, `first-at-mixed-form`, `pen-time-chips`,
+  `pen-time-chips-edge`, `pen-time-chips-twins`, `pen-date-chip-refresh`,
+  `pen-time-chip-clear`, `pen-time-chip-aria`, `pen-time-atelier`,
+  `pen-time-studio-edge`, `pen-time-twins-studio`, `pen-time-remove-stale`,
+  `overview-time-leak`.
+
 ## Stored cards and the sign-in gate
 
 An assigned stored card (a slug with a name) now gates its first tap

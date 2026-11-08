@@ -3,3 +3,6 @@ portal/.data/
 portal/.data-*/
 
 .superpowers/
+.agents/
+.firebase/
+graphify-out/
