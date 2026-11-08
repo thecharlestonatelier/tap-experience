@@ -315,8 +315,14 @@
     border-radius: 999px; padding: 3px 10px; max-width: 130px;
   }
 
-  /* The compact date-and-time modal, created on first chip tap. */
+  /* The compact date-and-time modal, created on first chip tap.
+     The `* { margin: 0 }` reset above also strips the browser's own
+     `margin: auto` from <dialog>, which left it pinned to the top-left.
+     Put the centring back, and cap the height so a short screen can
+     still reach the buttons. */
   .pen-dialog {
+    position: fixed; inset: 0; margin: auto; height: fit-content;
+    max-height: calc(100% - 32px); overflow: auto;
     border: 0; border-radius: 16px; padding: 0; width: min(92vw, 380px);
     background: var(--paper, #F3EBE1); color: var(--espresso);
     box-shadow: 0 22px 70px #0004;
@@ -328,7 +334,7 @@
   .pen-dialog label { flex: 1; display: flex; flex-direction: column; gap: 5px; font-size: 11px; color: var(--muted); }
   .pen-dialog input { font: inherit; font-size: 14px; color: var(--espresso); background: #fff; border: 1px solid var(--line, #E4DCCB); border-radius: 9px; padding: 8px 10px; }
   .pen-dialog .pt-summary { margin: 11px 0 0; font-size: 12px; color: var(--muted); }
-  .pen-dialog .pt-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 15px; }
+  .pen-dialog .pt-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
 
   .logged { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 13px; color: var(--sage); }
   .logged svg { width: 16px; height: 16px; flex: none; }
@@ -1228,8 +1234,8 @@ function ensurePenDialog() {
       </div>
       <p class="pt-summary" id="ptSummary"></p>
       <div class="pt-actions">
-        <button type="submit" class="ghost" value="cancel" style="width:auto">Cancel</button>
-        <button type="submit" class="act" value="save" style="width:auto">Save</button>
+        <button type="submit" class="btn btn-ghost" value="cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" value="save">Save</button>
       </div>
     </form>`;
   document.body.appendChild(d);

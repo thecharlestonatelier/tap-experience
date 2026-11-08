@@ -109,6 +109,8 @@
     color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 7px;
   }
   .pen-dialog {
+    position:fixed; inset:0; margin:auto; height:fit-content;
+    max-height:calc(100% - 32px); overflow:auto;
     border:0; border-radius:16px; padding:0; width:min(92vw,380px);
     background:var(--paper, #F7F1E7); color:var(--ink); box-shadow:0 22px 70px #0004;
   }
@@ -1651,8 +1653,8 @@ function ensureStudioPenDialog() {
       </div>
       <p class="pt-summary" id="ptSummary"></p>
       <div class="pt-actions">
-        <button type="submit" class="ghost" value="cancel" style="width:auto">Cancel</button>
-        <button type="submit" class="act" value="save" style="width:auto">Save</button>
+        <button type="submit" class="ghost" value="cancel">Cancel</button>
+        <button type="submit" class="primary" value="save">Save</button>
       </div>
     </form>`;
   document.body.appendChild(d);
