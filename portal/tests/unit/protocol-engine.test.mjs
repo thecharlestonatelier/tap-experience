@@ -122,3 +122,26 @@ test('the injection steps and the dial lead', () => {
   ]);
   assert.equal(engine.dialLead(pen('glow')), 'Turn your pen to');
 });
+
+test('the first logged dose supplies a pen time after atelier and patient overrides', () => {
+  const glow = pen('glow');
+  const at = '2026-07-15T20:30:00.000Z';
+  const d = new Date(at);
+  const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+  // The server reports firstAt keyed by pen (template id).
+  engine.LOGGED_FIRST_AT = { [glow.id]: at };
+  engine.localStorage.getItem = () => null;
+  assert.equal(engine.firstDoseTime(glow), hhmm);
+  assert.equal(engine.timeFor(glow), hhmm);
+
+  // The patient's own per-pen time wins over the logged observation.
+  engine.localStorage.getItem = key =>
+    key === `tca.pentime.${cfg.patient.id}` ? JSON.stringify({ [glow.id]: '07:15' }) : null;
+  assert.equal(engine.timeFor(glow), '07:15');
+
+  // With no first dose and no overrides, the band default remains.
+  engine.localStorage.getItem = () => null;
+  engine.LOGGED_FIRST_AT = {};
+  assert.equal(engine.timeFor(glow), '20:00');
+});
