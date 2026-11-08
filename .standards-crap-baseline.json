@@ -9,14 +9,6 @@
       "measure": "line",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/scripts/seed.js::card": {
-      "accepted": "2026-11-07",
-      "cc": 3,
-      "coverage": 0.0,
-      "crap": 12.0,
-      "measure": "line",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/server.js::anonymous@424": {
       "accepted": "2026-11-07",
       "cc": 4,
@@ -41,28 +33,12 @@
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     },
-    "portal/server.js::notifyAtelier": {
-      "accepted": "2026-11-07",
-      "cc": 5,
-      "coverage": 40.0,
-      "crap": 10.4,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/server.js::proxyAuthHelper": {
       "accepted": "2026-11-07",
       "cc": 4,
       "coverage": 0.0,
       "crap": 20.0,
       "measure": "line",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/server.js::runReminders": {
-      "accepted": "2026-11-07",
-      "cc": 9,
-      "coverage": 66.7,
-      "crap": 12.0,
-      "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     }
   },

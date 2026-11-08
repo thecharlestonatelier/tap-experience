@@ -20,11 +20,11 @@ characterization pin written before the code moved:
 - `activate.emulator.test.mjs` — the first-tap token path, against the Auth
   emulator (skipped when it is not running).
 
-The suite grew from 0 to **227 tests** (all pass). The Auth and Firestore
+The suite grew from 0 to **235 tests** (all pass). The Auth and Firestore
 pins run under `firebase emulators:exec`, which starts the emulators, runs
 the suite and tears them down — the harness owns their lifecycle, so a human
 never starts one by hand. Branch coverage over the whole tree rose from 0%
-(no runner) to **76%**; the service files from 0%.
+(no runner) to **77%**; the service files from 0%.
 
 ## Mutation audit (Step 4)
 
@@ -89,19 +89,17 @@ dropped them without touching production code:
 
 ## Baseline
 
-The accepted-debt baseline fell from **60 entries to 8**. Fixed functions
-were removed; the split handlers that still exceed 10 are recorded
-individually.
+The accepted-debt baseline fell from **60 entries to 5**. Fixed functions
+were removed; the last few that still exceed 10 are recorded individually.
 
 Because the test command runs under `firebase emulators:exec`, the Auth and
-Firestore paths are covered in the same run: the four store selectors, the
-four Firestore backings and the activate transaction all fell under 10 and
-left the baseline. A later pass pinned `zip`, `configured`, the overview map
-and `linkFromToken`'s no-name token, and split `sanitizeVisit`/`sanitizeSettings`
-below CC 10. The remaining 8 need a seam or a fixture: the network auth proxy
-(`proxyAuthHelper` and its two callbacks), a failing store (`handleHealth`),
-a stubbed push service (`notifyAtelier`, `runReminders`), image files
-(`wallet.artwork`), and an export for `scripts/seed.js::card`.
+Firestore paths are covered in the same run. Later passes pinned `zip`,
+`configured`, the overview map, the no-name link, `sanitizeVisit`,
+`sanitizeSettings`, the seed builder, and the push delivery loops
+(`runReminders`, `notifyAtelier`) against a stubbed push service. The
+remaining 5 are the network auth proxy (`proxyAuthHelper` and its two
+callbacks), a failing store (`handleHealth`), and image files
+(`wallet.artwork`).
 
 ## Duplication
 
@@ -127,15 +125,14 @@ emulator host env and skip cleanly when it is absent.
 
 ## What is left (follow-up)
 
-The unit suite now covers the Auth and Firestore branches, so what remains
-needs a seam or a fixture:
+The unit suite now covers the Auth, Firestore and push-delivery branches, so
+what remains needs one of two things:
 
-- **Network HTTPS stub** — `proxyAuthHelper` and its two callbacks.
-- **Stubbed push service** — `notifyAtelier`, `runReminders` gone/ok.
-- **Failing store** — `handleHealth`'s 503.
-- **Image files** — `wallet.artwork` (and the `buildPass` path).
-- **An export** — `scripts/seed.js::card` is private in a script that runs
-  on import.
+- **Network HTTPS stub** — `proxyAuthHelper` and its two callbacks proxy to
+  the Firebase auth domain; the host is hardcoded.
+- **Failing store** — `handleHealth`'s 503 needs `store.ping()` to reject.
+- **Image files** — `wallet.artwork` (and the `buildPass` path) read
+  icon/logo PNGs.
 
 ## Clean-code notes
 
@@ -162,7 +159,7 @@ store shaping and the router handlers.
   with the tests.
 - `.standards.json` (adapter `node`, `test_command`, `include`/`exclude`,
   `mode: gate`, `new_function_max: 10`, `pin_floor: 70`).
-- `.standards-crap-baseline.json` — 8 accepted entries.
+- `.standards-crap-baseline.json` — 5 accepted entries.
 - `@stryker-mutator/core` (mutation) as a `portal/` devDependency;
   `mutation.test_command` in `.standards.json`; evidence-free equivalent
   mutants in `.standards-mutation-waivers`.

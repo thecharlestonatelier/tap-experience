@@ -62,6 +62,10 @@ const all = {
   'fresh.t':    card('fresh.t', 'Fresh', { pens: [{ template: 'nad' }], settings: withStart() })
 };
 
-fs.mkdirSync(path.dirname(target), { recursive: true });
-fs.writeFileSync(target, JSON.stringify(all, null, 2) + '\n');
-console.log(`seeded ${Object.keys(all).length} cards → ${target}`);
+if (require.main === module) {
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, JSON.stringify(all, null, 2) + '\n');
+  console.log(`seeded ${Object.keys(all).length} cards → ${target}`);
+}
+
+module.exports = { card };
