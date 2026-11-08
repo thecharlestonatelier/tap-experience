@@ -33,17 +33,22 @@ function addDaysIso(isoDate, days) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/* The optional fields a visit may carry, and only those. */
+function visitDetails(v) {
+  const out = {};
+  if (v.area) out.area = String(v.area).slice(0, 60);
+  if (v.note) out.note = String(v.note).slice(0, 200);
+  if (v.units != null && Number.isFinite(Number(v.units))) out.units = Number(v.units);
+  return out;
+}
+
 /* Only what a visit is allowed to carry. The tag is public and a POST is
    a POST, so anything beyond these is dropped rather than stored. */
 function sanitizeVisit(v) {
   if (!v || typeof v.service !== 'string') return null;
   if (!serviceById(v.service)) return null;          // not on the menu
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v.date || '')) return null;
-  const out = { service: v.service, date: v.date };
-  if (v.area) out.area = String(v.area).slice(0, 60);
-  if (v.note) out.note = String(v.note).slice(0, 200);
-  if (v.units != null && Number.isFinite(Number(v.units))) out.units = Number(v.units);
-  return out;
+  return Object.assign({ service: v.service, date: v.date }, visitDetails(v));
 }
 
 function sanitizeVisits(list) {

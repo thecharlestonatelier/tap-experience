@@ -1,14 +1,6 @@
 {
   "created": "2026-11-07",
   "functions": {
-    "portal/lib/services.js::sanitizeVisit": {
-      "accepted": "2026-11-07",
-      "cc": 10,
-      "coverage": 93.8,
-      "crap": 10.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
     "portal/lib/wallet.js::artwork": {
       "accepted": "2026-11-07",
       "cc": 4,
@@ -70,14 +62,6 @@
       "cc": 9,
       "coverage": 66.7,
       "crap": 12.0,
-      "measure": "branch",
-      "reason": "legacy debt accepted at cleanup"
-    },
-    "portal/store/index.js::sanitizeSettings": {
-      "accepted": "2026-11-07",
-      "cc": 10,
-      "coverage": 93.8,
-      "crap": 10.0,
       "measure": "branch",
       "reason": "legacy debt accepted at cleanup"
     }

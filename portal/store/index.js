@@ -39,6 +39,11 @@ const TIME_BAND = /^\d{2}:\d{2}$/;
 const DROPPED_ID = /^[A-Za-z0-9#._-]{1,48}$/;
 const CARD_STATUSES = ['active', 'blank', 'retired'];
 
+/* A valid ISO day, or empty. */
+function validDateOrEmpty(value) {
+  return ISO_DATE.test(value || '') ? value : '';
+}
+
 /* The per-pen hour she takes it: "morning" -> "08:00". Keys are capped and
    only a valid HH:MM survives. Shared by the card's settings and its state. */
 function parseTimeBands(input) {
@@ -101,7 +106,7 @@ function sanitizeSettings(input, existing) {
   const times = parseTimeBands(input);
   const baseRev = Number(prev.rev) || 0;
   const out = {
-    startDate: ISO_DATE.test(input.startDate || '') ? input.startDate : '',
+    startDate: validDateOrEmpty(input.startDate),
     times,
     rev: baseRev
   };
@@ -128,7 +133,7 @@ function sanitizeState(input) {
   const str = (v, n) => String(v == null ? '' : v).slice(0, n);
 
   return {
-    startDate: ISO_DATE.test(input.startDate || '') ? input.startDate : '',
+    startDate: validDateOrEmpty(input.startDate),
     times: parseTimeBands(input),
     tz: str(input.tz, 60),
     rev: Number(input.rev) || 0,
