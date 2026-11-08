@@ -133,7 +133,7 @@ gcloud run deploy "$SERVICE" \
   --source . \
   --region "$REGION" \
   --allow-unauthenticated \
-  --set-env-vars CARD_STORE=firestore,NODE_ENV=production,CARD_COLLECTION=cards-test,SUB_COLLECTION=reminders-test,FEED_COLLECTION=feeds-test,DOSE_COLLECTION=administrations-test \
+  --set-env-vars CARD_STORE=firestore,NODE_ENV=production,CARD_COLLECTION=cards-test,SUB_COLLECTION=reminders-test,FEED_COLLECTION=feeds-test,DOSE_COLLECTION=administrations-test,TOMBSTONE_COLLECTION=tombstones-test \
   --set-secrets STUDIO_PASSPHRASE=studio-passphrase-test:latest,VAPID_PUBLIC_KEY=vapid-public-key-test:latest,VAPID_PRIVATE_KEY=vapid-private-key-test:latest,PUSH_RUN_SECRET=push-run-secret-test:latest
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"

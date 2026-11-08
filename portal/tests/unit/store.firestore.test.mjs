@@ -85,13 +85,20 @@ if (!reachable) {
     await store.remove('act.one');
   });
 
-  test('firestore doses put and read back by slug', async () => {
-    const dose = { slug: 'd.one', template: 'ghk', day: '2026-03-01', at: '2026-03-01T20:00:00Z', units: 10 };
-    const first = await doses.put(dose);
-    assert.equal(first.duplicate, false);
-    assert.equal((await doses.put(dose)).duplicate, true);
+  test('firestore doses put and read back by slug, newest first', async () => {
+    const firstDose = { slug: 'd.one', template: 'ghk', day: '2026-03-01', at: '2026-03-01T20:00:00Z', units: 10 };
+    const secondDose = { slug: 'd.one', template: 'ghk', day: '2026-03-02', at: '2026-03-02T20:00:00Z', units: 10 };
+    assert.equal((await doses.put(firstDose)).duplicate, false);
+    assert.equal((await doses.put(firstDose)).duplicate, true);
+    assert.equal((await doses.put(secondDose)).duplicate, false);
+
     const rows = await doses.forSlug('d.one');
-    assert.equal(rows.length, 1);
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].day, '2026-03-02');
+
+    const limited = await doses.forSlug('d.one', 1);
+    assert.equal(limited.length, 1);
+    assert.equal(limited[0].day, '2026-03-02');
   });
 
   test('firestore feeds put, get and remove', async () => {

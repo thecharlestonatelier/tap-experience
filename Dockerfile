@@ -18,6 +18,7 @@ COPY portal/package.json portal/package-lock.json* ./
 RUN npm install --omit=dev --no-audit --no-fund
 
 COPY portal/server.js ./server.js
+COPY portal/services.json ./services.json
 COPY portal/lib ./lib
 COPY portal/store ./store
 COPY portal/studio ./studio
