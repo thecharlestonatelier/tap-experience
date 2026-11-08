@@ -20,7 +20,7 @@ characterization pin written before the code moved:
 - `activate.emulator.test.mjs` — the first-tap token path, against the Auth
   emulator (skipped when it is not running).
 
-The suite grew from 0 to **235 tests** (all pass). The Auth and Firestore
+The suite grew from 0 to **248 tests** (all pass). The Auth and Firestore
 pins run under `firebase emulators:exec`, which starts the emulators, runs
 the suite and tears them down — the harness owns their lifecycle, so a human
 never starts one by hand. Branch coverage over the whole tree rose from 0%
@@ -28,24 +28,34 @@ never starts one by hand. Branch coverage over the whole tree rose from 0%
 
 ## Mutation audit (Step 4)
 
-Stryker was added and run over two files to prove the pins detect a change
-in meaning:
+Stryker was added to prove the pins detect a change in meaning. Early runs:
 
 | File | score | result |
 |---|---|---|
 | `lib/slug.js` | **97.6%** | 41 killed, 1 equivalent survivor waived |
 | `lib/supply.js` | **86.0%** | 166 killed, 27 survived |
 
-The slug audit found the length guard in `isValidSlug` was redundant with
-the anchored `SHAPE` regex (proved by equivalent mutants), so it was
-removed and the 2/40 boundaries pinned. The supply audit found the "order
-one" (`low`) bucket was untested; it is now pinned. The remaining supply
-survivors are concentrated in the unexported `perMlOf`, `resolveDoses` and
-`templates` helpers, reached only through the real template catalogue —
-closing them needs synthetic-template fixtures or an exported seam, and is
-the next mutation follow-up. The one slug survivor (`randomSuffix`'s
-`||` fallback) is waived in `.standards-mutation-waivers`: `globalThis.crypto`
-exists on every supported Node, so the mutant is equivalent.
+A broader audit over `slug`, `services`, `doses` and `subs` scored **67.4%**
+(238 killed, 115 survived). Analysing the survivors showed two classes:
+
+- **Offline artefact** — the store selectors and the file/firestore methods
+  (`openDoses`, `openSubs`, `put`, `forSlug`, `markSent`…) score low because
+  the audit ran without live emulators, so those branches skip. They are
+  covered in the normal emulator run.
+- **Real assertion gaps** — ordering (`rank`), date edges (`dueResult`,
+  `doseDay`) and the due-list (`latestDue`, `cleanDue`).
+
+Strengthening the ordering/date/due-list pins lifted it to **74.8%** (264
+killed, 89 survived). The remaining survivors are the offline store paths
+plus `rank` (15), `dueResult` (5), `doseDay` (4) and `latestDue` (4). An
+emulator-live mutation run (which would score the store paths) crashed
+inside Stryker with no report and is a follow-up.
+
+The slug audit also found the length guard in `isValidSlug` was redundant
+with the anchored `SHAPE` regex, so it was removed and the 2/40 boundaries
+pinned. The one slug survivor (`randomSuffix`'s `||` fallback) is waived in
+`.standards-mutation-waivers`: `globalThis.crypto` exists on every supported
+Node, so the mutant is equivalent.
 
 ## Behaviour equivalence (empirical)
 
