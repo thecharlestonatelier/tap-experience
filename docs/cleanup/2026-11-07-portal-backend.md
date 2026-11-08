@@ -47,6 +47,28 @@ the next mutation follow-up. The one slug survivor (`randomSuffix`'s
 `||` fallback) is waived in `.standards-mutation-waivers`: `globalThis.crypto`
 exists on every supported Node, so the mutant is equivalent.
 
+## Behaviour equivalence (empirical)
+
+Before any clean-architecture work, equivalence was checked against the
+starting commit `27049e6`:
+
+- Materialized the original tree (`git archive 27049e6`), dropped this
+  branch's `tests/unit` into it and ran it: **233 / 235 pass**. The only two
+  failures are the `seed.card` tests — the original `seed.js` had no export
+  (`seed.card is not a function`); adding one is testability, not behaviour.
+- The same suite passes **235 / 235** on this branch.
+- Differential fuzz — the same inputs through the original and current
+  modules, comparing outputs:
+  - pure modules (`isValidSlug`, `normalizeSlug`, `baseSlug`, `penLife`,
+    `addDaysIso`): **17,000 comparisons, 0 mismatches**.
+  - store shaping (`sanitize`, `sanitizePen`, `publicView`, `sanitizeState`):
+    **12,000 comparisons, 0 mismatches**.
+
+This bounds equivalence to the suite's coverage (77% branch) and the fuzz
+input space. The five baseline functions (the auth proxy, `handleHealth`,
+`wallet.artwork`) are untested in both versions and are therefore not
+proven equivalent.
+
 ## Refactored (CRAP before → after)
 
 | Function | file | before | after |
