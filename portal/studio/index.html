@@ -949,7 +949,7 @@ async function refresh() {
       if (!rec) return;
       const a = rec.activatedBy;
       detail.firstElementChild.innerHTML = a
-        ? `Activated by <b>${a.name}</b> · <b>${a.provider}</b> · <b>${a.uid}</b> · ${a.at}` +
+        ? `Activated by <b>${esc(a.name)}</b> · <b>${esc(a.provider)}</b> · <b>${esc(a.uid)}</b> · ${esc(a.at)}` +
           ` <button type="button" class="ghost sm" data-unlink="${slug}">Unlink</button>`
         : 'Not activated yet.';
       detail.hidden = false;
@@ -1103,19 +1103,19 @@ function renderSeen() {
               until you send the card's day to it — the button under Dose times.</small>` : '')]);
 
   const todayRows = (s.today || []).map(d => d.rest
-    ? `<div class="rest">${d.pen} — rest day</div>`
-    : `<div><b>${d.pen}</b> ${d.units} units · ${d.mg} mg · ${d.phase || '—'}
+    ? `<div class="rest">${esc(d.pen)} — rest day</div>`
+    : `<div><b>${esc(d.pen)}</b> ${esc(d.units)} units · ${esc(d.mg)} mg · ${esc(d.phase || '—')}
          ${d.at ? `· ${prettyTime(d.at)}` : ''}</div>`);
   rows.push(['Today', todayRows.length ? todayRows.join('') : '<span class="off">Nothing scheduled</span>']);
 
   const times = Object.keys(s.times || {});
   rows.push(['Her times', times.length
-    ? times.map(b => `${b} ${prettyTime(s.times[b])}`).join(' · ')
+    ? times.map(b => `${esc(b)} ${prettyTime(s.times[b])}`).join(' · ')
     : '<span class="off">—</span>']);
 
   const supply = (s.supply || []).map(x => {
     const t = (TEMPLATES.templates || []).find(y => y.id === x.template);
-    return `${t ? t.name : x.template}: ${x.dosesLeft} left${x.lastDose ? `, last ${prettyDate(x.lastDose)}` : ''}`;
+    return `${esc(t ? t.name : x.template)}: ${esc(x.dosesLeft)} left${x.lastDose ? `, last ${prettyDate(x.lastDose)}` : ''}`;
   });
   if (supply.length) rows.push(['Pen supply', supply.join('<br>')]);
 
@@ -1123,7 +1123,7 @@ function renderSeen() {
     ? '<span style="color:var(--ok)">On</span>'
     : '<span class="off">Off</span>'] );
   rows.push(['Phone', `${s.homeScreen ? 'Added to home screen' : 'Browser tab'}${
-    s.tz ? ` · ${s.tz}` : ''}<small>Last reported ${since(s.at)}</small>`]);
+    s.tz ? ` · ${esc(s.tz)}` : ''}<small>Last reported ${since(s.at)}</small>`]);
 
   // Filled in once the dose log comes back; it is a separate collection.
   rows.push(['Logged', '<span class="off" id="seenDoses">…</span>']);
@@ -1148,8 +1148,8 @@ async function renderDoses(slug) {
   const name = (TEMPLATES.templates.find(t => t.id === last.template) || {}).name || last.template;
   el().className = 'v';
   el().innerHTML = `${recent} in the last 7 days · ${rows.length} in all` +
-    `<small>Last: ${name}, ${last.units} units, ${prettyDate(last.day || String(last.at).slice(0,10))}` +
-    `${last.lot ? ` · lot ${last.lot}` : ''}</small>`;
+    `<small>Last: ${esc(name)}, ${esc(last.units)} units, ${prettyDate(last.day || String(last.at).slice(0,10))}` +
+    `${last.lot ? ` · lot ${esc(last.lot)}` : ''}</small>`;
 }
 
 function renderTimes() {
@@ -1443,6 +1443,7 @@ function supplyCells(s) {
 function esc(v) {
   return String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
@@ -1456,8 +1457,8 @@ function showingNow(rec) {
   const s = rec.state;
   if (s && s.at && Date.now() - new Date(s.at) < 36 * 3600000 && (s.today || []).length) {
     const live = s.today.map(d => d.rest
-      ? `${d.pen}: rest day`
-      : `${d.pen}: ${d.units}u`).join(' · ');
+      ? `${esc(d.pen)}: rest day`
+      : `${esc(d.pen)}: ${esc(d.units)}u`).join(' · ');
     return { text: live, flag: '', live: true };
   }
 
@@ -1473,7 +1474,7 @@ function showingNow(rec) {
   const bits = [], done = [];
   for (const pen of pens) {
     const t = (TEMPLATES.templates || []).find(x => x.id === pen.template);
-    if (!t) { bits.push(`unknown pen "${pen.template}"`); continue; }
+    if (!t) { bits.push(`unknown pen "${esc(pen.template)}"`); continue; }
     if (t.setup) { bits.push(`${t.name}: set up on her phone`); continue; }
     const phases = pen.phases || t.phases || [];
     const L = penLife(t, phases);
@@ -1488,7 +1489,7 @@ function showingNow(rec) {
     if (!ph) { done.push(t.name); continue; }
     bits.push(`${t.name}: ${onDay ? ph.units + 'u' : 'rest day'}`);
   }
-  if (done.length) bits.push(`<span class="spent">${done.join(', ')} spent</span>`);
+  if (done.length) bits.push(`<span class="spent">${done.map(esc).join(', ')} spent</span>`);
   return { text: bits.join(' · ') || '—', flag: done.length ? 'course finished' : '' };
 }
 
@@ -1523,7 +1524,7 @@ function addedByHer() {
     <div class="pen-head"><span class="pen-name">Added on her own card</span></div>
     <p class="setup-note">${list.map(a => {
       const t = TEMPLATES.templates.find(x => x.id === a.template) || {};
-      return `${t.name || a.template}${a.startDate ? ` — since ${a.startDate}` : ''}`;
+      return `${esc(t.name || a.template)}${a.startDate ? ` — since ${esc(a.startDate)}` : ''}`;
     }).join('<br>')}</p>
     <p class="setup-note" style="margin-top:8px">She chose these from the library
     and can remove them herself. They are not part of what you prescribed.</p>
