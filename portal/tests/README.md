@@ -3,6 +3,27 @@
 The suites fall into two groups: Node suites that talk HTTP only, and
 Playwright suites that open the patient pages in a real browser.
 
+## Probes are test candidates
+
+When a probe is written to identify or verify behaviour — a live check, a
+contract script, a sandbox reproduction — decide whether it can run
+deterministically. If it can, promote it into the regular suite instead of
+leaving it as a one-off. The `/api/logged` probe is now
+`tests/unit/logged-firstat.test.mjs`, so its `{ days, firstAt }` contract
+runs in `npm test`.
+
+## Merge gate
+
+`npm test` is the regular suite. It now pins the `/api/logged` contract
+(`days` + `firstAt`, the earliest instant per pen, no dose detail) and the
+front-end first-dose time fallback, so a merge that drops either half fails
+here.
+
+When a merge touches `patients/jessica/assets/protocol.js`, `portal/server.js`,
+or `portal/store/`, run the union of the branches' suites before resolving:
+`npm test`, `npm run test:browser`, and the per-pen suites listed below. A
+branch that passes its own suite is not enough; the merge must pass both.
+
 ## Per-pen time of day (SPEC-003)
 
 - `/api/logged/<slug>` returns `{ days, firstAt }` — `firstAt` maps each
@@ -14,7 +35,7 @@ Playwright suites that open the patient pages in a real browser.
 - Suites that pin this: `pen-time-settings`, `pen-time-settings-edge`,
   `pen-time-resolve`, `pen-time-resolve-edge`, `pen-time-instants`,
   `pen-time-instants-edge`, `pen-time-state-edge`, `pen-time-remind-refresh`,
-  `pen-time-cold-wipe`, `pen-time-cold-reminder`, `logged-firstat`,
+  `pen-time-cold-wipe`, `pen-time-cold-reminder`,
   `pen-time-band-at-asymmetry`, `first-at-mixed-form`, `pen-time-chips`,
   `pen-time-chips-edge`, `pen-time-chips-twins`, `pen-date-chip-refresh`,
   `pen-time-chip-clear`, `pen-time-chip-aria`, `pen-time-atelier`,
