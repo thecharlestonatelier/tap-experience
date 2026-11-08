@@ -36,6 +36,7 @@ const sandbox = {
   location: { search: '', hash: '', pathname: '/', origin: 'http://x', href: 'http://x', host: 'x' },
   navigator: { userAgent: 'node', serviceWorker: { register: async () => ({}), getRegistration: async () => null } },
   fetch: async () => ({ ok: true, json: async () => ({}) }),
+  net: { request: async () => ({ ok: true, json: async () => ({}) }) },
   atob: s => Buffer.from(s, 'base64').toString('binary'),
   Intl, console, setTimeout, clearTimeout, Date: FakeDate,
 };

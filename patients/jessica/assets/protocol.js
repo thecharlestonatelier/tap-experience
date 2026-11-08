@@ -761,7 +761,7 @@ function noteTap(slug) {
   const key = `tca.tapped.${slug}`;
   try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch {}
   try {
-    fetch(`/api/tap/${encodeURIComponent(slug)}`, { method: 'POST', keepalive: true })
+    net.request(`/api/tap/${encodeURIComponent(slug)}`, { method: 'POST', keepalive: true })
       .catch(() => {});
   } catch {}
 }
@@ -877,7 +877,7 @@ function reportState(force) {
     try { reminders = !!(await currentPushSub()); } catch {}
     const body = Object.assign(stateReport(), { reminders });
     try {
-      fetch(`/api/state/${encodeURIComponent(slug)}`, {
+      net.request(`/api/state/${encodeURIComponent(slug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -919,7 +919,7 @@ function saveAdded(list) {
   const slug = CARD_SLUG || readSlug();
   if (!slug) return;                        // a fragment card has no record
   try {
-    fetch(`/api/added/${encodeURIComponent(slug)}`, {
+    net.request(`/api/added/${encodeURIComponent(slug)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ added: list }),
@@ -946,7 +946,7 @@ function saveDropped(list) {
   const slug = CARD_SLUG || readSlug();
   if (!slug) return Promise.resolve();
   try {
-    return fetch(`/api/added/${encodeURIComponent(slug)}`, {
+    return net.request(`/api/added/${encodeURIComponent(slug)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dropped: list }),
@@ -1225,7 +1225,7 @@ function mgForUnits(t, units) {
 async function loadTemplates() {
   if (!TEMPLATES) {
     TEMPLATES = resolveDoses(
-      await (await fetch('templates.json', { cache: 'no-store' })).json());
+      await (await net.request('templates.json', { cache: 'no-store' })).json());
   }
   return TEMPLATES;
 }
@@ -1288,7 +1288,7 @@ async function loadProtocol() {
     // Cards written before the service existed carry their own protocol.
     CFG = decodeCard(card, templates, pinned);
   } else if (CARD_SLUG) {
-    const res = await fetch(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
+    const res = await net.request(`/api/card/${encodeURIComponent(CARD_SLUG)}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`card ${CARD_SLUG} not found`);
     const rec = await res.json();
     CFG = hydrateRecord(rec, templates);
@@ -1324,7 +1324,7 @@ async function loadProtocol() {
   } else if (legacy) {
     // The one card written before any of this existed. It is reached only
     // through its own marked address, never by landing on the bare root.
-    CFG = await (await fetch('protocol.json', { cache: 'no-store' })).json();
+    CFG = await (await net.request('protocol.json', { cache: 'no-store' })).json();
   } else {
     // No card in the address at all. Refusing here is the whole point: a
     // portal that guesses shows one patient another patient's doses.
@@ -1381,7 +1381,7 @@ async function recheckCard() {
   if (!slug || _recheckBusy) return false;
   _recheckBusy = true;
   try {
-    const res = await fetch(`/api/card/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    const res = await net.request(`/api/card/${encodeURIComponent(slug)}`, { cache: 'no-store' });
     if (!res.ok) return false;
     const rec = await res.json();
 
@@ -1770,7 +1770,7 @@ async function loadLogged(only) {
   const slug = only || (typeof CARD_SLUG !== 'undefined' && CARD_SLUG) || readSlug();
   if (!slug) return LOGGED;                       // a card with no slug logs nothing
   try {
-    const res = await fetch(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+    const res = await net.request(`/api/logged/${encodeURIComponent(slug)}`, { cache: 'no-store' });
     if (res.ok) LOGGED = (await res.json()).days || {};
   } catch { /* a page that cannot reach the service is still a page */ }
   // A pen's start day can be the day of its first dose, and that is only
@@ -1831,7 +1831,7 @@ function publishFeed() {
     let text;
     try { text = buildICS().text; } catch { return; }
     try {
-      fetch(`/api/ics/${encodeURIComponent(slug)}`, {
+      net.request(`/api/ics/${encodeURIComponent(slug)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'text/calendar' },
         body: text,
@@ -2120,7 +2120,7 @@ async function enableReminders() {
   const slug = CARD_SLUG || readSlug();
   if (!slug) return { ok: false, reason: 'no_card' };
 
-  const meta = await fetch('/api/push/key').then(r => r.json()).catch(() => null);
+  const meta = await net.request('/api/push/key').then(r => r.json()).catch(() => null);
   if (!meta || !meta.available || !meta.key) return { ok: false, reason: 'not_configured' };
 
   // Must be called from a user gesture, which is why this hangs off the tap.
@@ -2136,7 +2136,7 @@ async function enableReminders() {
       applicationServerKey: urlBase64ToUint8Array(meta.key)
     });
 
-  const res = await fetch('/api/push/subscribe', {
+  const res = await net.request('/api/push/subscribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -2155,7 +2155,7 @@ async function disableReminders() {
   if (!sub) return { ok: true };
   const endpoint = pushEndpointOf(sub);
   await sub.unsubscribe().catch(() => {});
-  await fetch('/api/push/unsubscribe', {
+  await net.request('/api/push/unsubscribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ endpoint })
@@ -2172,7 +2172,7 @@ async function refreshReminders() {
     if (!sub) return;
     const slug = CARD_SLUG || readSlug();
     if (!slug) return;
-    await fetch('/api/push/subscribe', {
+    await net.request('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
