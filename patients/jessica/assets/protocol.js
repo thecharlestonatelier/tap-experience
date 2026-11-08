@@ -490,7 +490,7 @@ function smsHref(body) {
 
 function refillHref(pen) {
   const c = (CFG && CFG.protocol && CFG.protocol.concierge) || {};
-  const template = c.refillOpener || 'Hi Dr. Phelps-Polirer — I need a refill of my {pen}.';
+  const template = c.refillOpener || 'Hi — I need a refill of my {pen}.';
   return smsHref(template.replace('{pen}', pen.name));
 }
 

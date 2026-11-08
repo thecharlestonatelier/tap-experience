@@ -18,6 +18,7 @@
    ================================================================== */
 
 const { configured, generateKeys, publicKey, encrypt, vapidHeaders } = require('./push-crypto');
+const { allowedPushEndpoint } = require('./push-endpoint');
 
 /* ---------- sending ----------
    Resolves to { ok, status, gone }. `gone` means the phone threw the
@@ -29,12 +30,16 @@ async function sendPush(sub, { title, body, url, tag } = {}) {
   if (!sub || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
     throw new Error('bad_subscription');
   }
+  if (!allowedPushEndpoint(sub.endpoint)) throw new Error('bad_endpoint');
 
   const payload = JSON.stringify({ title, body, url, tag });
   const ciphertext = encrypt(payload, sub.keys.p256dh, sub.keys.auth);
 
   const res = await fetch(sub.endpoint, {
     method: 'POST',
+    // A push endpoint never redirects; following one would let an allowed
+    // origin hand the request to an arbitrary host.
+    redirect: 'error',
     headers: Object.assign({
       'Content-Encoding': 'aes128gcm',
       'Content-Type': 'application/octet-stream',
