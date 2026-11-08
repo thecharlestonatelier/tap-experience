@@ -1,8 +1,8 @@
 /* Pin handleActivate's token path against the Firebase Auth emulator.
-   Skipped when the emulator is not reachable, so the default unit command
-   stays deterministic. Run with the emulator up:
-     firebase emulators:start --only auth --project atelier-tap
-     node --test tests/unit/activate.emulator.test.mjs */
+   `npm test` runs this under `firebase emulators:exec`, which starts the
+   emulators and tears them down, so the harness owns their lifecycle here.
+   Run directly via `node --test`, it reads FIREBASE_AUTH_EMULATOR_HOST and
+   skips if the emulator is not reachable. */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';

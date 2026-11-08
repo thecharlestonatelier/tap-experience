@@ -11,7 +11,7 @@
     "start": "node server.js",
     "dev": "CARD_STORE=file node server.js",
     "seed": "node scripts/seed.js",
-    "test": "node --test tests/unit/"
+    "test": "firebase emulators:exec --only auth,firestore --project atelier-tap --config ../firebase.json \"node --test tests/unit/\""
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.10.0",

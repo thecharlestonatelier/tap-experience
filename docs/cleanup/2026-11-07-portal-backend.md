@@ -20,10 +20,11 @@ characterization pin written before the code moved:
 - `activate.emulator.test.mjs` — the first-tap token path, against the Auth
   emulator (skipped when it is not running).
 
-The suite grew from 0 to **208 tests** (206 pass; 2 emulator-gated suites —
-Auth and Firestore — that run only when those emulators are up). Branch
-coverage over the whole tree rose from 0% (no runner) to **73%**; the
-service files from 0%.
+The suite grew from 0 to **219 tests** (all pass). The Auth and Firestore
+pins run under `firebase emulators:exec`, which starts the emulators, runs
+the suite and tears them down — the harness owns their lifecycle, so a human
+never starts one by hand. Branch coverage over the whole tree rose from 0%
+(no runner) to **75%**; the service files from 0%.
 
 ## Mutation audit (Step 4)
 
@@ -88,20 +89,19 @@ dropped them without touching production code:
 
 ## Baseline
 
-The accepted-debt baseline fell from **60 entries to 23**. Fixed functions
+The accepted-debt baseline fell from **60 entries to 14**. Fixed functions
 were removed; the split handlers that still exceed 10 are recorded
 individually.
 
-The remaining entries are all gated on infrastructure the deterministic
-unit run does not have:
-
-- **Auth emulator only** — `verifyActivator`, `linkFromToken`,
-  `activateResult`, and the file store's `activate`.
-- **Firestore / network / binary** — `openStore`/`openDoses`/`openFeeds`/
-  `openSubs`, `adminAuth`, `proxyAuthHelper`, `artwork`, `zip`,
-  `seed.js::card`, `wallet.configured`.
-- **Borderline (CC 9-10, coverage-capped)** — `notifyAtelier`, `runReminders`,
-  `handleHealth`, `sanitizeVisit`, `sanitizeSettings`.
+Because the test command runs under `firebase emulators:exec`, the Auth and
+Firestore paths are covered in the same run: the four store selectors, the
+four Firestore backings and the activate transaction all fell under 10 and
+left the baseline. The remaining 14 need fixtures the unit suite does not
+carry: image/certificate files (`wallet.artwork`, `zip`, `configured`), the
+network auth proxy (`proxyAuthHelper`), a failing store or stubbed fetch
+(`handleHealth` 503, `notifyAtelier`/`runReminders` gone/ok), the
+token-falsy branches (`linkFromToken`), and two borderline CC-10 functions
+(`sanitizeVisit`, `sanitizeSettings`).
 
 ## Duplication
 
@@ -112,35 +112,31 @@ stores are thin adapters.
 
 ## Running the emulator pins
 
-Two suites pin behaviour that needs an emulator; both auto-skip when their
-emulator is unreachable, so `npm test` stays deterministic.
-
-**Auth** — `tests/unit/activate.emulator.test.mjs` pins the first-tap token
-path: missing token 400, nonsense token 400, unknown card 404, first link
-`linked`, same account `verified`, different account 409.
-
-**Firestore** — `tests/unit/store.firestore.test.mjs` pins the card, dose,
-feed and subscription stores and the four selectors' cloud branch, including
-the activate transaction.
+The Auth and Firestore pins are part of the normal suite. The harness and
+`npm test` run:
 
 ```sh
-firebase emulators:start --only auth,firestore --project atelier-tap
-cd portal && node --test tests/unit/
+firebase emulators:exec --only auth,firestore --project atelier-tap \
+  --config ../firebase.json "node --test tests/unit/"
 ```
+
+`emulators:exec` starts both emulators, runs the suite, and shuts them down
+whether it passes or fails — so no one starts one by hand. Running
+`node --test tests/unit/` directly still works: those suites read their
+emulator host env and skip cleanly when it is absent.
 
 ## What is left (follow-up)
 
-The deterministic unit suite has reached its floor; what remains needs
-infrastructure or is borderline:
+The unit suite now covers the Auth and Firestore branches, so what remains
+needs other fixtures:
 
-- **Firestore emulator** — `store/index.js`'s transaction callback and the
-  store's `activate` on Firestore, plus the `open*` selectors' cloud branch.
-- **A failing-store or stubbed-fetch seam** — `handleHealth`'s 503 and
-  `notifyAtelier`/`runReminders`' gone/ok branches.
 - **Image / certificate fixtures** — `wallet.artwork`, `zip`,
   `wallet.configured`.
-- **Borderline CC 9-10** — `sanitizeVisit`, `sanitizeSettings`,
-  `notifyAtelier`; at or within a point of the threshold.
+- **Network / failure seams** — `proxyAuthHelper`, `handleHealth`'s 503,
+  `notifyAtelier`/`runReminders` gone/ok.
+- **Token-falsy branches** — `linkFromToken` (an emulator token always has
+  uid/name/provider).
+- **Borderline CC 9-10** — `sanitizeVisit`, `sanitizeSettings`.
 - Machine-generated `scripts/seed.js::card` (a seed fixture, not service
   code).
 
@@ -164,11 +160,12 @@ store shaping and the router handlers.
 
 ## Tooling
 
-- `c8` (branch coverage) as a `portal/` devDependency; `test` script =
-  `node --test tests/unit/`.
+- `c8` (branch coverage) as a `portal/` devDependency; `test` script runs
+  the suite under `firebase emulators:exec` so the emulators start and stop
+  with the tests.
 - `.standards.json` (adapter `node`, `test_command`, `include`/`exclude`,
   `mode: gate`, `new_function_max: 10`, `pin_floor: 70`).
-- `.standards-crap-baseline.json` — 23 accepted entries.
+- `.standards-crap-baseline.json` — 14 accepted entries.
 - `@stryker-mutator/core` (mutation) as a `portal/` devDependency;
   `mutation.test_command` in `.standards.json`; evidence-free equivalent
   mutants in `.standards-mutation-waivers`.

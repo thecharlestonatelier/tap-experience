@@ -1,9 +1,9 @@
 {
   "adapter": "node",
-  "test_command": "cd portal && node --test tests/unit/",
+  "test_command": "cd portal && firebase emulators:exec --only auth,firestore --project atelier-tap --config ../firebase.json \"node --test tests/unit/\"",
   "node_coverage": "portal/node_modules/.bin/c8",
   "mutation": {
-    "test_command": "cd portal && node --test tests/unit/"
+    "test_command": "cd portal && firebase emulators:exec --only auth,firestore --project atelier-tap --config ../firebase.json \"node --test tests/unit/\""
   },
   "mode": "gate",
   "new_function_max": 10,

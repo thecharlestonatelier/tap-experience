@@ -1,8 +1,8 @@
-/* Pin the Firestore backings against the Firestore emulator. Skipped when
-   the emulator is not reachable, so the default unit command stays
-   deterministic. Run with:
-     firebase emulators:start --only firestore --project atelier-tap
-     node --test tests/unit/store.firestore.test.mjs */
+/* Pin the Firestore backings against the Firestore emulator. `npm test`
+   runs this under `firebase emulators:exec`, which starts the emulators and
+   tears them down, so the harness owns their lifecycle here. Run directly
+   via `node --test`, it reads FIRESTORE_EMULATOR_HOST and skips if the
+   emulator is not reachable. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
