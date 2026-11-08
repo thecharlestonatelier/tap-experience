@@ -112,7 +112,7 @@ test('sanitizePen keeps a valid start date', () => {
 
 test('sanitize stores settings with a first rev', () => {
   const rec = store.sanitize({ slug: 'x.y', settings: { startDate: '2026-01-01', times: { morning: '08:00' } } });
-  assert.deepEqual(rec.settings, { startDate: '2026-01-01', times: { morning: '08:00' }, rev: 1 });
+  assert.deepEqual(rec.settings, { startDate: '2026-01-01', times: { morning: '08:00' }, penTimes: {}, rev: 1 });
 });
 
 test('sanitize drops an unrecognised time band', () => {
@@ -226,4 +226,20 @@ test('sanitizeState blanks invalid times and dates in the arrays', () => {
   assert.equal(st.today[0].at, '');
   assert.equal(st.supply[0].lastDose, '');
   assert.equal(st.supply[0].startDate, '');
+});
+
+test('sanitize stores per-pen times and bumps rev when one changes', () => {
+  const first = store.sanitize({
+    slug: 'x.y',
+    settings: { startDate: '2026-01-01', penTimes: { ghk: '08:30' } },
+  });
+  assert.deepEqual(first.settings.penTimes, { ghk: '08:30' });
+  assert.equal(first.settings.rev, 1);
+
+  const next = store.sanitize({
+    slug: 'x.y',
+    settings: { startDate: '2026-01-01', penTimes: { ghk: '09:30' } },
+  }, first);
+  assert.equal(next.settings.rev, 2);
+  assert.deepEqual(next.settings.penTimes, { ghk: '09:30' });
 });

@@ -85,8 +85,9 @@ characters. Sign-in asks for the email and password only. A failed sign-in
 shows one uniform message that does not reveal which part was wrong. The form
 offers a forgot-password reset that returns to the card. The service links the
 card once, to whichever provider signs in first. Later sign-ins verify only. A
-different account shows a stuck screen. Fragment, legacy, and blank cards
-never see the gate.
+different account shows a stuck screen. A card sees the gate when it has a
+name, a prescribed pen, or a patient-added pen. A retired card sees the gate
+too. Fragment, legacy, and blank cards never see the gate.
 
 ### 3.3 Dose logging
 
@@ -95,6 +96,14 @@ The confirmed dose posts to `/api/dose`. The record lives in the
 `administrations` collection. Logging is device-independent. A dose tapped in
 Safari shows on the home-screen app.
 
+A pen's start date and time-of-day lock for the patient at the pen's first
+logged dose (`firstDoseDay`). The atelier override stays above the lock
+through `settings.rev` and `settings.force`. `/api/logged` returns the logged
+days and `firstAt`, the earliest logged instant per template. The card reads
+the first dose's clock time from `firstAt`. The dose log and `firstAt` are
+keyed by template (`penKeyOf`), so two pens of the same template share one log
+and one first-dose time.
+
 ### 3.4 Reminders
 
 The patient turns reminders on from her card. The device posts a list of
@@ -102,11 +111,30 @@ future instants to `/api/push/subscribe`. Cloud Scheduler calls
 `/api/push/run` every 15 minutes. The service sends one generic notification
 per due dose.
 
+`upcomingDoses()` builds the due instants. It reads each pen's per-pen time
+from `timeFor(pen)`. `timeFor(pen)` resolves the time in this order, most
+trusted first:
+
+1. the atelier's per-pen value;
+2. the patient's per-pen value;
+3. the clock time of the first logged dose;
+4. the band default.
+
+The per-pen time changes only which instants `upcomingDoses()` emits. The
+15-minute sweep, the two-hour grace, and the `sentUpTo` dedupe stay the same.
+A settings change on a cold open re-syncs the stored due list, re-reports her
+state, and republishes the calendar feed. `refreshReminders()` refuses while
+the pen list is empty, so an early call cannot post an empty schedule.
+
 ### 3.5 Calendar export and feed
 
 The card builds an iCalendar file from the schedule. It posts the file to
 `/api/ics/<slug>`. A patient can download it or subscribe to
 `/ics/<slug>.ics`.
+
+`buildICS()` builds each event's time from the per-pen time through
+`timeFor(pen)` and `icsInstant()`. `DTSTART` stays a UTC instant with the `Z`
+suffix. The file has no floating times and no `TZID` or `VTIMEZONE` blocks.
 
 ### 3.6 Card Studio
 
@@ -123,7 +151,10 @@ shows an Unlink action, which clears the link so the next sign-in links again.
 
 Card Studio posts to `/api/cards` to create a card. The store sanitizes the
 input. It keeps the counters (`taps`, `firstSeen`, `lastSeen`, `days`) and the
-patient's `state` on every save.
+patient's `state` on every save. The editor shows one time row per band and
+one row per pen. A per-pen row sets `settings.penTimes`; an empty per-pen row,
+or removing the pen, clears the key, so the pen falls back to the chain from
+§3.4.
 
 ## 4. Interfaces and Data
 
@@ -182,16 +213,25 @@ A card record holds:
   `retired`), `note`
 - counters: `taps`, `firstSeen`, `lastSeen`, `days`
 - `state`: what the patient's phone last reported
-- `settings`: start day and times the atelier set for the patient
+- `settings`: `startDate`, `times` (band times), and `penTimes` (a per-pen
+  `HH:MM` map) the atelier set for the patient, plus `rev`. `sanitizeSettings`
+  keeps only real clock times: hours 00 to 23, minutes 00 to 59. The phone
+  applies `settings` only when `rev` increases; `force` raises `rev` even when
+  nothing changed.
 - `added`, `dropped`: pens the patient added or removed herself
 - `activatedBy`: `{uid, provider, name, at}`, set once at first sign-in. The
   `name` is the Google token's name or the name typed at email sign-up.
 - `createdAt`, `updatedAt`
 
+A card is `blank` when it has no name, no prescribed pen, and no patient-added
+pen. It becomes `active` as soon as it has any one of the three. `retired` is
+the atelier's word; the store never clears it.
+
 `publicView()` returns only `slug`, `name`, `status`, `startDate`, `pens`,
-`added`, `dropped`, `settings`. The note, the counters, the state, and
-`activatedBy` stay on the clinician side. A Studio save carries `activatedBy`
-forward. Only the clinician Unlink action removes it.
+`added`, `dropped`, `settings`. The returned `settings` includes `penTimes`.
+The note, the counters, the state, and `activatedBy` stay on the clinician
+side. A Studio save carries `activatedBy` forward. Only the clinician Unlink
+action removes it.
 
 ## 5. Constraints
 

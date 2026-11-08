@@ -1,0 +1,3 @@
+# hadolint — Dockerfile best practices (run: hadolint Dockerfile)
+# Default rules apply. Add per-rule exceptions under `ignored:` only when a
+# rule genuinely does not fit this project, with the reason in a comment.

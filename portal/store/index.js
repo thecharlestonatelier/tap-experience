@@ -35,7 +35,7 @@ const COLLECTION = process.env.CARD_COLLECTION || 'cards';
 function nowIso() { return new Date().toISOString(); }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_BAND = /^\d{2}:\d{2}$/;
+const TIME_BAND = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DROPPED_ID = /^[A-Za-z0-9#._-]{1,48}$/;
 const CARD_STATUSES = ['active', 'blank', 'retired'];
 
@@ -48,7 +48,7 @@ function validDateOrEmpty(value) {
    only a valid HH:MM survives. Shared by the card's settings and its state. */
 function parseTimeBands(input) {
   const times = {};
-  const src = (input.times && typeof input.times === 'object') ? input.times : {};
+  const src = (input.times && typeof input.times === 'object' && !Array.isArray(input.times)) ? input.times : {};
   Object.keys(src).slice(0, 6).forEach(band => {
     const v = String(src[band] || '');
     if (TIME_BAND.test(v)) times[String(band).slice(0, 16)] = v;
@@ -60,11 +60,14 @@ function parseTimeBands(input) {
    the card already holds. */
 function settingsUnchanged(next, prev) {
   return next.startDate === (prev.startDate || '') &&
-         JSON.stringify(next.times) === JSON.stringify(prev.times || {});
+         JSON.stringify(next.times) === JSON.stringify(prev.times || {}) &&
+         JSON.stringify(next.penTimes) === JSON.stringify(prev.penTimes || {});
 }
 
 function emptySettings(settings) {
-  return !settings.rev && !settings.startDate && !Object.keys(settings.times).length;
+  return !settings.rev && !settings.startDate &&
+         !Object.keys(settings.times).length &&
+         !Object.keys(settings.penTimes || {}).length;
 }
 
 /* Whatever the dashboard posts, only these fields are ever stored. */
@@ -105,9 +108,17 @@ function sanitizeSettings(input, existing) {
 
   const times = parseTimeBands(input);
   const baseRev = Number(prev.rev) || 0;
+
+  const penTimes = {};
+  const penSrc = (input.penTimes && typeof input.penTimes === 'object' && !Array.isArray(input.penTimes)) ? input.penTimes : {};
+  Object.keys(penSrc).slice(0, 12).forEach(penId => {
+    const v = String(penSrc[penId] || '');
+    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) penTimes[String(penId).slice(0, 16)] = v;
+  });
   const out = {
     startDate: validDateOrEmpty(input.startDate),
     times,
+    penTimes,
     rev: baseRev
   };
 
@@ -145,7 +156,7 @@ function sanitizeState(input) {
       phase: str(d.phase, 40),
       units: Number(d.units) || 0,
       mg: Number(d.mg) || 0,
-      at: /^\d{2}:\d{2}$/.test(d.at || '') ? d.at : '',
+      at: /^([01]\d|2[0-3]):[0-5]\d$/.test(d.at || '') ? d.at : '',
       rest: !!d.rest
     })),
     supply: (Array.isArray(input.supply) ? input.supply : []).slice(0, 8).map(s => ({
