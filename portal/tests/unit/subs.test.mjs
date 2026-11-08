@@ -3,6 +3,9 @@
    dueNow scheduler guard. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
 
 import subs from '../../store/subs.js';
 
@@ -51,4 +54,42 @@ test('dueNow picks the instant due right now', () => {
 
 test('dueNow drops a stale reminder', () => {
   assert.equal(subs.dueNow({ due: ['2026-03-14T01:00:00.000Z'] }, now), null);
+});
+
+test('dueNow picks the most recent qualifying instant', () => {
+  const t1 = '2026-03-15T11:00:00.000Z';
+  const t2 = '2026-03-15T11:50:00.000Z';
+  assert.equal(subs.dueNow({ due: [t1, t2] }, now), t2);
+});
+
+test('dueNow stops at the first future instant', () => {
+  assert.equal(subs.dueNow({ due: ['2026-03-15T11:00:00.000Z', '2026-03-15T13:00:00.000Z'] }, now),
+    '2026-03-15T11:00:00.000Z');
+});
+
+test('sanitizeSub cleans, dedups and sorts the due list', () => {
+  const future = new Date(Date.now() + 3600000).toISOString();
+  const stale = new Date(Date.now() - 48 * 3600000).toISOString();
+  const out = subs.sanitizeSub({
+    sub: { endpoint: 'https://e/x', keys: { p256dh: 'pk', auth: 'au' } },
+    due: [future, 'bad', future, stale],
+  }, 'x.y');
+  assert.deepEqual(out.due, [future]);
+});
+
+test('a resubscribe keeps createdAt and sentUpTo', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tap-subs-'));
+  process.env.CARD_STORE = 'file';
+  process.env.SUB_FILE = path.join(tmp, 'subs.json');
+  const store = subs.openSubs();
+  const base = {
+    id: 's1', slug: 'x.y',
+    sub: { endpoint: 'https://e/x', keys: { p256dh: 'p', auth: 'a' } },
+    due: [], sentUpTo: '2026-01-01T00:00:00.000Z', tz: '',
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+  await store.put(base);
+  const merged = await store.put({ ...base, sentUpTo: '', createdAt: '2027-01-01T00:00:00.000Z' });
+  assert.equal(merged.createdAt, base.createdAt);
+  assert.equal(merged.sentUpTo, base.sentUpTo);
 });

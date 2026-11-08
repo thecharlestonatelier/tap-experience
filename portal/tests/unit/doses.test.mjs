@@ -43,3 +43,23 @@ test('doseId is slug.template.day', () => {
   assert.equal(doses.doseId({ slug: 'phil.h', day: '2026-03-01' }),
     'phil.h.pen.2026-03-01');
 });
+
+test('sanitizeDose derives the day from at when no day is given', () => {
+  const d = doses.sanitizeDose({ slug: 'x.y', units: 5, at: '2026-02-02T10:00:00Z' });
+  assert.equal(d.day, '2026-02-02');
+  assert.equal(d.at, '2026-02-02T10:00:00Z');
+});
+
+test('sanitizeDose uses the at date when the day is invalid', () => {
+  const d = doses.sanitizeDose({ slug: 'x.y', units: 5, day: 'bad', at: '2026-02-02T10:00:00Z' });
+  assert.equal(d.day, '2026-02-02');
+});
+
+test('sanitizeDose keeps a valid mg and drops a bad one', () => {
+  assert.equal(doses.sanitizeDose({ slug: 'x.y', units: 5, mg: '2.5' }).mg, 2.5);
+  assert.equal(doses.sanitizeDose({ slug: 'x.y', units: 5, mg: 'x' }).mg, null);
+});
+
+test('sanitizeDose rounds a positive unit count', () => {
+  assert.equal(doses.sanitizeDose({ slug: 'x.y', units: '10.6' }).units, 11);
+});

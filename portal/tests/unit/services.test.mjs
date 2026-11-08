@@ -109,3 +109,38 @@ test('servicesFor sorts two due services by soonest', () => {
   const out = services.servicesFor({ visits: [v('toxin', '2026-03-10'), v('b12', '2026-03-01')] }, now);
   assert.deepEqual(out.map(s => s.id).sort(), ['b12', 'toxin']);
 });
+
+test('servicesFor fills an unknown service from its id', () => {
+  const out = services.servicesFor({ visits: [v('mystery', '2026-03-01')] }, now);
+  assert.equal(out[0].name, 'mystery');
+  assert.equal(out[0].color, '');
+  assert.equal(out[0].hex, '');
+  assert.equal(out[0].count, 1);
+  assert.equal(out[0].next, null);
+});
+
+test('servicesFor sorts two due services by soonest', () => {
+  // prx: 2026-03-10 + 7 = 2026-03-17 (2 days); b12: 2026-03-01 + 28 = 2026-03-29 (14)
+  const out = services.servicesFor({ visits: [v('b12', '2026-03-01'), v('prx', '2026-03-10')] }, now);
+  assert.deepEqual(out.map(s => s.id), ['prx', 'b12']);
+});
+
+test('nextDue gives liquid lipo its window on the first visit', () => {
+  const out = services.nextDue('lipo', [v('lipo', '2026-03-01')], now);
+  assert.equal(out.days, 42);
+  assert.deepEqual(out.window, ['2026-04-26', '2026-05-10']);
+  assert.equal(out.course, '1 of 2');
+});
+
+test('nextDue reports the course count before it ends', () => {
+  const out = services.nextDue('poly', [v('poly', '2026-03-10')], now);
+  assert.equal(out.course, '1 of 3');
+  assert.equal(out.session, 1);
+});
+
+test('nextDue marks a dose due today as soon, not overdue', () => {
+  const out = services.nextDue('toxin', [v('toxin', '2025-12-15')], now);
+  assert.equal(out.days, 0);
+  assert.equal(out.soon, true);
+  assert.equal(out.overdue, false);
+});
